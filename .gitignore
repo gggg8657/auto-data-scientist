@@ -9,3 +9,5 @@ logs/
 .tmp/
 # OpenML's own dataset cache; runs/evals/ is the committed evidence, not this
 .omlcache/
+# interim report written while a benchmark is in flight; RESULTS.md is the record
+runs/interim_report.md

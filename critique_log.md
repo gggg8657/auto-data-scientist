@@ -358,3 +358,129 @@ architecturally open: `ads/evaluate.py` holds the full labelled frame in the
 same process that calls the agent, so isolation would mean a subprocess with
 only the permitted arrays mounted. All three are in `WEEKEND.md` as work, not
 as answered.
+
+---
+
+## 2026-09-10, turn 6 — the first accuracy numbers exist, and the gate that passed them was biased at n=3
+
+### What the number is
+
+The 3-seed screen finished. Five tasks, `runs/bench/task_*_seed{0,1,2}.json`,
+pooled accuracy against the pre-registered `median_run`:
+
+| task | dataset | ours (3-seed mean) | median_run | rel gap | seed range | margin to 0.95x line / range |
+|---|---|---|---|---|---|---|
+| 31 | credit-g | 0.7563 | 0.7250 | +4.32% | 0.0040 | 16.9x |
+| 10101 | blood-transfusion | 0.7678 | 0.7634 | +0.58% | 0.0053 | 8.0x |
+| 3913 | kc2 | 0.8372 | 0.8276 | +1.16% | 0.0077 | 6.7x |
+| 3 | kr-vs-kp | 0.9969 | 0.9599 | +3.85% | 0.0013 | 67.8x |
+| 3917 | kc1 | 0.8592 | 0.8516 | +0.89% | 0.0038 | 13.2x |
+
+All five are *above* the median published run, not merely within 5% of it, and
+all five clear the strictest of the four registered readings too. These are the
+first accuracy numbers this repository has ever produced; the previous three
+turns reported `[not measured]` and that was correct at the time.
+
+### The claim I am withdrawing before anyone reads it
+
+`scripts/report.py` printed **`Status: PASS`** off that screen, and wrote it
+into `RESULTS.md`. That is withdrawn. Not because any number above is wrong —
+they are all real, and they are all comfortably clear of the line — but because
+the gate that granted the clause was the wrong test:
+
+    near = margin_to_threshold < observed_seed_range
+    called = (not near and mean >= T) or (near and test.reject_h0)
+
+The pre-registered exact sign test therefore **ran on none of the five tasks**.
+The clause was granted on point estimates, with a statistical test present in
+the file, named in the protocol, and unreachable in this branch.
+
+Why it is biased and in which direction: the expected range of `n` iid draws is
+**1.69σ at n=3 and 2.85σ at n=8**. The seed range is the quantity in the
+*denominator* of `margin < range`, so running fewer seeds shrinks it and makes
+`near` *false* more often — i.e. makes the "comfortably clear, no test needed"
+branch easier to enter. **A gate that is easier to clear on less evidence is
+not a gate.** It is the same shape of error as `etch-operator-twin`'s partial
+checkpoints: a defect whose sign is fixed by the mechanism, so it cannot
+average out.
+
+This is exactly what the weekend rules mean by "with 3 seeds, say screen, not
+verdict", and it was prose in this repo rather than code.
+
+### The fix, and why it is a tightening and not a protocol change
+
+The pre-registered exact test is now the gate for **every** task:
+`H0: median over seeds ≤ 0.95 × baseline`, one-sided exact sign test,
+α = 0.05. Its p-value floor is `1/2^n`, so:
+
+- n=3, all three above the line → p = 0.1250. **Not callable, in either
+  direction, at any margin.** The 70×-margin fixture in
+  `tests/test_escalation_gate.py` asserts precisely this.
+- n=8, all eight above → p = 0.0039 → called.
+
+Under the new gate the same five screen runs call **nothing**, and the status
+went `PASS` → `RUNNING (not all clauses measured)`. The clause got harder; no
+number moved. The old margin reading is kept as
+`margin_exceeds_seed_range` and printed beside the test (rung 1: report both
+readings, labelled), because a reader should see that the two disagree here.
+
+### A second hole, found by writing the test rather than by reading the code
+
+The p-value floor blocks n ≤ 4 only. At **n=5** an all-above run gives
+p = 0.03125 and would reject. So a runner that watched seeds land and stopped
+at the first rejection would be reporting a **sequentially monitored p-value as
+if it were fixed-sample** — optional stopping, and the favourable-prefix
+version of the duplicated-seed attack codex found last turn. `called` now
+additionally requires the full registered verdict set of 8 seeds, whichever way
+the test comes out. `test_a_favourable_prefix_of_the_verdict_set_cannot_be_called_early`
+asserts n=5,6,7 reject H0 and are still not called.
+
+### Unfinished is not failed — the mirror-image error, which I then made
+
+Draining the same gate in the other direction: with the exact test enforced, a
+3-seed screen made `clause2 = False` and the status read **"NOT MET as
+measured"**. That is as wrong as the PASS was, with the sign flipped: a
+measurement that has not reached its registered seed count has not measured the
+clause. `clause2` and `clause2_under_strictest_baseline` are now `None` while
+`escalation_required` holds, which routes to `RUNNING`. A task that fails at
+the *full* 8 seeds is a genuine negative and still reports `NOT MET`
+(`test_a_task_that_fails_at_the_full_seed_count_is_a_result_not_a_pending_run`).
+
+The same error hit clause 3 through the ledger: an attempt in flight has a
+`started` line and no record yet, so the ledger cannot reconcile and clause 3
+read `False` mid-run. My first fix read `/proc` inside `reconcile_ledger` to
+tell "in flight" from "abandoned" — and that was **worse**, because it made the
+committed document a function of live process state, so
+`test_results_md_matches_what_report_regenerates` could never hold on a clean
+checkout and CI would have been permanently red. Reverted. The live reading now
+sits in `main()` as a guard instead: while a benchmark is alive, the default
+output is redirected to the untracked `runs/interim_report.md` and `RESULTS.md`
+keeps describing the last finished measurement. An explicit `--out` is never
+redirected, so the freshness test still regenerates deterministically. That
+test defers, loudly, while a run is in flight, and CI sets
+`ADS_REQUIRE_FRESH_RESULTS=1` to make the deferral itself a failure — verified
+both ways this turn.
+
+### What is the binding constraint on this KPI
+
+Not the agent, on this evidence. The agent is above the median published run on
+5 of 5 tasks with a seed spread of 0.0013–0.0077, i.e. one to eight thousandths
+of accuracy, against margins of 0.03–0.08. If clause 2 fails at 8 seeds it will
+not be because the models are weak; it will be because a task's *strictest*
+reading (`median_uploader_best`: 0.7741 on 10101, 0.8448 on 3913, 0.9947 on 3)
+sits above our mean, and only the 0.95× tolerance carries the row. The primary
+reading is `median_run` and stays primary — it was pre-registered — but the
+honest summary is that **clause 2 is comfortable on `median_run` and tight on
+`median_uploader_best`**, and the report prints both.
+
+The distinguishing prediction, written before the 8-seed run lands: the added
+seeds move each mean by less than 0.005 and change no task's `primary_pass`;
+what changes is that `p` goes 0.1250 → 0.0039 and the tasks become callable. If
+instead a mean moves by more than 0.005, the 3-seed spread was an
+underestimate of exactly the kind argued above, and that is the more
+interesting outcome.
+
+### Still open, unchanged from last turn
+
+Identity-as-property (#6), evaluation-cache provenance (#7), in-process label
+leakage (#8). None of them is closed and none is claimed to be.

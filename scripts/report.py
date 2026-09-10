@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import statistics
 from collections import Counter
@@ -105,40 +106,68 @@ def exact_sign_test_above(accs: list[float], threshold: float) -> dict:
 
 
 def escalation_state(accs: list[float], baseline: float, protocol: dict) -> dict:
-    """Is this task near the line, and does the protocol allow calling it?
+    """Can this task be *called* on the seeds that exist, and by what test?
 
-    "Near the line" is measured against our own noise, not against a number
-    picked by hand: a task is near the line when the distance from the mean to
-    the threshold is smaller than the observed seed range. That is the
-    weekend's rule -- an effect smaller than the run-to-run spread is not an
-    effect -- applied to the pass/fail decision itself.
+    Two readings of "is it clear of the line", both reported (the addendum's
+    rung 1), because they disagree and the disagreement is the point:
+
+    - `margin_exceeds_seed_range`: the distance from the mean to the threshold
+      is larger than the observed seed range. This was the gate until
+      2026-09-10 turn 6 and it is **biased in the flattering direction at
+      small n**, which is why it is now a diagnostic and not the gate. The
+      expected range of n iid draws is 1.69 sigma at n=3 and 2.85 sigma at
+      n=8, so a 3-seed range underestimates the spread by ~1.7x on average --
+      and the estimate it understates sits in the *denominator* of the
+      comparison. A gate that gets easier to pass the fewer seeds you run is
+      the wrong shape for a gate, whatever margin it happens to show.
+
+    - `exact_test`: the pre-registered one-sided exact sign test of
+      H0: median <= T. This is now the gate for **every** task, near the line
+      or not. Its p-value floor is 1/2^n, so n=3 can reach only p=0.125 and
+      **no 3-seed screen can call a task in either direction** -- which is
+      what the weekend rule ("with 3 seeds, say screen, not verdict") says,
+      now enforced in code rather than in prose. At the registered 8 seeds,
+      8/8 above the line gives p=0.0039 and the task is called.
+
+    This is a tightening. The clause got harder to meet, not easier: on the
+    3-seed screen of 2026-09-10 every one of the five tasks cleared its
+    threshold by 4.5x-68x its own seed range and the old gate called all five,
+    giving `status: PASS` off a screen. Under this gate the same five runs
+    call nothing and the status is `RUNNING`, pending the 8-seed set.
     """
     T = 0.95 * baseline
     n_verdict = len(protocol.get("seeds_verdict") or []) or 8
     mean = statistics.mean(accs)
     spread = (max(accs) - min(accs)) if len(accs) >= 2 else None
     margin = abs(mean - T)
-    near = bool(spread is not None and margin < spread)
-    test = exact_sign_test_above(accs, T) if near else None
-    # A near-the-line task run on fewer than the registered verdict seeds
-    # cannot be called either way: that is the escalation the protocol
-    # registered, and leaving it unenforced was how three favourable screen
-    # seeds could have become a headline.
-    needs_more = bool(near and len(accs) < n_verdict)
+    margin_beats_range = bool(spread is not None and margin > spread)
+    test = exact_sign_test_above(accs, T)
+    # Two conditions, and the second is not redundant. The p-value floor 1/2^n
+    # only blocks n <= 4; at n=5 an all-above screen gives p=0.03125 and would
+    # reject. Calling a task the moment the test happens to clear alpha is
+    # optional stopping, and a sequentially-monitored p-value is not the
+    # 0.05 it prints. The registered verdict set is 8 seeds, so the full 8 are
+    # required whichever way the test comes out -- a task must not become
+    # callable by stopping early on a favourable prefix.
+    enough_seeds = len(accs) >= n_verdict
+    called = bool(test["reject_h0"] and enough_seeds)
+    # Fewer seeds than the protocol registered => the escalation is what is
+    # missing, so say so rather than reporting a failed clause. Not called *at*
+    # the full seed count is a real negative result, not a pending measurement.
+    needs_more = not enough_seeds
     return {
         "threshold": float(T), "mean": float(mean),
         "margin_to_threshold": float(margin),
         "seed_range": None if spread is None else float(spread),
-        "near_line": near, "n_seeds": len(accs),
+        # kept, labelled, and no longer load-bearing
+        "margin_exceeds_seed_range": margin_beats_range,
+        "near_line": not margin_beats_range,
+        "n_seeds": len(accs),
         "n_seeds_registered_for_verdict": n_verdict,
         "escalation_required": needs_more,
+        "seeds_meet_registered_verdict_count": enough_seeds,
         "exact_test": test,
-        # A task is *called* when it is comfortably clear of the line (margin
-        # exceeds our own spread), or when the exact test at the registered
-        # seed count rejects H0.
-        "called": bool((not near and mean >= T)
-                       or (near and not needs_more and test
-                           and test["reject_h0"])),
+        "called": called,
         "screen_only": bool(len(accs) <= 3),
     }
 
@@ -161,6 +190,26 @@ def load_bench(bench_dir: Path) -> tuple[dict[int, list[dict]], list[dict]]:
         else:
             by_task.setdefault(int(r["task_id"]), []).append(r)
     return by_task, failed
+
+
+def benchmark_processes_alive() -> bool:
+    """Is a `run_benchmark.py` alive right now? Read from /proc, no new deps.
+
+    Deliberately not a lockfile: a lockfile left behind by a killed process
+    reads as "in flight" forever, which is the failure direction that hides an
+    abandoned attempt.
+    """
+    me = os.getpid()
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit() or int(entry.name) == me:
+            continue
+        try:
+            cmd = (entry / "cmdline").read_bytes().decode("utf-8", "replace")
+        except OSError:
+            continue                      # exited or not ours to read
+        if "run_benchmark.py" in cmd:
+            return True
+    return False
 
 
 def reconcile_ledger(ledger_path: Path, bench: dict,
@@ -191,7 +240,14 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
     on_disk = {(int(tid), r.get("random_state"))
                for tid, runs in bench.items() for r in runs}
     failed_files = {(f.get("task_id"), f.get("seed")) for f in (failed or [])}
-    # started but never resolved: a killed or still-running attempt
+    # started but never resolved: a killed or still-running attempt. Which of
+    # the two it is depends on whether a process is alive *now*, and that must
+    # not enter this function: everything here is a pure function of two
+    # committed files, so `tests/test_registry_frozen.py` can assert that
+    # RESULTS.md is byte-identical to a regeneration on a clean checkout. An
+    # earlier version of this fix read /proc here, which would have made the
+    # committed document un-reproducible in CI. The live reading belongs to
+    # the interim view instead -- see the in-flight guard in main().
     unresolved = sorted(started - completed - failed_ev)
     # completed in the ledger but absent from runs/bench: a deleted result
     missing_from_disk = sorted(completed - on_disk)
@@ -217,18 +273,26 @@ def verdict(rows: list[dict], base: dict, bench: dict,
     n_tasks = len(base.get("selected_task_ids", [])) if base else 0
     clause1 = n_tasks == 5
     measured = [r for r in rows if r["ours"] is not None]
-    # A task sitting closer to the 5% line than our own seed spread cannot be
-    # called on the 3-seed screen; the registered escalation to 8 seeds and an
-    # exact test has to actually happen first. Without this, three favourable
-    # screen seeds were enough to claim the clause (codex, attack #2).
+    # Every task must be *called* by the pre-registered exact sign test, not
+    # only the ones that land near the line. Until 2026-09-10 turn 6 the test
+    # ran only when the margin was smaller than the observed seed range, and
+    # that condition is easier to satisfy the fewer seeds you run (see
+    # `escalation_state`), so the 3-seed screen skipped the test on all five
+    # tasks and the clause passed on point estimates alone. p has a floor of
+    # 1/2^n, so this gate makes a 3-seed screen uncallable by construction.
     escalation_pending = [r["task_id"] for r in measured
                           if (r.get("escalation") or {}).get("escalation_required")]
     not_called = [r["task_id"] for r in measured
-                  if (r.get("escalation") or {}).get("near_line")
-                  and not (r.get("escalation") or {}).get("called")]
+                  if not (r.get("escalation") or {}).get("called")]
     clause2 = (bool(measured) and len(measured) == n_tasks
                and all(r["primary_pass"] for r in measured)
                and not escalation_pending and not not_called)
+    # A clause whose seeds are still short of the registered verdict set is
+    # *unmeasured*, not failed: reporting "NOT MET as measured" off a screen
+    # would be as wrong in the pessimistic direction as PASS was in the
+    # flattering one. None routes the status to RUNNING.
+    if escalation_pending:
+        clause2 = None
     # The primary reading is `median_run` and it stays the primary -- it was
     # pre-registered and the brief named it. But codex is right that a PASS on
     # it while the selected-solution readings fail is a weak claim, and right
@@ -237,7 +301,12 @@ def verdict(rows: list[dict], base: dict, bench: dict,
     # verdict is computed and reported beside the primary one rather than
     # being recorded and left unbinding.
     clause2_strict = bool(measured) and len(measured) == n_tasks and all(
-        r.get("strict_pass") for r in measured)
+        r.get("strict_pass")
+        and (r.get("escalation_strict") or {}).get("called")
+        for r in measured)
+    if any((r.get("escalation_strict") or {}).get("escalation_required")
+           for r in measured):
+        clause2_strict = None          # unfinished, not failed
     failed = failed or []
     interventions = sum(
         run.get("n_interventions", 0) for runs in bench.values() for run in runs)
@@ -327,9 +396,33 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baselines", default=str(REPO / "runs/baselines.json"))
     ap.add_argument("--bench", default=str(REPO / "runs/bench"))
-    ap.add_argument("--out", default=str(REPO / "RESULTS.md"))
+    ap.add_argument("--out", default=None,
+                    help="default RESULTS.md. An explicit path is never "
+                         "redirected by the in-flight guard, so "
+                         "tests/test_registry_frozen.py can regenerate into a "
+                         "temp file and get a deterministic document.")
     ap.add_argument("--readme", default=str(REPO / "README.md"))
+    ap.add_argument("--interim", action="store_true",
+                    help="write runs/interim_report.md instead of RESULTS.md; "
+                         "implied automatically while a benchmark is running")
     args = ap.parse_args()
+
+    # ------------------------------------------- do not commit a mid-run doc
+    # A benchmark in flight has started attempts with no record yet, so the
+    # ledger cannot reconcile and clause 3 reads False -- a *false negative*,
+    # and one that would then be committed as the repository's verdict. The
+    # symmetric error to a PASS off a screen, so it gets the symmetric
+    # treatment: while a run is alive the document goes to an untracked
+    # interim path and RESULTS.md keeps describing the last finished
+    # measurement. Regenerate after the job exits.
+    explicit_out = args.out is not None
+    args.out = args.out or str(REPO / "RESULTS.md")
+    if not args.interim and not explicit_out and benchmark_processes_alive():
+        interim = REPO / "runs/interim_report.md"
+        print(f"a benchmark is running: writing {interim} and leaving "
+              f"{args.out} at the last finished measurement")
+        args.out = str(interim)
+        args.readme = ""
 
     base = read_json(args.baselines)
     bench, failed = (load_bench(Path(args.bench))
@@ -402,6 +495,12 @@ def main() -> int:
             row["strict_pass"] = tol_strict["rel_one_sided"]
             row["escalation"] = escalation_state(
                 accs, t["median_run"], base.get("run_protocol") or {})
+            # The strictest reading gets the same exact test, so that
+            # `clause2_under_strictest_baseline` is a called result and not a
+            # point-estimate comparison sitting next to a tested one.
+            row["escalation_strict"] = escalation_state(
+                accs, t["strictest_baseline_value"],
+                base.get("run_protocol") or {})
             res_rows.append([
                 tid, t["dataset_name"], len(accs), fmt(ours),
                 fmt(t["median_run"]), f"{tol_run['rel_gap']*100:+.2f}%",
@@ -473,6 +572,41 @@ def main() -> int:
             "the three readings fixed in `runs/baselines.json` before any run — "
             "all are shown so that none can be picked after the fact.", ""]
 
+    # ------------------------------------------- the gate, one row per task
+    test_rows = []
+    for row in rows:
+        e, es = row.get("escalation"), row.get("escalation_strict")
+        if not e:
+            test_rows.append([row["task_id"], row["name"], 0, NM, NM, NM,
+                              NM, NM, NM, NM])
+            continue
+        t_, ts = e["exact_test"], (es or {}).get("exact_test") or {}
+        test_rows.append([
+            row["task_id"], row["name"], e["n_seeds"], fmt(e["threshold"]),
+            f"{t_['k']}/{t_['n']}", f"{t_['p']:.4f}",
+            "CALLED" if e["called"] else
+            ("escalation pending" if e["escalation_required"] else "not called"),
+            f"{ts.get('k', NM)}/{ts.get('n', NM)}",
+            f"{ts['p']:.4f}" if ts else NM,
+            "CALLED" if (es or {}).get("called") else "not called"])
+    doc += [
+        "## The gate: the pre-registered exact test, per task", "",
+        "A task is **called** only when the one-sided exact sign test of "
+        "`H0: median over seeds <= 0.95 x baseline` rejects at alpha = 0.05. "
+        f"The p-value floor is `1/2^n`, so a {len(base.get('run_protocol', {}).get('seeds_screen') or [])}"
+        "-seed screen cannot call a task in either direction and the status "
+        "cannot read PASS off one. This gate replaced "
+        "`margin > observed seed range` on 2026-09-10: that condition is "
+        "*easier* to satisfy the fewer seeds you run (E[range] is 1.69 sigma "
+        "at n=3 against 2.85 sigma at n=8, and it sits in the denominator), "
+        "so it skipped the test on all five tasks of the 3-seed screen and "
+        "passed the clause on point estimates. The margin reading is kept in "
+        "the spread table as a diagnostic.", "",
+        table(test_rows, ["task", "dataset", "seeds", "threshold (primary)",
+                          "k/n above", "p", "verdict (primary)",
+                          "k/n above (strictest)", "p (strictest)",
+                          "verdict (strictest)"]), ""]
+
     if spread_rows:
         doc += ["## Our own run-to-run spread", "",
                 "An effect smaller than this noise floor is not an effect. Each "
@@ -492,15 +626,17 @@ def main() -> int:
     Path(args.out).write_text("\n".join(doc) + "\n")
 
     # ------------------------------------------------- README baseline block
-    rp = Path(args.readme)
-    if rp.exists():
+    rp = Path(args.readme) if args.readme else None
+    touched_readme = bool(rp and rp.is_file())
+    if touched_readme:
         txt = rp.read_text()
         new = re.sub(r"<!-- BASELINES:BEGIN -->.*?<!-- BASELINES:END -->",
                      "<!-- BASELINES:BEGIN -->\n" + bl_block +
                      "<!-- BASELINES:END -->", txt, flags=re.S)
         rp.write_text(new)
 
-    print(f"wrote {args.out} and refreshed the README block")
+    print(f"wrote {args.out}"
+          + (" and refreshed the README block" if touched_readme else ""))
     print(f"status: {v['status']}")
     for k, val in v["clauses"].items():
         print(f"  {k}: {val}")

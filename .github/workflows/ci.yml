@@ -28,5 +28,10 @@ jobs:
       # The committed registry must still match the rule that produced it, and
       # RESULTS.md must still match what report.py generates from runs/*.json --
       # so a stale document cannot go green.
+      # ADS_REQUIRE_FRESH_RESULTS makes the RESULTS.md freshness assertion
+      # non-deferrable. Locally the test defers while a benchmark is in flight,
+      # because run files land continuously and any snapshot is stale a fold
+      # later; on a clean checkout nothing is running, so a deferral here means
+      # the deferral logic itself is broken and CI must go red.
       - name: registry and report are not stale
-        run: PYTHONPATH=. python tests/test_registry_frozen.py
+        run: ADS_REQUIRE_FRESH_RESULTS=1 PYTHONPATH=. python tests/test_registry_frozen.py

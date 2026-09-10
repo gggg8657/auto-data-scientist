@@ -74,22 +74,40 @@ def _run(tid, acc, seed=0, **kw):
     return r
 
 
-def _bench(n_tasks=5, acc=0.80):
-    """One run per registered screen seed, which is what the protocol asks for.
+VERDICT_SEEDS = tuple(range(8))
+
+
+def _bench(n_tasks=5, acc=0.80, seeds=VERDICT_SEEDS):
+    """One run per registered *verdict* seed.
 
     These fixtures used to carry a single seedless run per task, which passed
     only because the fixture registry had no `run_protocol` for the seed
     accounting to check against. Adding one turned them red -- correctly.
+
+    They then carried the three screen seeds, and asserted `status == PASS` off
+    them. That is no longer reachable and the change is deliberate: the
+    pre-registered exact sign test is now the gate for every task and its
+    p-value floor of 1/2^n cannot clear alpha=0.05 at n=3, so a 3-seed screen
+    cannot produce a PASS. Fixtures that want a PASS must supply the full
+    registered verdict set, which is what the protocol asked for all along.
     """
-    return {100 + i: [_run(100 + i, acc, seed=s) for s in (0, 1, 2)]
+    return {100 + i: [_run(100 + i, acc, seed=s) for s in seeds]
             for i in range(n_tasks)}
+
+
+def _rows(base, acc=0.80, seeds=VERDICT_SEEDS, baseline=0.8):
+    """Clause rows carrying the escalation state the verdict now requires."""
+    e = R.escalation_state([acc] * len(seeds), baseline,
+                           base["run_protocol"])
+    return [{"task_id": t, "ours": acc, "primary_pass": True,
+             "strict_pass": True, "escalation": e, "escalation_strict": e}
+            for t in base["selected_task_ids"]]
 
 
 def test_verdict_is_derived_and_a_single_failing_task_sinks_clause_2():
     base = _base()
     bench = _bench(5)
-    rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
-            for t in base["selected_task_ids"]]
+    rows = _rows(base)
     v = R.verdict(rows, base, bench)
     assert v["status"] == "PASS", v
     rows[3]["primary_pass"] = False
@@ -103,8 +121,7 @@ def test_a_single_intervention_sinks_clause_3():
     base = _base()
     bench = _bench(5)
     bench[102][0]["n_interventions"] = 1
-    rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
-            for t in base["selected_task_ids"]]
+    rows = _rows(base)
     v = R.verdict(rows, base, bench)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["n_interventions_total"] == 1
@@ -113,8 +130,7 @@ def test_a_single_intervention_sinks_clause_3():
 
 def test_partial_and_off_registry_runs_cannot_pass():
     base = _base()
-    rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
-            for t in base["selected_task_ids"]]
+    rows = _rows(base)
     for key, val in (("complete", False), ("off_registry", True)):
         bench = _bench(5)
         bench[101][0][key] = val
