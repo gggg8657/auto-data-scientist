@@ -40,8 +40,8 @@ jobs:
           shopt -s nullglob
           files=(tests/test_*.py)
           echo "discovered ${#files[@]} test files"
-          if [ "${#files[@]}" -lt 11 ]; then
-            echo "expected at least 11 test files, found ${#files[@]}" >&2
+          if [ "${#files[@]}" -lt 12 ]; then
+            echo "expected at least 12 test files, found ${#files[@]}" >&2
             exit 1
           fi
           rc=0

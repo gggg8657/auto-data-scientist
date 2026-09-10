@@ -1020,6 +1020,67 @@ def main() -> int:
             "task is one fixed dataset with one fixed set of folds.",
             ""]
 
+    # ------------------- split variance, beside the seed test that is the gate
+    fi = read_json(REPO / "runs/fold_interval.json")
+    if fi and fi.get("tasks"):
+        frows = []
+        for tid in order:
+            r = fi["tasks"].get(str(tid))
+            if not r:
+                frows.append([tid, sel[tid]["dataset_name"]] + [NM] * 7)
+                continue
+            frows.append([
+                tid, r["dataset_name"], r["n_seeds_averaged"], r["n_folds"],
+                f"{r['mean_relative_margin']*100:+.2f}%",
+                f"{r['sd_relative_margin_over_folds']*100:.2f}%",
+                f"{r.get('lower_bound_naive', float('nan'))*100:+.2f}%",
+                f"{r.get('lower_bound_corrected', float('nan'))*100:+.2f}%",
+                "PASS" if r.get("non_inferior_corrected") else "FAIL"])
+        doc += [
+            "## Additional reading: the folds, not the seeds", "",
+            "The gate above is a sign test over **seeds**, which re-draw the "
+            "agent's own randomness on the *same* examples and the same outer "
+            "folds. So it constrains algorithmic variance and says nothing "
+            "directly about split variance. This section is the other axis, "
+            "computed from the ten outer-fold accuracies already in every run "
+            "record — no new runs. It is an **additional reading and enters no "
+            "clause**; a test asserts `verdict()` cannot see it.", "",
+            "Per fold, the relative margin `d_k = (ours_k - baseline) / "
+            "baseline`, and a one-sided 95% lower bound on its mean against "
+            "the pre-registered `-0.05`. The tolerance is the registry's; only "
+            "the uncertainty model is new here.", "",
+            table(frows, ["task", "dataset", "seeds averaged", "folds",
+                          "mean relative margin", "sd over folds",
+                          "95% lower bound (naive)",
+                          "95% lower bound (corrected)",
+                          "non-inferior?"]), "",
+            "**Two bounds because the honest one is not obvious.** The folds "
+            "have disjoint test sets and heavily overlapping training sets, so "
+            "`s/sqrt(K)` understates the variance — the flattering direction. "
+            "The corrected column uses the Nadeau & Bengio (2003) inflation "
+            "`(1/K + n_test/n_train) s^2`, which at 10 folds multiplies the "
+            "variance by 2.11x. That correction is *derived* for repeated "
+            "random subsampling and is applied here as a conservative "
+            "adjustment for fold dependence; both columns are shown so a "
+            "reader who rejects the adjustment can read the other. The 80 "
+            "fold-by-seed scores are **not** pooled as 80 independent "
+            "observations, which is the move that would buy power by "
+            "assuming away the dependence.", "",
+            f"Non-inferiority holds on all {fi['n_tasks']} tasks under the "
+            f"naive bound ({fi['all_non_inferior_naive']}) and under the "
+            f"corrected one ({fi['all_non_inferior_corrected']}).", "",
+            "**And this is the more important number in the section:** the "
+            "fold-to-fold sd of the relative margin exceeds the "
+            "seed-to-seed range by "
+            + (f"{fi['fold_sd_over_seed_range_min']:.1f}x to "
+               f"{fi['fold_sd_over_seed_range_max']:.1f}x"
+               if "fold_sd_over_seed_range_min" in fi else NM)
+            + ". The seed-count discipline this repository spent a turn "
+            "enforcing is correct on its own terms and was constraining the "
+            "**smaller** of the two noise sources. Both are now reported; "
+            "neither replaces the other, and the gate stays the pre-registered "
+            "one.", ""]
+
     # ------------------------------- the joint event, one row per seed
     joint = joint_seed_event(bench, sel, "median_run")
     joint_strict = joint_seed_event(bench, sel, "strictest_baseline_value")

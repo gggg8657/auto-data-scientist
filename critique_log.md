@@ -802,3 +802,100 @@ rather than the imbalanced-task margin (≈0.01), and `prior` should clear
 nothing. If instead the margin stays ≈0.01 on balanced tasks too, the finding
 is about the agent and not about the task set, and the tournament-plus-search
 architecture is what needs attacking.
+
+---
+
+## 2026-09-10, turn 7 — the seed discipline was constraining the smaller noise source
+
+### The measurement, from data already on disk
+
+`scripts/fold_interval.py`, `runs/fold_interval.json`. No new runs: every run
+record already carries `accuracy_folds`, the ten outer-fold accuracies. Seeds
+are averaged per fold so that seed randomness drops out and what remains is
+fold-to-fold variation; the interval is then over folds, `df = K-1`.
+
+| task | mean rel. margin | sd over folds | 95% lower bound (naive) | (corrected) | non-inferior |
+|---|---|---|---|---|---|
+| 31 credit-g | +4.43% | 3.80% | +2.23% | +1.23% | yes |
+| 10101 blood-transfusion | +0.76% | 3.04% | −1.00% | −1.80% | yes |
+| 3913 kc2 | +1.28% | 4.09% | −1.09% | −2.18% | yes |
+| 3 kr-vs-kp | +3.80% | 0.37% | +3.58% | +3.49% | yes |
+| 3917 kc1 | +1.05% | 2.07% | −0.15% | −0.69% | yes |
+
+Non-inferiority against the pre-registered −0.05 holds on all five under both
+bounds. This is a **stronger** reading than the sign test in the sense that
+matters — it uses the magnitudes the sign test throws away, and it is on the
+axis of variation that generalisation actually depends on — and it enters **no
+clause**. A test asserts `verdict()` cannot reference it, because a reading
+invented after the fact that granted a clause would be exactly the move the
+amendment ledger exists to forbid.
+
+Two bounds are reported because the honest one is not obvious. Folds have
+disjoint test sets and heavily overlapping training sets, so `s/√K` understates
+the variance — the flattering direction. The corrected column uses the
+Nadeau & Bengio (2003) inflation `(1/K + n_test/n_train)·s²`, 2.11× the
+variance at 10 folds. **The assumption is stated rather than buried:** that
+correction is derived for repeated random subsampling, not k-fold, and is used
+here as a conservative adjustment for fold dependence. Both columns are shown
+so a reader who rejects the adjustment can read the other. What is not done,
+because it is the move that buys power by assuming away the dependence, is
+pooling the 80 fold-by-seed scores as 80 independent observations — the thing
+codex explicitly warned against.
+
+### The finding, and it is about my own emphasis
+
+**The fold-to-fold sd of the relative margin exceeds the seed-to-seed range by
+1.6× to 4.4×.**
+
+Last turn I rewrote the gate, wrote three amendments, added seven tests and
+spent two hours of CPU escalating from 3 seeds to 8, all to constrain the
+**seed** axis. That work is correct on its own terms — the old gate really was
+biased in the flattering direction at small *n*, and the tie handling really
+did inflate Type I error to 17.37%. But the axis it constrains is measurably
+the smaller of the two, by a factor of up to four and a half. If I had
+measured both noise sources before choosing where to spend the turn, I would
+have built this section first: it costs no compute, it uses data that was
+already on disk from the 3-seed screen, and it speaks to the uncertainty a
+reader cares about.
+
+The pattern is the same one the negative controls exposed and I want it stated
+as one thing rather than two coincidences: **I have twice now built rigour on
+the axis I was already looking at, rather than the axis that dominated.** Seed
+noise over split noise; provenance of my claim over difficulty of the target.
+The cheap diagnostic — *measure the sizes of the things you are choosing
+between, before choosing* — was available in both cases and skipped in both.
+
+The distinguishing prediction, so this is not just self-criticism: if fold
+variance really dominates, then the seeds-3-to-7 escalation should have moved
+the per-task means by less than the fold sd, i.e. by under ~2–4 percentage
+points relative. Measured across seeds 0–2 → 0–6: task 31 moved 0.7563 →
+0.7573 (+0.13% relative), 10101 0.7678 → 0.7692 (+0.18%), 3913 0.8372 →
+0.8381 (+0.11%), 3 0.9969 → 0.9964 (−0.05%), 3917 0.8592 → 0.8605 (+0.15%).
+All under 0.2% relative, against fold sds of 0.37%–4.09%. The prediction holds:
+**adding five seeds moved every task by roughly an order of magnitude less than
+its own fold-to-fold spread.**
+
+### Infrastructure, measured rather than complained about
+
+The 8-seed run is at 31 of 40 and slowing sharply: on task 10101 the per-fold
+time went 13.0s, 14.3s, then **495.6s** — a 35× slowdown inside one task, with
+`uptime` load average moving from ~125 to ~360 on 192 cores as other tracks
+started. My process holds ~46 cores across 328 threads. I did **not** kill and
+relaunch it with a smaller `ADS_N_JOBS`, for a reason worth recording: the
+slowdown arrived *between two consecutive folds of the same configuration*, so
+it is external load and not my thread count, and cutting my own share would
+not recover a 35× factor on a saturated box.
+
+That decision exposed a real gap in my own instrumentation, which I am
+recording rather than fixing under time pressure: **the attempt ledger cannot
+express an operator interruption.** Its vocabulary is `started` / `completed` /
+`failed`, and a `SIGKILL` leaves a bare `started` — indistinguishable from the
+deletion attack the ledger was built to catch. So "kill the slow cell and
+re-run it" is currently unavailable to me *as an honest act*, even though
+re-running a fixed `(task, seed)` cannot shop for a better number: the seed
+determines the agent's randomness and the folds are the task's own, so the
+re-run reproduces the same accuracy. The right shape, for whoever builds it: a
+recorded `killed` event with a reason, plus a reconciliation rule requiring
+every killed cell to have a later `completed` record and file — strictly more
+information on the record, and no ability to hide a result, since the same
+cell re-runs to the same number. Named in `WEEKEND.md` as work.
