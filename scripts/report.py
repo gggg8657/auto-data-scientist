@@ -802,7 +802,8 @@ def main() -> int:
     doc += [
         "## The gate: the pre-registered exact test, per task", "",
         "A task is **called** only when the one-sided exact sign test of "
-        "`H0: median over seeds <= 0.95 x baseline` rejects at alpha = 0.05. "
+        "`H0: median over seeds <= 0.95 x baseline` rejects at alpha = "
+        f"{ALPHA}. "
         f"The p-value floor is `1/2^n`, so a {len(base.get('run_protocol', {}).get('seeds_screen') or [])}"
         "-seed screen cannot call a task in either direction and the status "
         "cannot read PASS off one. This gate replaced "
@@ -818,6 +819,14 @@ def main() -> int:
                           "verdict (strictest)"]), ""]
 
     # --------------------------------------- the chronology-clean sub-reading
+    # Measured, not typed. An earlier version of the paragraph below carried
+    # "0.0013-0.0077" as literal text; those were the 3-seed spreads and they
+    # were already stale when the 6th seed landed. Any number in generated
+    # prose has to come from the runs like every number in a table does.
+    _spreads = [e["seed_range"] for r in rows
+                if (e := r.get("escalation")) and e.get("seed_range")]
+    _margins = [e["margin_to_threshold"] for r in rows
+                if (e := r.get("escalation"))]
     if clean_seeds and any(r.get("clean_subset") for r in rows):
         crows = []
         for row in rows:
@@ -851,17 +860,24 @@ def main() -> int:
             "made, named *in* the amendment, so this is a fixed pre-specified "
             "subset and not one chosen after seeing outcomes. It is reported "
             "whichever way it comes out. At n=5, 5 of 5 above the line gives "
-            "p = 1/32 = 0.03125, which clears alpha = 0.05, so this subset "
-            "can reach a verdict on its own.", "",
+            f"p = 1/32 = {1/32:.5f}, which clears alpha = {ALPHA}, so this "
+            "subset can reach a verdict on its own.", "",
             table(crows, ["task", "dataset", "clean seeds present",
                           "k/n above", "p", "verdict (primary)",
                           "k/n above (strictest)", "p (strictest)",
                           "verdict (strictest)"]), "",
             "This is also why no further disjoint seed set was run. More "
-            "seeds would shrink seed noise, which the spread table below puts "
-            "at 0.0013–0.0077 against margins of 0.03–0.08; they would do "
-            "nothing about the uncertainty that actually binds, which is that "
-            "each task is **one** fixed dataset with one fixed set of folds.",
+            "seeds would shrink seed noise, which across the five tasks is "
+            f"{fmt(min(_spreads))}–{fmt(max(_spreads))} against margins to "
+            f"the line of {fmt(min(_margins))}–{fmt(max(_margins))}; they "
+            "would do nothing about the uncertainty that actually binds, "
+            "which is that each task is **one** fixed dataset with one fixed "
+            "set of folds."
+            if _spreads and _margins else
+            "This is also why no further disjoint seed set was run: more "
+            "seeds shrink seed noise, which is already far smaller than the "
+            "margins, and do nothing about the uncertainty that binds -- each "
+            "task is one fixed dataset with one fixed set of folds.",
             ""]
 
     # ------------------------------- the joint event, one row per seed
@@ -887,7 +903,8 @@ def main() -> int:
             "The clause-2 gate above is per task, which is what the protocol "
             "registered and is the right test for it (requiring all five to "
             "reject is an intersection-union test, so five tasks at "
-            "alpha = 0.05 need no multiplicity correction). But a per-task "
+            f"alpha = {ALPHA} need no multiplicity correction). But a "
+            "per-task "
             "verdict does not say that a *single* autonomous run gets all "
             "five: five tasks each failing on a different seed would pass "
             "every per-task test and never once produce a clean sweep. So "
