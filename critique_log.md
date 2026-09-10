@@ -681,3 +681,69 @@ in the flattering direction, and not one was in the arithmetic.** They were in
 what gets loaded, what gets counted when a field is absent, which rows get
 checked, which seed set the bar refers to, and what a document is allowed to
 say while a job is running. The numbers were never the attack surface.
+
+### The most damaging finding of the turn came from asking the constructive question
+
+`agy`, asked *only* "how would you make this clause pass more defensibly", and
+told not to list defects, put one thing first and it is not about our number at
+all:
+
+> "On imbalanced datasets like blood-transfusion (majority share 76.2%) or kc1
+> (84.5%), the 0.95 × median_run threshold is 72.5% and 80.9%. A dumb
+> `DummyClassifier(strategy='prior')` or single-split decision tree clears the
+> primary threshold on 4 of the 5 tasks without learning anything. Does passing
+> this clause actually prove data science competence, or is the bar
+> unfalsifiable?"
+
+**It is right, and it is measured now.** `scripts/negative_control.py` runs two
+frozen, deliberately incapable procedures through the *same* outer folds, the
+same pooled statistic and the same pre-registered baselines as the agent:
+
+| control | clears primary | clears strictest | all five |
+|---|---|---|---|
+| `prior` (`DummyClassifier(strategy="prior")`) | **4/5** | 3/5 | No |
+| `stump` (`DecisionTreeClassifier(max_depth=3)`) | **4/5** | 4/5 | No |
+
+and **4 of the 5 primary thresholds sit at or below the task's own
+majority-class rate** — a fact checkable from the registry with no run at all,
+which is what makes it an objection rather than a hypothesis. Only `kr-vs-kp`
+(majority 0.5222, threshold 0.9120) discriminates on its own.
+
+This is a statement about the **pre-registered target**, not about the agent,
+and it is the one thing nine turns of provenance machinery could never have
+surfaced: every check built so far asks whether our number is honest, and none
+asked whether the bar was demanding. A KPI can be perfectly audited and
+vacuous.
+
+What survives it: the **joint** five-task criterion. Neither control clears all
+five, because both collapse on the balanced task. So the defensible reading of
+a PASS here is "clears five tasks including one where triviality fails" — not
+"beat a human five times". That sentence is now in `RESULTS.md` next to the
+result, and `tests/test_negative_control.py` asserts that if any control ever
+does clear all five, the reassuring paragraph is **false and must be rewritten
+rather than the test relaxed**.
+
+**And the agent comes out of it worse than I expected.** Margins against an
+untuned depth-3 tree: credit-g +0.0093, blood-transfusion **−0.0209**, kc2
++0.0010, kr-vs-kp +0.0921, kc1 +0.0094. One of the five is inside that task's
+own seed range, so it is not a difference this repository can resolve, and on
+blood-transfusion **the stump wins**. A six-family tournament with a random
+search over the winner is buying a large margin on the one balanced task and
+almost nothing over three splits of a tree on the four imbalanced ones. That is
+a negative result about the agent, it is in the report, and it was not visible
+from any comparison against the human baseline — because the human baseline is
+*also* below the majority rate on those tasks.
+
+The binding constraint on this KPI, stated properly for the first time: it is
+**the task set**. Four of the five most-published CC18 tasks are small,
+imbalanced and near-saturated, so their published medians sit close to
+triviality and a ±5% band around such a median cannot separate competence from
+its absence. My own §2.1 named the selection bias ("the most-run CC18 tasks are
+the oldest and most famous, which are also the small and clean ones") and
+treated it as a limitation of *coverage*. It is worse than that: it partly
+dissolves the clause. The distinguishing prediction, for anyone who wants to
+test this reading: on a task set selected for balance rather than popularity,
+the gap between the agent and `stump` should widen by roughly the kr-vs-kp
+margin (~0.09) rather than the imbalanced-task margin (~0.01), and the dummy
+should clear nothing. That experiment is a *different* measurement and is not
+this KPI, so it is named in `paper_draft.md` §7 rather than run and swapped in.

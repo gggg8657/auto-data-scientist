@@ -719,10 +719,23 @@ def main() -> int:
                 "PASS" if tol_strict["rel_one_sided"] else "FAIL",
                 ",".join(sorted({f for r in runs for f in r["families_chosen"]}))])
             if len(accs) >= 2:
+                # The screen's own seeds, so the range the OLD gate would have
+                # divided by can be compared against the range on all seeds.
+                screen_seeds = set((base.get("run_protocol") or {})
+                                   .get("seeds_screen") or [])
+                screen_accs = [r["accuracy_pooled"] for r in runs
+                               if r.get("random_state") in screen_seeds]
+                r_screen = (max(screen_accs) - min(screen_accs)
+                            if len(screen_accs) >= 2 else None)
+                r_all = max(accs) - min(accs)
+                ratio = (r_all / r_screen
+                         if r_screen and len(accs) > len(screen_accs) else None)
                 spread_rows.append([
                     tid, t["dataset_name"], len(accs), fmt(min(accs)),
-                    fmt(max(accs)), fmt(max(accs) - min(accs)),
+                    fmt(max(accs)), fmt(r_all),
                     fmt(statistics.pstdev(accs)),
+                    fmt(r_screen) if r_screen else NM,
+                    f"{ratio:.2f}x" if ratio else NM,
                     f"{abs(tol_run['rel_gap'])*100:.2f}%"])
         else:
             res_rows.append([tid, t["dataset_name"], 0, NM,
@@ -817,6 +830,89 @@ def main() -> int:
                           "k/n above", "p", "verdict (primary)",
                           "k/n above (strictest)", "p (strictest)",
                           "verdict (strictest)"]), ""]
+
+    # ------------------------------- is the clause falsifiable at all?
+    nc = read_json(REPO / "runs/negative_control.json")
+    if nc:
+        # counted, not asserted: an earlier version of the paragraph below
+        # said "two of those are inside seed noise" and only one was.
+        _n_inside = _n_behind = 0
+        for r in nc["controls"].get("stump", {}).get("tasks", []):
+            row = next((x for x in rows if x["task_id"] == r["task_id"]), None)
+            if not row or row.get("ours") is None:
+                continue
+            d = row["ours"] - r["accuracy_pooled"]
+            rng = (row.get("escalation") or {}).get("seed_range")
+            if d < 0:
+                _n_behind += 1
+            elif rng is not None and abs(d) < rng:
+                _n_inside += 1
+        nrows = []
+        for name, c in nc["controls"].items():
+            for r in c["tasks"]:
+                ours_here = next((x["ours"] for x in rows
+                                  if x["task_id"] == r["task_id"]), None)
+                nrows.append([
+                    name, r["task_id"], r["dataset_name"],
+                    fmt(r["accuracy_pooled"]),
+                    fmt(r["majority_class_rate"]),
+                    fmt(r["threshold_primary"]),
+                    "CLEARS" if r["clears_primary"] else "fails",
+                    "CLEARS" if r["clears_strictest"] else "fails",
+                    fmt(ours_here),
+                    fmt(ours_here - r["accuracy_pooled"])
+                    if ours_here is not None else NM])
+        doc += [
+            "## Is this clause falsifiable? The negative controls", "",
+            "The section a reader should look at before the ones above. Every "
+            "other check here asks whether *our* number is honest; this asks "
+            "whether the *target* is demanding, and the answer is only partly "
+            "yes.", "",
+            f"**{nc['n_thresholds_below_majority_rate']} of 5 primary "
+            "thresholds sit at or below the task's own majority-class rate**, "
+            "so on those tasks the bar can be cleared by predicting the "
+            "commonest label and nothing else. Two frozen, deliberately "
+            "incapable procedures were run through the **same outer folds, "
+            "the same pooled metric and the same pre-registered baselines** as "
+            "the agent: `prior` (`DummyClassifier(strategy=\"prior\")`, which "
+            "ignores the features entirely) and `stump` "
+            "(`DecisionTreeClassifier(max_depth=3)`, untuned). Neither was "
+            "chosen by how it scored.", "",
+            table(nrows, ["control", "task", "dataset", "control accuracy",
+                          "majority-class rate", "threshold (0.95x median_run)",
+                          "vs primary", "vs strictest", "ours", "ours - control"]),
+            "",
+            "  ".join(
+                f"**{name}**: clears the primary reading on "
+                f"{c['n_clearing_primary']}/{c['n_tasks']} tasks, the "
+                f"strictest on {c['n_clearing_strictest']}/{c['n_tasks']}, "
+                f"all five: {c['clears_all_five_primary']}."
+                for name, c in nc["controls"].items()), "",
+            "**What this does to the claim.** The per-task clause is weak on "
+            "the four imbalanced tasks and only `kr-vs-kp` discriminates on "
+            "its own — a fact about the pre-registered target, not about the "
+            "agent, and one that no amount of provenance machinery would have "
+            "surfaced. What survives it is the **joint** criterion: neither "
+            "control clears all five, because both collapse on the one "
+            "balanced task. So a PASS here should be read as \"clears five "
+            "tasks including one where triviality fails\", not as \"beat a "
+            "human five times\".", "",
+            "**The uncomfortable rows, named rather than left in the "
+            "table.** Against the untuned depth-3 tree the agent's margin is "
+            + ", ".join(
+                f"{r['dataset_name']} {_d:+.4f}"
+                for r in nc["controls"]["stump"]["tasks"]
+                if (_o := next((x["ours"] for x in rows
+                                if x["task_id"] == r["task_id"]), None))
+                is not None and (_d := _o - r["accuracy_pooled"]) is not None)
+            + f". {_n_inside} of the five sits inside the task's own seed "
+            f"range, so it is not a difference this repository can resolve, "
+            f"and {_n_behind} is negative — there the stump is **ahead**. "
+            "The agent's six-family "
+            "tournament plus random search is buying a large margin on the "
+            "balanced task and, on the imbalanced ones, very little over three "
+            "splits of a tree. That is a finding about the agent and it is not "
+            "flattering; it is here because it is what the runs say.", ""]
 
     # --------------------------------------- the chronology-clean sub-reading
     # Measured, not typed. An earlier version of the paragraph below carried
@@ -947,8 +1043,20 @@ def main() -> int:
                 "seed re-draws the agent's inner CV shuffle, its selection "
                 "subsample and its random search; the outer folds are the "
                 "task's own and are identical across seeds.", "",
-                table(spread_rows, ["task", "dataset", "seeds", "min", "max",
-                                    "range", "sd", "|gap to baseline|"]), ""]
+                table(spread_rows, ["task", "dataset", "seeds", "min",
+                                    "max", "range", "sd",
+                                    "range on the 3 screen seeds",
+                                    "range grew by", "|gap to baseline|"]),
+                "",
+                "The last two columns measure, on this repository's own runs, "
+                "the bias that got the gate replaced. A 3-seed range "
+                "*understates* the spread: the expected range of n i.i.d. "
+                "draws is 1.693 sigma at n=3 and 2.847 sigma at n=8, a ratio "
+                "of **1.68x**, and the old gate put that understated quantity "
+                "in the denominator of `margin > range`. So the fewer seeds "
+                "you ran, the more comfortably clear of the line every task "
+                "looked. The measured growth beside it is what actually "
+                "happened when seeds were added.", ""]
     else:
         doc += ["## Our own run-to-run spread", "",
                 f"{NM} — fewer than two seeds per task so far.", ""]
