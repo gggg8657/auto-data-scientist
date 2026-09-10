@@ -238,29 +238,50 @@ than trusted.
 
 ## Still running, and how to check it
 
-The **8-seed confirmatory run**, in its own tmux session:
+Two tmux sessions, the second chained to start when the first exits so they do
+not contend (this box was at load ~360 on 192 cores with other tracks running):
 
 ```bash
 cd ~/Documents/workspace/auto-data-scientist
-tmux ls | grep ads-verdict                  # the session
-tail -3 logs/bench_verdict.log              # per-fold progress; ends with EXIT=0
-ls runs/bench/*.json | wc -l                # 40 when complete (5 tasks x 8 seeds)
+tmux ls | grep ads-                          # ads-verdict, ads-successor
+tail -3 logs/bench_verdict.log               # primary; ends with EXIT=0
+tail -3 logs/bench_successor.log             # successor; starts after primary
+ls runs/bench/*.json | wc -l                 # 40 when the primary is done
+ls runs/dev/*.json   | wc -l                 # 15 when the successor is done
 ```
 
-Seeds 0–2 were already on disk and were skipped, so this run produces seeds
-3–7. When it finishes:
+**`ads-verdict` — the primary 8-seed confirmatory run.** Seeds 0–2 were already
+on disk and skipped, so it produces seeds 3–7 of the five registered tasks.
+This is the run clause 2 waits on. Slow because of CPU contention, not because
+anything is wrong: it holds ~46 cores and each fold is 3–25× its uncontended
+time.
+
+**`ads-successor` — the second, clearly labelled measurement.** A 3-seed screen
+(so: screen, not verdict) of the *unmodified* agent on the successor five —
+`kr-vs-kp`, `qsar-biodeg`, `wdbc`, `diabetes`, `phoneme` — chosen by a rule
+still blind to our accuracy: the most-published candidates whose threshold
+exceeds their majority-class rate. It writes to `runs/dev/`, **not**
+`runs/bench/`, so it cannot touch the KPI's own accounting, and its targets need
+no new fetch: all 51 candidates were frozen in `runs/baselines.json` before any
+run existed, so the successor five's baselines are as pre-registered as the
+original five. Four of those five tasks were reserved by the protocol for
+development and the agent was **never run on any of them** — `runs/dev` did not
+exist — so they are genuinely uninspected. `ADS_N_JOBS=16` to be a good citizen
+on a shared box; predictions are invariant to that knob and a test asserts it.
+
+**When the primary finishes:**
 
 ```bash
-.venv/bin/python scripts/report.py          # regenerates RESULTS.md + this headline
+.venv/bin/python scripts/report.py            # RESULTS.md + this headline
+.venv/bin/python scripts/negative_control.py  # controls, if folds changed
 for f in tests/test_*.py; do python "$f"; done
-git add -A && git commit                    # then push, only if green
+git add -A && git commit                      # then push, only if green
 ```
 
 `scripts/report.py` **refuses** to write `RESULTS.md` while a benchmark is
-alive — it writes `runs/interim_report.md` instead — so a mid-run document with
-an unreconcilable ledger can never be committed as the verdict.
-
----
+alive — it writes `runs/interim_report.md` instead — so a mid-run document,
+whose ledger cannot reconcile because an attempt in flight has no record yet,
+can never be committed as the verdict.
 
 ## Where the numbers come from
 
