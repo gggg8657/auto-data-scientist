@@ -340,6 +340,65 @@ instead of it. Testing five tasks at α = 0.05 needs no multiplicity correction,
 because the claim requires all five to reject: that is an intersection-union
 test, and a false global pass needs at least one true task null rejected.
 
+## 6.5 The audit that none of the above performs: is the target demanding?
+
+Everything to this point asks whether *our* number is honest. It is the wrong
+question to stop on, and an adversary asked the right one only when the
+question put to it changed from "what is wrong with this" to "how would you
+make this pass more defensibly". Its first answer was not about our number:
+
+> "On imbalanced datasets like blood-transfusion (majority share 76.2%) or kc1
+> (84.5%), the 0.95 × median_run threshold is 72.5% and 80.9%. A dumb
+> `DummyClassifier(strategy='prior')` or single-split decision tree clears the
+> primary threshold on 4 of the 5 tasks without learning anything. Does passing
+> this clause actually prove data science competence, or is the bar
+> unfalsifiable?"
+
+The first half of that is checkable from the registry with no run at all: **on
+four of the five registered tasks, `0.95 × median_run` sits at or below the
+task's own majority-class rate.** We then measured it, running two frozen and
+deliberately incapable procedures — a majority-class dummy, and an untuned
+depth-3 decision tree — through the *same* outer folds, the same pooled
+statistic and the same pre-registered baselines as the agent. Both clear the
+primary reading on four of five tasks. The tree clears the strictest reading on
+four of five.
+
+Only the one *balanced* task discriminates on its own. What survives is the
+**joint** criterion: neither control clears all five, because both collapse
+where the majority class is not a strategy. The defensible reading of a PASS is
+therefore "clears five tasks including one where triviality fails" — not "beat
+a human five times", which is what the KPI's wording invites.
+
+Two consequences we did not expect and report because they are what the runs
+say.
+
+**The agent's margin over the trivial tree is small wherever the clause is
+weak.** Per task: +0.0093, −0.0209, +0.0010, +0.0921, +0.0094. One is inside
+that task's own seed range and so is not a difference this experiment can
+resolve; on one, the tree *wins*. Six model families plus a random search over
+the winner buys a large margin on the balanced task and close to nothing over
+three splits of a tree on the four imbalanced ones — and this was invisible in
+every comparison against the human baseline, because the human baseline is also
+below the majority rate on those tasks. A weak baseline hides a weak method as
+efficiently as it flatters a strong one.
+
+**The binding constraint on this KPI is the task set, not the agent.** §2.1
+named the selection bias — the most-published CC18 tasks are the oldest and
+most famous, hence the small, clean and imbalanced ones — and treated it as a
+limitation of coverage. It is worse than that: it partly dissolves the clause.
+Ranking by number of published evaluations was chosen because the median of a
+larger sample is better determined, which is true, and it selects for exactly
+the tasks whose medians sit near triviality.
+
+The general lesson, and the reason this section exists at all: **provenance
+machinery has a blind spot precisely where it is strongest.** Every check in
+§4 and §5 constrains the relationship between our claim and our evidence. None
+of them constrains the relationship between the *target* and the *difficulty of
+the problem*, so a target can be pre-registered, hash-pinned, externally
+re-fetched, amendment-logged, and vacuous. A negative control is the cheapest
+check in this repository — a quarter of an hour — and it moved the
+interpretation of the headline more than anything else built this weekend.
+
 ## 7. What would make this a stronger paper
 
 - **Undisclosed confirmatory tasks.** Every defence in §4 and §5 is weaker than
@@ -350,6 +409,19 @@ test, and a false global pass needs at least one true task null rejected.
 - **An externally anchored baseline snapshot** — a dated, independently
   acquired evaluation dump with unique run ids — which is the only real answer
   to cache provenance.
-- **A harder task set**, selected by a rule that cannot see our accuracy and
-  does not select for age and cleanliness, reported as a *different*
-  measurement rather than as this KPI.
+- **A task set that the negative controls fail**, selected by a rule that
+  cannot see our accuracy and does not select for popularity — for instance the
+  CC18 tasks whose majority-class rate is below `0.95 ×` their published median,
+  which is a property of the *published baselines* and so still cannot see us.
+  This is now the highest-value experiment on the list, ahead of everything
+  else here, because §6.5 shows the current set cannot separate competence from
+  triviality on four of five tasks. The distinguishing prediction: on a balanced
+  set the agent's margin over the depth-3 tree should look like the kr-vs-kp
+  margin (≈0.09) rather than the imbalanced-task margin (≈0.01), and the dummy
+  should clear nothing. It is a **different measurement** and must be reported
+  as one, never swapped in for this KPI.
+- **Fold-level non-inferiority with a resampling correction** (Nadeau &
+  Bengio 2003) over the ten outer-fold accuracies already logged per run, to
+  put a confidence interval on the relative margin. Our seed test measures
+  algorithmic variance conditional on fixed folds; this is the reading that
+  speaks to split variance, and the two are not substitutes.
