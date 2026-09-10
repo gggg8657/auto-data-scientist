@@ -83,9 +83,20 @@ BASELINE_KEYS = ("median_run", "median_flow", "median_flow_best",
 # distribution above the threshold T = 0.95 x baseline?
 #
 #   H0: median over seeds of accuracy_pooled <= T
-#   statistic: k = #{seeds with accuracy > T}, over n = #{seeds != T}
+#   statistic: k = #{seeds with accuracy STRICTLY > T}, over n = ALL seeds
 #   under H0 at the boundary, k ~ Binomial(n, 1/2), so the one-sided
 #   p-value is P(X >= k), computed exactly rather than approximated.
+#
+# Ties stay in n and count as non-wins. Dropping them is the continuous-case
+# sign test and is anti-conservative on a discrete metric -- see the docstring
+# of exact_sign_test_above for the counterexample and the 17.37% figure.
+#
+# CHRONOLOGY: the registry registered "an exact test" without naming one, and
+# conditioned it on the task being near the line. Naming it, making it
+# unconditional, and fixing the tie handling were all done on 2026-09-10 AFTER
+# the 3-seed screen had been read, and are recorded as amendments 1 and 2 in
+# runs/protocol_amendments.json. Both are strictly stricter; amendment 1 took
+# the project status from PASS to RUNNING on identical run data.
 #
 # At the registered 8 seeds, all 8 above the line gives p = 1/256 = 0.0039;
 # 7 of 8 gives 0.0352; 6 of 8 gives 0.1445 and does not clear alpha = 0.05.
@@ -145,9 +156,10 @@ def escalation_state(accs: list[float], baseline: float, protocol: dict) -> dict
       comparison. A gate that gets easier to pass the fewer seeds you run is
       the wrong shape for a gate, whatever margin it happens to show.
 
-    - `exact_test`: the pre-registered one-sided exact sign test of
-      H0: median <= T. This is now the gate for **every** task, near the line
-      or not. Its p-value floor is 1/2^n, so n=3 can reach only p=0.125 and
+    - `exact_test`: the one-sided exact sign test of
+      H0: median <= T -- registered in substance ("an exact test"),
+      specified and made unconditional by amendment 1. This is the gate for
+      **every** task, near the line or not. Its p-value floor is 1/2^n, so n=3 can reach only p=0.125 and
       **no 3-seed screen can call a task in either direction** -- which is
       what the weekend rule ("with 3 seeds, say screen, not verdict") says,
       now enforced in code rather than in prose. At the registered 8 seeds,
@@ -256,6 +268,35 @@ def joint_seed_event(bench: dict, sel: dict, baseline_key: str) -> dict:
         "exact_test_on_the_joint_event": test,
         "reading": "additional; the clause-2 gate is the per-task test",
     }
+
+
+# ------------------------------------------------- the chronology-clean subset
+# The gate was amended after the 3-seed screen had been read (amendments 1-3 in
+# runs/protocol_amendments.json). All three are strictly stricter and #1 took
+# the status from PASS to RUNNING on identical data, so the usual objection to
+# a post-hoc rule -- that it was tuned to squeeze out a pass -- does not apply.
+# But 3 of the 8 verdict seeds had been inspected, and a reader is entitled to
+# a reading that owes nothing to them.
+#
+# So: the exact test restricted to the seeds that had not been run when the
+# rule was amended. Those seeds are named IN the amendment, so this is a fixed
+# pre-specified subset, not one chosen after seeing outcomes -- and n=5 is
+# enough to reject (5 of 5 above the line gives p = 1/32 = 0.03125).
+#
+# This is reported whichever way it comes out, and it is why no further seed
+# set was run. More seeds would shrink seed noise, which is already
+# 0.0013-0.0077 against margins of 0.03-0.08; they would do nothing about the
+# uncertainty that actually binds, which is that each task is one fixed
+# dataset with one fixed set of folds.
+def clean_seed_subset(amendments_path: Path) -> set:
+    """Seeds that had not been run when the gate was amended, per the record."""
+    a = read_json(amendments_path)
+    if not a:
+        return set()
+    out = set()
+    for e in a.get("amendments", []):
+        out |= set(e.get("seeds_uninspected_at_amendment") or [])
+    return out
 
 
 def load_bench(bench_dir: Path) -> tuple[dict[int, list[dict]], list[dict]]:
@@ -515,6 +556,10 @@ def main() -> int:
                          "tests/test_registry_frozen.py can regenerate into a "
                          "temp file and get a deterministic document.")
     ap.add_argument("--readme", default=str(REPO / "README.md"))
+    ap.add_argument("--weekend", default=None,
+                    help="default WEEKEND.md. Its HEADLINE block is generated "
+                         "from the same run JSONs as RESULTS.md, so the file "
+                         "a reader actually opens cannot drift from them.")
     ap.add_argument("--interim", action="store_true",
                     help="write runs/interim_report.md instead of RESULTS.md; "
                          "implied automatically while a benchmark is running")
@@ -530,12 +575,14 @@ def main() -> int:
     # measurement. Regenerate after the job exits.
     explicit_out = args.out is not None
     args.out = args.out or str(REPO / "RESULTS.md")
+    args.weekend = args.weekend or str(REPO / "WEEKEND.md")
     if not args.interim and not explicit_out and benchmark_processes_alive():
         interim = REPO / "runs/interim_report.md"
         print(f"a benchmark is running: writing {interim} and leaving "
               f"{args.out} at the last finished measurement")
         args.out = str(interim)
         args.readme = ""
+        args.weekend = ""
 
     base = read_json(args.baselines)
     bench, failed = (load_bench(Path(args.bench))
@@ -592,6 +639,7 @@ def main() -> int:
         "reported for every task.", ""])
 
     # ------------------------------------------------------------ our results
+    clean_seeds = clean_seed_subset(REPO / "runs/protocol_amendments.json")
     rows, res_rows, spread_rows = [], [], []
     for tid in order:
         t = sel[tid]
@@ -614,6 +662,20 @@ def main() -> int:
             row["escalation_strict"] = escalation_state(
                 accs, t["strictest_baseline_value"],
                 base.get("run_protocol") or {})
+            # The chronology-clean sub-reading. See the block comment above
+            # `clean_seed_subset()`.
+            if clean_seeds:
+                sub = [r["accuracy_pooled"] for r in runs
+                       if r.get("random_state") in clean_seeds]
+                row["clean_subset"] = {
+                    "seeds": sorted(clean_seeds),
+                    "n_present": len(sub),
+                    "test": exact_sign_test_above(
+                        sub, 0.95 * t["median_run"]) if sub else None,
+                    "test_strict": exact_sign_test_above(
+                        sub, 0.95 * t["strictest_baseline_value"])
+                    if sub else None,
+                }
             res_rows.append([
                 tid, t["dataset_name"], len(accs), fmt(ours),
                 fmt(t["median_run"]), f"{tol_run['rel_gap']*100:+.2f}%",
@@ -724,6 +786,53 @@ def main() -> int:
                           "k/n above (strictest)", "p (strictest)",
                           "verdict (strictest)"]), ""]
 
+    # --------------------------------------- the chronology-clean sub-reading
+    if clean_seeds and any(r.get("clean_subset") for r in rows):
+        crows = []
+        for row in rows:
+            cs = row.get("clean_subset")
+            if not cs:
+                continue
+            t_, ts = cs["test"], cs["test_strict"]
+            crows.append([
+                row["task_id"], row["name"], cs["n_present"],
+                f"{t_['k']}/{t_['n']}" if t_ else NM,
+                f"{t_['p']:.5f}" if t_ else NM,
+                "CALLED" if (t_ and t_["reject_h0"]) else "not called",
+                f"{ts['k']}/{ts['n']}" if ts else NM,
+                f"{ts['p']:.5f}" if ts else NM,
+                "CALLED" if (ts and ts["reject_h0"]) else "not called"])
+        doc += [
+            "## The reading that owes nothing to the pre-inspected seeds", "",
+            "The gate was amended after the 3-seed screen had been read "
+            "(`runs/protocol_amendments.json`, amendments 1-3). All three are "
+            "strictly stricter and #1 took the status from `PASS` to "
+            "`RUNNING` on identical run data, so the usual objection to a "
+            "post-hoc rule — that it was tuned to produce a pass — does not "
+            "apply. But **seeds "
+            + ", ".join(str(s_) for s_ in sorted(
+                set(range(8)) - set(clean_seeds)))
+            + " had been inspected** when the rule changed, and a reader is "
+            "entitled to a reading that owes nothing to them.", "",
+            "Below is the same exact test restricted to seeds **"
+            + ", ".join(str(s_) for s_ in sorted(clean_seeds))
+            + "** — the seeds that had not been run when the amendment was "
+            "made, named *in* the amendment, so this is a fixed pre-specified "
+            "subset and not one chosen after seeing outcomes. It is reported "
+            "whichever way it comes out. At n=5, 5 of 5 above the line gives "
+            "p = 1/32 = 0.03125, which clears alpha = 0.05, so this subset "
+            "can reach a verdict on its own.", "",
+            table(crows, ["task", "dataset", "clean seeds present",
+                          "k/n above", "p", "verdict (primary)",
+                          "k/n above (strictest)", "p (strictest)",
+                          "verdict (strictest)"]), "",
+            "This is also why no further disjoint seed set was run. More "
+            "seeds would shrink seed noise, which the spread table below puts "
+            "at 0.0013–0.0077 against margins of 0.03–0.08; they would do "
+            "nothing about the uncertainty that actually binds, which is that "
+            "each task is **one** fixed dataset with one fixed set of folds.",
+            ""]
+
     # ------------------------------- the joint event, one row per seed
     joint = joint_seed_event(bench, sel, "median_run")
     joint_strict = joint_seed_event(bench, sel, "strictest_baseline_value")
@@ -812,8 +921,53 @@ def main() -> int:
                      "<!-- BASELINES:END -->", txt, flags=re.S)
         rp.write_text(new)
 
+    # ------------------------------------------------- WEEKEND.md headline
+    # WEEKEND.md is the file that actually gets read on Monday, which makes it
+    # the file most likely to end up carrying a hand-typed number that no
+    # longer matches the runs. So its headline is generated between markers by
+    # the same code that writes RESULTS.md, and the prose around it is the only
+    # part a human writes.
+    wp = Path(args.weekend) if args.weekend else None
+    touched_weekend = False
+    if wp and wp.is_file() and "<!-- HEADLINE:BEGIN -->" in wp.read_text():
+        jt = joint["exact_test_on_the_joint_event"]
+        head = "\n".join([
+            f"**Status: {v['status']}**  ",
+            f"*(generated by `scripts/report.py` from `runs/*.json`; "
+            f"nothing in this block is hand-typed)*", "",
+            table([[c.split("_", 1)[0], c.split("_", 1)[1].replace("_", " "),
+                    str(val)] for c, val in v["clauses"].items()],
+                  ["clause", "what", "met"]), "",
+            table(res_rows, [
+                "task", "dataset", "seeds", "ours (pooled)", "median_run",
+                "rel gap", "primary (>=0.95x)", "rel 2-sided", "abs 2-sided",
+                "median_flow", "vs flow", "strictest reading",
+                "strictest value", "vs strictest", "families chosen"]), "",
+            "Exact sign test per task, "
+            f"H0: median <= 0.95 x baseline (alpha={ALPHA}):", "",
+            table(test_rows, ["task", "dataset", "seeds",
+                              "threshold (primary)", "k/n above", "p",
+                              "verdict (primary)", "k/n above (strictest)",
+                              "p (strictest)", "verdict (strictest)"]), "",
+            f"One unattended run clearing all five: "
+            f"**{joint['n_seeds_sweeping_all_five']} of "
+            f"{joint['n_seeds_complete']} complete seeds** "
+            f"({joint_strict['n_seeds_sweeping_all_five']} of "
+            f"{joint_strict['n_seeds_complete']} against each task's "
+            f"strictest reading)"
+            + (f", {joint['n_seeds_incomplete']} seed(s) still incomplete and "
+               "excluded" if joint["n_seeds_incomplete"] else "")
+            + (f"; joint exact test k={jt['k']}/{jt['n']}, p={jt['p']:.4f}."
+               if jt else "."), ""])
+        wp.write_text(re.sub(
+            r"<!-- HEADLINE:BEGIN -->.*?<!-- HEADLINE:END -->",
+            "<!-- HEADLINE:BEGIN -->\n" + head + "<!-- HEADLINE:END -->",
+            wp.read_text(), flags=re.S))
+        touched_weekend = True
+
     print(f"wrote {args.out}"
-          + (" and refreshed the README block" if touched_readme else ""))
+          + (" and refreshed the README block" if touched_readme else "")
+          + (" and the WEEKEND.md headline" if touched_weekend else ""))
     print(f"status: {v['status']}")
     for k, val in v["clauses"].items():
         print(f"  {k}: {val}")

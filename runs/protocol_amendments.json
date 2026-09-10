@@ -16,7 +16,20 @@
       "effect_on_the_claim_as_it_stood": "PASS -> RUNNING on identical run data. The amendment withdrew a claim rather than granting one, which is why it is defensible despite the chronology.",
       "why": "The registered rule made the exact test conditional on 'margin < observed seed range'. That condition is biased at small n and biased the flattering way: E[range] is 1.69 sigma at n=3 against 2.85 sigma at n=8, and the range sits in the denominator, so fewer seeds make the no-test-needed branch easier to enter. Under the registered rule the pre-registered exact test ran on none of the five tasks and the clause was granted on point estimates.",
       "what_would_have_been_the_looser_alternative": "keeping the registered rule, which passes the clause today. Not taken.",
-      "still_owed": "A clean confirmatory reading, in codex's sense, would freeze this amendment and then run a fresh disjoint seed set that has not been inspected. The 8-seed set now running includes seeds 0-2, whose values were read before the amendment. Seeds 3-7 are disjoint from what was seen; the honest statement is that 3 of the 8 seeds in the verdict set were inspected pre-amendment, and RESULTS.md says so."
+      "still_owed": "A clean confirmatory reading, in codex's sense, would freeze this amendment and then run a fresh disjoint seed set that has not been inspected. The 8-seed set now running includes seeds 0-2, whose values were read before the amendment. Seeds 3-7 are disjoint from what was seen; the honest statement is that 3 of the 8 seeds in the verdict set were inspected pre-amendment, and RESULTS.md says so.",
+      "seeds_already_inspected_at_amendment": [
+        0,
+        1,
+        2
+      ],
+      "seeds_uninspected_at_amendment": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "clean_subset_reading": "Seeds 3-7 had not been run, let alone read, when the rule was amended, and they are a FIXED subset specified by the amendment rather than one chosen after seeing outcomes. So the exact test restricted to them is free of the chronology objection entirely. n=5 is enough to reject: 5 of 5 above the line gives p = 1/32 = 0.03125 <= 0.05. report.py computes and reports that sub-reading beside the full 8-seed gate, whichever way it comes out. This is strictly more informative than running a further disjoint seed set, and costs no compute: more seeds would reduce seed noise, which is already 0.0013-0.0077 against margins of 0.03-0.08, and would do nothing about the binding uncertainty, which is that each task is one fixed dataset with fixed folds."
     },
     {
       "id": 2,

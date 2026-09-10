@@ -113,6 +113,41 @@ def test_the_gate_code_is_fingerprinted_so_an_undeclared_change_costs_something(
     print(f"  gate code matches the recorded fingerprint {digest[:16]}")
 
 
+def test_the_clean_seed_subset_comes_from_the_amendment_not_from_the_code():
+    """The subset must be pre-specified, not chosen after seeing outcomes.
+
+    The whole value of the "reading that owes nothing to the pre-inspected
+    seeds" table is that the seeds in it were named *in the amendment*, before
+    they had been run. If report.py chose them itself -- or if the amendment
+    could be edited to name whichever seeds happened to look best -- the table
+    would be a subgroup analysis dressed as a confirmation, and it would bias
+    flatteringly.
+    """
+    import runpy
+    R = runpy.run_path(str(REPORT))
+    a = json.loads(AMEND.read_text())
+
+    got = R["clean_seed_subset"](AMEND)
+    named = set()
+    for e in a["amendments"]:
+        named |= set(e.get("seeds_uninspected_at_amendment") or [])
+    assert got == named and got, (got, named)
+
+    # and they must be disjoint from the seeds the amendment admits were seen
+    seen = set()
+    for e in a["amendments"]:
+        seen |= set(e.get("seeds_already_inspected_at_amendment") or [])
+    assert got.isdisjoint(seen), (
+        f"seeds {sorted(got & seen)} are listed both as inspected before the "
+        "amendment and as clean")
+
+    # an absent record yields an empty set, so the table disappears rather
+    # than falling back to a subset this code picked
+    assert R["clean_seed_subset"](AMEND.parent / "nope.json") == set()
+    print(f"  clean subset {sorted(got)} read from the amendment, disjoint "
+          f"from the inspected seeds {sorted(seen)}")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -2,192 +2,192 @@
 
 **KPI (verbatim):** 공개 데이터셋 5개에서 사람 baseline ±5% 이내 자동도달 · end-to-end 무개입
 
-**Status: RUNNING. There is no accuracy number in this repository yet, and
-that is the honest headline.** Read the next two lines before anything else.
+## Headline
 
-- **Friday:** nothing — the repo did not exist.
-- **Now:** the target is pre-registered and (as of this turn) actually correct,
-  the pipeline is built and tested end-to-end, four ways of faking the KPI are
-  closed, and **the confirmatory run has not been launched.** Clauses 2 and 3
-  read `[not measured]` in `RESULTS.md`, not a placeholder number.
+<!-- HEADLINE:BEGIN -->
+<!-- HEADLINE:END -->
 
-I would rather hand over an empty results table with a trustworthy target than
-a filled one measured against a target that was wrong in four ways this morning.
+**Friday:** the repository did not exist.
+**As of the last turn before this one:** the pipeline and the pre-registered
+target existed, and there was still **no accuracy number at all** — clauses 2
+and 3 read `[not measured]`, which was the honest state and was reported as
+such.
+**Now:** the numbers above are the first this repository has produced, and the
+project's own gate withdrew the first `PASS` it computed. Read the next section
+for why that is the point rather than a setback.
 
 ---
 
 ## The one thing that happened this turn
 
-**Two of the five pre-registered targets were wrong, and every test that could
-have caught it did.** `fetch_baselines.py` paged published OpenML evaluations
-with a 300,000-row cap. Tasks **31 (credit-g)** and **10101
-(blood-transfusion)** — ranks 1 and 2, the only 2 of 51 — hit it exactly, so
-their "median of published runs" was the median of an oldest-first *prefix*.
-Probed true sizes: task 31 has **500k–600k** evaluations, task 10101
-**400k–500k**. So those medians covered roughly 55% and 70% of the population,
-drawn from the 2014-era end — the exact bias the pre-registration named as its
-reason for paging to exhaustion.
+The 3-seed screen finished and `scripts/report.py` printed **`Status: PASS`**.
+That claim was withdrawn within the same turn, before it was pushed anywhere.
+Not because any number was wrong — all five tasks land *above* their median
+published run, by +0.58% to +4.32%, with a seed spread of 0.0013–0.0077 — but
+because the gate that granted the clause was the wrong test.
 
-Superseded readings, kept in `runs/baselines_truncated_superseded.json`:
+The gate short-circuited: a task whose margin to the 5% line exceeded its own
+observed seed range was called *without running the test*, and only borderline
+tasks got the pre-registered exact sign test. Every one of the five cleared its
+line by 4.5×–68× its seed range, so **the test ran on none of them** and the
+clause passed on point estimates.
 
-| task | superseded `median_run` | superseded `median_flow` |
-|---|---|---|
-| 31 credit-g | 0.7200 | 0.7290 |
-| 10101 blood-transfusion | 0.763369 | 0.762032 |
+Why that condition is wrong, and wrong in the flattering direction: the
+expected range of *n* i.i.d. draws is 1.69σ at *n* = 3 against 2.85σ at *n* = 8,
+and the range sits in the **denominator**. Fewer seeds ⇒ smaller range ⇒ easier
+to enter the "no test needed" branch. **A gate that is easier to clear on less
+evidence is not a gate.**
 
-**Why this is a fix and not a moved goalpost:** it was done before any accuracy
-of mine existed, so it cannot have been steered toward a result; it moves the
-sampling *toward* what the protocol already specified; and the selection rule is
-provably stable, because only those two tasks were truncated, both at ≥300,000,
-while rank 3 has 173,611 — so de-truncating cannot change which five tasks are
-in. The re-fetch is **still running** (see below). When it lands I expect both
-medians to come out **higher** (targets get harder), and larger on task 31 than
-on 10101. That prediction is on the record in `critique_log.md` so it can be
-wrong.
+The exact test is now unconditional and required at the full 8-seed set. Since
+*p* ≥ 1/2ⁿ, a 3-seed screen cannot reach α = 0.05 at any margin, so "with three
+seeds, screen not verdict" is now arithmetic rather than a promise. Same runs,
+`PASS` → `RUNNING`. Nothing was loosened and no number moved.
 
-Two smaller defects of the same family: `runs/baselines.json` was **never
-tracked by git** (written 09:10, 33 minutes after the 08:37 commit whose message
-says it was committed), and it was produced by a script that was **edited
-mid-flight at 08:45**, so the committed artifact lacked four baseline readings
-and the whole `run_protocol` block that its own committed producer emits.
+### The adversary earned its keep this time
+
+Asked the *right* question — "how would you make this clause pass legitimately"
+rather than "what is wrong" — `codex` found a defect I would not have found:
+
+**the exact test itself was anti-conservative.** It dropped ties and ran a fair
+binomial on the survivors, which is the textbook sign test *for a continuous
+distribution*. Accuracy is *k* correct of a fixed *n*. With
+P(A = T) = 0.6, P(A > T) = 0.4 the median is exactly *T* — H₀ true — and the
+8-seed gate rejected it **17.37%** of the time at a nominal 5%. I recomputed it
+rather than trusting the figure: 17.367% before, **0.852%** after counting ties
+as non-wins in the denominator. No number here moves (no seed of ours sits on a
+threshold) but the guarantee the *p*-value advertised was not the one it had.
+
+It also found the provenance gate **failing open** in three places — a missing
+`n_interventions` defaulted to 0, an absent agent digest was *discarded* before
+the distinct-digest count, an absent ledger was accepted — so a run that
+*omitted* a field read as a run that *reported it clean*. All three now sink
+clause 3.
+
+And it was right about chronology: all of this was decided **after** the screen
+was read. See below.
 
 ---
 
 ## What I tried that did not work, and what it rules out
 
-- **`df -h /` to diagnose a disk.** It reported 176G free and was the wrong
-  filesystem: `/home/dongjukim` is a separate 7.0T ext4 mount and it was at
-  **0 bytes**. Rules out "there is space" as an explanation for any ENOSPC on
-  this box; always `df` the actual path.
-- **Trusting `write_text` for a run record.** The module docstring promised
-  "complete or absent, never half-written" and the outage left exactly one
-  4096-byte page of a record at the record's own path — and the raised
-  exception did not remove it, so the runner's `out.exists()` guard would have
-  trusted the stump on the next pass. Rules out exception-raising as sufficient
-  for atomicity.
-- **A literal scan for dataset identity.** Two registered task ids are `31` and
-  `3`, and `agent.py` legitimately contains `max_leaf_nodes=[15, 31, 63]` and
-  `INNER_FOLDS_LARGE = 3`, so the guard had been failing on hyperparameters
-  since it was written. Rules out bare-integer scanning for small ids; replaced
-  with an invariance test that actually passes and actually tests the property
-  (renaming every column and reversing their order leaves the chosen family,
-  the logged decisions and **100% of predictions** unchanged).
-- **Asking the adversary what was wrong.** Asking *"how would you fake this
-  KPI without editing a number and without failing a test?"* produced eight
-  ranked attacks, four of them real and now closed. The single worst needed no
-  action to exploit: run the three screen seeds and report, because the 8-seed
-  escalation had been registered since before any result and nothing enforced
-  it, and "an exact test" named no test. Both are now specified and enforced.
+- **Conditioning the test on "is this task near the line".** Ruled out: any
+  gate whose trigger is estimated from the same small sample it is gating
+  inherits that sample's bias, and here the bias favours the claim. Report the
+  margin as a *diagnostic*, gate on the test.
+- **My own first fix for "the ledger can't reconcile mid-run".** I read
+  `/proc` inside `reconcile_ledger` to tell an in-flight attempt from an
+  abandoned one. That made the committed document a function of live process
+  state, so the freshness test could never hold on a clean checkout and CI
+  would have been permanently red. Ruled out: **a committed artefact must be a
+  pure function of committed inputs.** The live reading is now a guard in
+  `main()` that redirects mid-run output to an untracked interim file.
+- **Enumerating test files in CI.** It was running **5 of 9**, and the file it
+  omitted included `test_escalation_gate.py` — the test of the gate that
+  decides clause 2. Ruled out: a hand-listed CI step list is a list someone has
+  to remember to extend. Now discovered by glob with a floor on the count.
+- **Treating "not yet run" as "did not clear".** The new per-seed sweep table
+  scored the mid-flight seed as having *missed* two tasks that had not started.
+  Second time this weekend a partial artefact scored as a bad result rather
+  than as no result (the first was `etch-operator-twin`'s partial checkpoints,
+  another track). Worth naming as a recurring class: **absence must route to
+  `None`, never to a value.**
+- **`agy` as a second adversary.** Two invocation failures (it reads prompts
+  only from `-p`/stdin, and headless mode auto-denies file reads without
+  `--dangerously-skip-permissions`). Noted so the next turn does not re-derive
+  it.
 
 ---
 
 ## Needs a human decision
 
-**1. Disk on this box — the one that will bite all three tracks.**
-`/home/dongjukim` (7.0T) hit **100% / 0 bytes** and I reclaimed **40G** by
-deleting `~/.cache/pip` and nothing else. Only 1.5T of the 6.6T used is under
-`/home/dongjukim`; **~5.1T is on the same device outside this container's view**,
-so I cannot see or reclaim it. 40G is headroom, not a fix.
+**1. Is the amended protocol acceptable as a confirmatory reading, or does it
+need a fresh seed set?**
+Three rule changes were made *after* the 3-seed screen was read, all recorded
+in `runs/protocol_amendments.json` with what was registered, what replaced it,
+and what each did to the claim. All three are strictly stricter, and amendment 1
+took the status from `PASS` to `RUNNING` on identical data — an amendment that
+*withdraws* a claim needs no chronological alibi. But **3 of the 8 verdict
+seeds (0, 1, 2) were inspected before the amendment.**
 
-- *(a)* Reclaim `~/.cache/huggingface` (**267G**) — but F4 needs the Qwen3
-  weights and other tracks may depend on it, so it costs re-downloads.
-- *(b)* Reclaim `~/.ollama` (**278G**) — no track in my brief uses it; this is
-  the cheapest large win **if** nobody else needs it. I did not touch it
-  because it is not mine.
-- *(c)* Find the ~5.1T outside the container, which needs host access.
-- *(d)* Do nothing and accept that long jobs die at ENOSPC.
+- *(a)* **Accept the 8-seed set as it stands**, with the disclosure in
+  `RESULTS.md` that seeds 0–2 were pre-inspected and 3–7 were not. *This is
+  what is built.* The per-seed table lets a reader drop seeds 0–2 and check the
+  conclusion on 3–7 alone.
+- *(b)* Run seeds 8–15 as a clean confirmatory set under the frozen amended
+  rule and report the current 8 as supporting evidence. Costs ~2 h of CPU and
+  nothing else. **My recommendation if anyone external will read the claim.**
 
-**My recommendation: (b), then (c).** I did not do (b) unattended because it is
-hard to reverse and outward-facing.
-
-**2. Is `median_run` the baseline you actually want?**
-It is what the brief specified and it stays the pre-registered primary — I am
-not swapping it after the fact even for something harder. But be clear what a
-PASS on it means: it compares *our selected model* against *the distribution of
-all human trials, failures and default-parameter sweeps included*, where one
-uploader's 5000-point sweep counts 5000 times. codex also correctly caught that
-my own documentation **overstated the mathematics**: `median_flow_best ≥
-median_flow` is guaranteed, but `median_flow_best ≥ median_run` is *not*.
-
-- *(a)* Keep `median_run` primary, report all four readings and the strictest
-  verdict beside it. **This is what is built**, and the strict verdict is now
-  binding-and-visible rather than recorded-and-ignored.
-- *(b)* Declare a selected-solution reading (`median_uploader_best`) primary in
-  a *successor* KPI, labelled as a different and harder claim — never as this
-  one.
+**2. Same as last turn, still unresolved and still blocking all tracks: disk.**
+`/home/dongjukim` (7.0T) hit 100% / 0 bytes; I reclaimed 40G from `~/.cache/pip`
+only. **~5.1T of the 6.6T used is outside this container's view.** Options
+unchanged: *(a)* reclaim `~/.cache/huggingface` (267G, but F4 needs Qwen3
+weights), *(b)* reclaim `~/.ollama` (278G, no track in my brief uses it),
+*(c)* host access to find the 5.1T, *(d)* accept ENOSPC deaths.
+**Recommendation: (b) then (c).** Not done unattended: hard to reverse, and not
+mine.
 
 **3. Should the agent be isolated from the evaluator's memory?**
-`ads/evaluate.py` holds the full labelled frame in the same process that calls
-the agent (codex attack #8). Nothing in `ads/` does anything with it, and the
-code is short enough to review, but the *architecture* permits leakage and no
-test can rule it out from inside the process.
-
-- *(a)* Accept it, on code review — cheap, and it is what is in place.
-- *(b)* Run each fold's agent in a subprocess with only the permitted arrays
-  passed in. A day of work, and it makes "무개입" enforced rather than trusted.
+`ads/evaluate.py` holds the full labelled frame in the process that calls the
+agent. Nothing in `ads/` touches it and the code is short enough to review, but
+the architecture permits leakage and no in-process test can rule it out.
+*(a)* accept on review (in place), *(b)* subprocess per fold with only the
+permitted arrays passed in — about a day, and it makes 무개입 enforced rather
+than trusted.
 
 ---
 
 ## Still running, and how to check it
 
-**The exhaustive baseline re-fetch** (pid was 3264113, started ~12:29, still
-paging at ~22 min; deep-offset pagination on this API degrades badly):
+The **8-seed confirmatory run**, in its own tmux session:
 
 ```bash
 cd ~/Documents/workspace/auto-data-scientist
-tail -5 logs/fetch_baselines_exhaustive.log     # per-task completion lines
-ls -la runs/evals/task_31.csv.gz runs/evals/task_10101.csv.gz   # appear when done
+tmux ls | grep ads-verdict                  # the session
+tail -3 logs/bench_verdict.log              # per-fold progress; ends with EXIT=0
+ls runs/bench/*.json | wc -l                # 40 when complete (5 tasks x 8 seeds)
 ```
 
-It only re-pages tasks 31 and 10101; the other 49 come from cache in ~45s. When
-it finishes, `runs/baselines.json` is rewritten with all four baseline readings,
-`strictest_baseline`, and `run_protocol`.
-
-**Exact sequence to resume from (each step gated on the previous):**
+Seeds 0–2 were already on disk and were skipped, so this run produces seeds
+3–7. When it finishes:
 
 ```bash
-# 1. correct the overstated "strictly harder" wording in the asymmetry_note,
-#    then re-run the fetch -- fully cached now, ~1 min
-#    (do NOT edit fetch_baselines.py while it is running: that mid-flight edit
-#     is precisely what produced the stale registry this morning)
-.venv/bin/python scripts/fetch_baselines.py
-
-# 2. write the canonical metric check the tests require
-.venv/bin/python scripts/verify_metric.py --task-ids 31 10101 3913 3 3917 11
-
-# 3. commit the registry -- the tree must be CLEAN before the confirmatory run,
-#    because runs now carry an ads/ digest and a dirty flag that sinks clause 3
-git add runs/baselines.json runs/metric_check.json runs/evals && git commit
-
-# 4. the 3-seed pre-registered screen (seeds come from run_protocol, not a flag)
-ADS_N_JOBS=8 nohup .venv/bin/python scripts/run_benchmark.py \
-    > logs/bench_screen.log 2>&1 &
-
-# 5. regenerate RESULTS.md; never hand-type a number into it
-.venv/bin/python scripts/report.py
+.venv/bin/python scripts/report.py          # regenerates RESULTS.md + this headline
+for f in tests/test_*.py; do python "$f"; done
+git add -A && git commit                    # then push, only if green
 ```
 
-**Current test state:** 37 pass. 7 fail, and all 7 are the stale/untracked
-registry — they are the tests that caught it and they go green when step 3
-lands. Nothing is failing for a reason I do not understand.
+`scripts/report.py` **refuses** to write `RESULTS.md` while a benchmark is
+alive — it writes `runs/interim_report.md` instead — so a mid-run document with
+an unreconcilable ledger can never be committed as the verdict.
 
 ---
 
-## Where the numbers will come from
+## Where the numbers come from
 
 `scripts/report.py` is the only code permitted to write a number into a
-document, and it reads only `runs/*.json`. Every clause is derived by
-`verdict()` from the run records — including `PASS`, which it will return
-untouched if the runs earn it. What it now also refuses to grant:
+document, including the headline block at the top of this file. Every clause is
+derived by `verdict()`; `PASS` is returned untouched if the runs earn it. What
+it refuses to grant:
 
-- a task whose margin to the 5% line is smaller than its own seed range,
-  unless the registered 8 seeds ran and an exact sign test rejects
-  H0: median ≤ 0.95 × baseline (8/8 → p = 0.0039; 6/8 → p = 0.1445, not called);
-- any set of runs containing a duplicated seed, a seed outside the registered
-  protocol, a partial run, an off-registry run, a failed attempt, two different
-  `ads/` digests, a dirty agent tree, or a ledger that does not reconcile
-  against the files on disk.
+- any task not **called** by the exact sign test at the full registered 8 seeds
+  (8/8 → p = 0.0039; 6/8 → p = 0.1445, not called; and n = 5, 6, 7 are not
+  called *even when they reject*, because stopping at the first rejection is
+  optional stopping);
+- any run set with a duplicated seed, an unregistered seed, a partial or
+  off-registry run, a failed attempt, two `ads/` digests, a dirty tree, a run
+  missing a required field, a run with no agent digest, or a ledger that is
+  absent or does not reconcile;
+- a `NOT MET` off an unfinished measurement — a screen short of the registered
+  seed count reads `None` → `RUNNING`, because unfinished is not failed, and
+  that error is as real as its opposite.
 
-`critique_log.md` is the long form, including the four attacks closed and the
-three (#6 identity-as-property, #7 cache provenance, #8 label leakage) that are
-**not** closed and are named rather than glossed.
+Long form in `critique_log.md` (every withdrawal, with the arithmetic) and
+`paper_draft.md`. Verified against OpenML itself: 125 evaluation rows
+re-fetched from the server across the five tasks, 0 mismatches
+(`runs/evals_provenance.json`) — the only check here whose evidence comes from
+outside this repository.
+
+**Open and named rather than glossed:** a rule keyed on feature *values* that
+would encode dataset identity while passing the column-invariance test (#6);
+in-process label leakage (#8). Cache provenance (#7) is now partly closed — a
+*k*-row spot check would still likely miss a single edited row.
