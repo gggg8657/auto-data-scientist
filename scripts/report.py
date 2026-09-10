@@ -1101,6 +1101,81 @@ def main() -> int:
         doc += ["## Our own run-to-run spread", "",
                 f"{NM} — fewer than two seeds per task so far.", ""]
 
+    # ---------------------------- the successor measurement, clearly labelled
+    # A different task set is a DIFFERENT MEASUREMENT and is reported as one.
+    # It lives in runs/dev, is never read by the clause accounting above, and
+    # says "screen, not verdict" until it has the registered verdict seeds.
+    dev_bench, dev_failed = (load_bench(REPO / "runs/dev")
+                             if (REPO / "runs/dev").exists() else ({}, []))
+    if dev_bench:
+        all_tasks = {t["task_id"]: t for t in base["tasks"]}
+        td = read_json(REPO / "runs/target_difficulty.json") or {}
+        successor = [r["task_id"]
+                     for r in td.get("a_falsifiable_five_under_a_blind_rule", [])]
+        drows = []
+        for tid in sorted(dev_bench, key=lambda i: successor.index(i)
+                          if i in successor else 99):
+            t = all_tasks.get(tid)
+            if not t:
+                continue
+            runs = dev_bench[tid]
+            accs = [r["accuracy_pooled"] for r in runs]
+            ours = statistics.mean(accs)
+            tol = tolerance_readings(ours, t["median_run"])
+            tol_s = tolerance_readings(ours, t["strictest_baseline_value"])
+            e = escalation_state(accs, t["median_run"],
+                                 base.get("run_protocol") or {})
+            hr = next((r["headroom"] for r in td.get("tasks", [])
+                       if r["task_id"] == tid), None)
+            drows.append([
+                tid, t["dataset_name"], t["rank_by_n_runs"], len(accs),
+                fmt(ours), fmt(t["median_run"]),
+                f"{tol['rel_gap']*100:+.2f}%",
+                "PASS" if tol["rel_one_sided"] else "FAIL",
+                "PASS" if tol_s["rel_one_sided"] else "FAIL",
+                fmt(hr),
+                f"{e['exact_test']['k']}/{e['exact_test']['n']}",
+                f"{e['exact_test']['p']:.4f}",
+                "CALLED" if e["called"] else
+                ("screen only" if e["escalation_required"] else "not called")])
+        n_seeds_dev = max((len(v) for v in dev_bench.values()), default=0)
+        doc += [
+            "## A different measurement: the successor task set", "",
+            "**This is not the KPI.** The KPI is the five registered tasks "
+            "above; a task set chosen after seeing that the registered one was "
+            "weak may only ever be reported as a *separate* measurement, and "
+            "substituting it would be the same error as choosing a baseline "
+            "late. It lives in `runs/dev/`, and none of the clause accounting "
+            "above can see it.", "",
+            "The rule, still blind to our accuracy: the five most-published "
+            "candidates whose `0.95 x median_run` **exceeds** their "
+            "majority-class rate. Their targets needed no new fetch — all "
+            f"{td.get('n_candidates', '51')} candidates were frozen in "
+            "`runs/baselines.json` before any run existed, so these baselines "
+            "are as pre-registered as the others. Four of the five were "
+            "reserved by the protocol for development and the agent had "
+            "**never been run on any of them**, so they are uninspected; the "
+            "agent is unmodified.", "",
+            table(drows, ["task", "dataset", "rank", "seeds", "ours (pooled)",
+                          "median_run", "rel gap", "vs primary",
+                          "vs strictest", "threshold headroom over majority",
+                          "k/n above", "p", "verdict"]), "",
+            (f"**{n_seeds_dev} seeds: screen, not verdict.** The same gate "
+             "applies — no task is called under the registered verdict seed "
+             "count, so nothing here is a called result and none of it is a "
+             "headline. It is reported because it is the experiment the "
+             "falsifiability finding demands, and because it tests the "
+             "alternative explanation: if the agent's margin over a depth-3 "
+             "stump stays near its imbalanced-task value on these balanced "
+             "tasks rather than widening, the finding is about the agent and "
+             "not about the task set."
+             if n_seeds_dev <= 3 else
+             f"**{n_seeds_dev} seeds.**"), ""]
+        if dev_failed:
+            doc += [f"{len(dev_failed)} failed attempt(s) on the successor "
+                    "set, counted rather than dropped: "
+                    + ", ".join(f["_file"] for f in dev_failed), ""]
+
     doc += [bl_block, "## Provenance", "",
             table([[k, str(vv)] for k, vv in v.items() if k != "clauses"],
                   ["field", "value"]), ""]

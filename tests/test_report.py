@@ -298,10 +298,15 @@ def test_a_fixture_run_cannot_write_into_the_repositorys_own_documents():
              real_readme.read_text() if real_readme.exists() else None)
     assert before == after, (
         "a fixture run modified the repository's own WEEKEND.md or README.md")
+    # Look for a fixture *table row*, not for the bare string "d0": both
+    # WEEKEND.md and critique_log.md legitimately describe this bug by name,
+    # and a substring check turns documenting a defect into a test failure --
+    # the same mistake as fingerprinting comments along with code.
     for doc, name in ((after[0], "WEEKEND.md"), (after[1], "README.md")):
         if doc:
-            assert "d0" not in doc and "d4" not in doc, (
-                f"fixture task names leaked into {name}")
+            for tid in range(100, 105):
+                assert f"| {tid} | d{tid - 100} |" not in doc, (
+                    f"a fixture table row leaked into {name}")
     print("  a fixture run with an explicit --out leaves WEEKEND.md and "
           "README.md untouched")
 
