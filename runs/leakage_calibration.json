@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-10T23:02:07+0000",
+  "generated": "2026-09-10T23:05:40+0000",
   "purpose": "family-wise false-alarm rate of the leakage probe's max-over-k decision rule",
   "k_permutations": 10,
   "pre_registered_sigmas": 2.0,
@@ -76,6 +76,35 @@
       "pre_registered_sigmas": 2.0,
       "pre_registered_rule_is_the_stricter": true
     }
+  },
+  "class_audit": {
+    "question": "which decision rules in this repository take a maximum, a minimum or a first-crossing over repeated random draws, and is each one's family calibrated?",
+    "scanned": "scripts/*.py (13 files) and scripts/report.py",
+    "instances_found": [
+      "scripts/leakage_probe.py: accuracy rule, max over k permutations -- calibrated here, 18.7-21.4%",
+      "scripts/leakage_probe.py: pooled accuracy rule, same shape -- the pooled columns here are that calibration",
+      "scripts/leakage_probe.py: AUROC rule, max over k permutations -- calibrated here, written in the same turn the audit diagnosed the shape"
+    ],
+    "examined_and_not_an_instance": [
+      "scripts/verify_metric.py:172 `bool(np.max(sep) > TOL)` -- a maximum over DETERMINISTIC published runs comparing two aggregation formulas, not over random draws, so there is no family to calibrate",
+      "scripts/report.py clause conjunctions `all(...)` -- an intersection over tasks is conservative, not inflationary",
+      "scripts/report.py:177 seed spread `max-min` -- descriptive; the gate that used it as a threshold was removed in turn 6"
+    ],
+    "already_closed_before_this_audit": [
+      "exact_sign_test_above dropping ties (turn 6, 17.37% -> 0.85%)",
+      "optional stopping at n=5,6,7 (turn 6)"
+    ]
+  },
+  "rank_rule": {
+    "statistic": "AUROC of the permuted arm vs the Mann-Whitney null",
+    "rule": "LEAKAGE if max over k=10 permuted AUROCs > 0.5 + 2.0 * SE_MannWhitney",
+    "per_comparison_alpha": 0.02275013194817922,
+    "family_wise_alpha": 0.20556895983294143,
+    "sigmas_for_5pct_family_wise": 2.5678753685925693,
+    "prior_independent": true,
+    "why_one_number_not_five": "the Mann-Whitney null is centred at 0.5 with SE depending only on n1 and n2, so a rule stated in sigmas has a prior-independent per-comparison rate",
+    "direction": "same as the accuracy rule: inflation makes LEAKAGE easier to declare, which sinks clause 2. The 2-sigma rule is the stricter.",
+    "enters_no_clause": true
   },
   "worst_family_wise_alpha_pooled": 0.21413888194717046,
   "pre_registered_rule_is_stricter_on_all_tasks": true

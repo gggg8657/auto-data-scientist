@@ -93,15 +93,19 @@ predictor gets. Before running it I asked what leak it could detect at all.
 
 The label-permutation leakage probe shuffles `y_train`, fits, and scores against the true test labels. Its whole dynamic range on a task is `gap = accuracy - majority_rate`, so the smallest leak it can resolve is the fraction `phi_min = band / gap` of that gap. **`phi_min >= 1` means complete leakage is invisible on that task.**
 
-| task | dataset | accuracy | majority rate | gap | 2-sigma band | phi_min | detects a complete leak? |
-|---|---|---|---|---|---|---|---|
-| 31 | credit-g | 0.7582 | 0.7000 | +0.0583 | 0.0290 | 0.498 | yes, >=1 fold(s) pooled |
-| 10101 | blood-transfusion-service-center | 0.7697 | 0.7620 | +0.0077 | 0.0311 | 4.051 | **no** |
-| 3913 | kc2 | 0.8374 | 0.7950 | +0.0424 | 0.0353 | 0.834 | yes, >=6 fold(s) pooled |
-| 3 | kr-vs-kp | 0.9962 | 0.5222 | +0.4740 | 0.0177 | 0.037 | yes, >=1 fold(s) pooled |
-| 3917 | kc1 | 0.8596 | 0.8454 | +0.0142 | 0.0157 | 1.112 | **no** |
+| task | dataset | accuracy | majority rate | gap | 2σ band | phi_min (2σ) | detects? (2σ) | phi_min (family-wise) | detects? (family-wise) |
+|---|---|---|---|---|---|---|---|---|---|
+| 31 | credit-g | 0.7582 | 0.7000 | +0.0583 | 0.0290 | 0.498 | yes, >=1 fold(s) pooled | 0.635 | yes, >=4 fold(s) |
+| 10101 | blood-transfusion-service-center | 0.7697 | 0.7620 | +0.0077 | 0.0311 | 4.051 | **no** | 5.043 | **no** |
+| 3913 | kc2 | 0.8374 | 0.7950 | +0.0424 | 0.0353 | 0.834 | yes, >=6 fold(s) pooled | 1.040 | **no** |
+| 3 | kr-vs-kp | 0.9962 | 0.5222 | +0.4740 | 0.0177 | 0.037 | yes, >=1 fold(s) pooled | 0.048 | yes, >=1 fold(s) |
+| 3917 | kc1 | 0.8596 | 0.8454 | +0.0142 | 0.0157 | 1.112 | **no** | 1.407 | **no** |
 
-Powered: **[3, 31, 3913]**. Blind at any fold count: **[3917, 10101]**.
+Powered at the pre-registered 2σ band: **[3, 31, 3913]**. Blind at any fold count: **[3917, 10101]**.
+
+**Both readings of the threshold, because they disagree.** `runs/leakage_calibration.json` measures that the pre-registered rule — a maximum over k=10 permutations, each at a nominal one-sided 2σ — has a family-wise false-alarm rate up to **21.4%**, not 5%. That correction is *against* the KPI where it was found — a looser trigger makes LEAKAGE easier to declare and LEAKAGE sinks clause 2 — so the pre-registered rule stays primary there. It lands here in the opposite direction: a wider band is a higher detection threshold, so it costs power. Powered under the corrected band: **[3, 31]**; moved from powered to blind by the correction: **[3913]**. So the honest count of tasks on which this instrument can see a complete leak is **2 of 5**, not 3.
+
+The clause-2 gate keeps the 2σ task set, which is the **more demanding** of the two: it requires a probe to clear three tasks rather than two. Using the corrected set would shrink what has to be probed, and that is the direction a protocol may never be moved.
 
 `gap` is the same quantity as the `prior`/`stump` margin in the falsifiability section, so the task where this KPI is falsifiable is the task where leakage is detectable. A weak baseline does not only flatter a weak method; it blinds the instruments that would catch a broken one.
 

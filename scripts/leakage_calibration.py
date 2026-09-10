@@ -97,6 +97,60 @@ def sigmas_for_fwer(p_maj: float, n_test: int, k: int,
     return None if hi >= 11.999 else hi
 
 
+def _norm_sf(z: float) -> float:
+    """P(Z > z) for standard normal, via erfc."""
+    return 0.5 * math.erfc(z / math.sqrt(2.0))
+
+
+def _norm_isf(a: float) -> float:
+    """z such that P(Z > z) = a."""
+    lo, hi = -12.0, 12.0
+    for _ in range(300):
+        mid = (lo + hi) / 2
+        if _norm_sf(mid) > a:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def rank_rule_calibration(k: int, n_sigmas: float,
+                          target: float = TARGET_FWER) -> dict:
+    """Same calibration for the AUROC rule added in turn 10.
+
+    The Mann-Whitney null for AUROC is asymptotically normal about 0.5, so the
+    per-comparison rate at `n_sigmas` does not depend on the class prior or on
+    n -- which is exactly the property that made the statistic worth adding,
+    and it also means its family-wise inflation is a single number rather than
+    one per task.
+
+    This was written into the audit at the moment the audit found it: the rank
+    rule is `max(aucs) > threshold`, the same shape as the accuracy rule, and
+    it was written in the same turn that diagnosed the shape.  Recording that
+    rather than quietly calibrating it.
+    """
+    a1 = _norm_sf(n_sigmas)
+    fwer = 1.0 - (1.0 - a1) ** k
+    per_needed = 1.0 - (1.0 - target) ** (1.0 / k)
+    return {
+        "statistic": "AUROC of the permuted arm vs the Mann-Whitney null",
+        "rule": f"LEAKAGE if max over k={k} permuted AUROCs > 0.5 + "
+                f"{n_sigmas} * SE_MannWhitney",
+        "per_comparison_alpha": a1,
+        "family_wise_alpha": fwer,
+        "sigmas_for_5pct_family_wise": _norm_isf(per_needed),
+        "prior_independent": True,
+        "why_one_number_not_five": (
+            "the Mann-Whitney null is centred at 0.5 with SE depending only on "
+            "n1 and n2, so a rule stated in sigmas has a prior-independent "
+            "per-comparison rate"),
+        "direction": (
+            "same as the accuracy rule: inflation makes LEAKAGE easier to "
+            "declare, which sinks clause 2. The 2-sigma rule is the stricter."),
+        "enters_no_clause": True,
+    }
+
+
 def main() -> int:
     power = json.loads((REPO / "runs" / "leakage_power.json").read_text())
     base = json.loads((REPO / "runs" / "baselines.json").read_text())
@@ -134,6 +188,7 @@ def main() -> int:
         rows.append(d)
 
     worst = max((r["family_wise_alpha_pooled"] for r in rows), default=None)
+    rank = rank_rule_calibration(K_PERMUTATIONS, NOISE_SIGMAS)
     record = {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "purpose": ("family-wise false-alarm rate of the leakage probe's "
@@ -157,6 +212,38 @@ def main() -> int:
             "why the pre-registered one stays primary and this is reported "
             "beside it rather than replacing it."),
         "tasks": tasks,
+        # The audit that found this, recorded with its scope so a reader knows
+        # what was looked at and not only what was found.
+        "class_audit": {
+            "question": ("which decision rules in this repository take a "
+                         "maximum, a minimum or a first-crossing over repeated "
+                         "random draws, and is each one's family calibrated?"),
+            "scanned": "scripts/*.py (13 files) and scripts/report.py",
+            "instances_found": [
+                "scripts/leakage_probe.py: accuracy rule, max over k "
+                "permutations -- calibrated here, 18.7-21.4%",
+                "scripts/leakage_probe.py: pooled accuracy rule, same shape -- "
+                "the pooled columns here are that calibration",
+                "scripts/leakage_probe.py: AUROC rule, max over k "
+                "permutations -- calibrated here, written in the same turn "
+                "the audit diagnosed the shape",
+            ],
+            "examined_and_not_an_instance": [
+                "scripts/verify_metric.py:172 `bool(np.max(sep) > TOL)` -- a "
+                "maximum over DETERMINISTIC published runs comparing two "
+                "aggregation formulas, not over random draws, so there is no "
+                "family to calibrate",
+                "scripts/report.py clause conjunctions `all(...)` -- an "
+                "intersection over tasks is conservative, not inflationary",
+                "scripts/report.py:177 seed spread `max-min` -- descriptive; "
+                "the gate that used it as a threshold was removed in turn 6",
+            ],
+            "already_closed_before_this_audit": [
+                "exact_sign_test_above dropping ties (turn 6, 17.37% -> 0.85%)",
+                "optional stopping at n=5,6,7 (turn 6)",
+            ],
+        },
+        "rank_rule": rank,
         "worst_family_wise_alpha_pooled": worst,
         "pre_registered_rule_is_stricter_on_all_tasks": all(
             r["pre_registered_rule_is_the_stricter"] for r in rows) if rows else None,
@@ -185,6 +272,10 @@ def main() -> int:
           f"at a nominal {TARGET_FWER}")
     print(f"pre-registered 2-sigma rule is the stricter on all tasks: "
           f"{record['pre_registered_rule_is_stricter_on_all_tasks']}")
+    print(f"\nrank (AUROC) rule, prior-independent: per-comparison "
+          f"{rank['per_comparison_alpha']:.5f}, family-wise "
+          f"{rank['family_wise_alpha']:.4f}, "
+          f"{rank['sigmas_for_5pct_family_wise']:.3f} sigma would give 5%")
     print(f"-> {OUT}")
     return 0
 

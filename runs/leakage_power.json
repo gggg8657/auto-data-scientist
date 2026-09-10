@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-10T22:57:52+0000",
+  "generated": "2026-09-10T23:05:20+0000",
   "purpose": "power of the label-permutation leakage probe, per task, computed from records already on disk",
   "derivation": "majority rates read from each task's own splits in the repo-local .omlcache, with the partition validated (test folds pairwise disjoint and covering every row exactly once per repeat). The count-based recovery total=sum(train)/(k-1) is retained only as a cross-check on each record and must agree exactly; see the module docstring for codex's counterexample against relying on it.",
   "noise_sigmas": 2.0,
@@ -143,6 +143,15 @@
         "noise_band_2sigma": 0.028982753492378877,
         "min_resolvable_leak_fraction": 0.49755799986916505,
         "detects_complete_leakage": true
+      },
+      "family_wise_corrected": {
+        "sigmas": 2.5532425695667094,
+        "source": "runs/leakage_calibration.json",
+        "noise_band": 0.036999999999999984,
+        "min_resolvable_leak_fraction": 0.6351931330472098,
+        "detects_complete_leakage": true,
+        "min_folds_for_detection": 4,
+        "moved_from_powered_to_blind": false
       }
     },
     "10101": {
@@ -283,6 +292,15 @@
         "noise_band_2sigma": 0.03114046030662543,
         "min_resolvable_leak_fraction": 4.050967705974924,
         "detects_complete_leakage": false
+      },
+      "family_wise_corrected": {
+        "sigmas": 2.4900115858394685,
+        "source": "runs/leakage_calibration.json",
+        "noise_band": 0.038770053475935706,
+        "min_resolvable_leak_fraction": 5.043478260869548,
+        "detects_complete_leakage": false,
+        "min_folds_for_detection": null,
+        "moved_from_powered_to_blind": false
       }
     },
     "3913": {
@@ -423,6 +441,15 @@
         "noise_band_2sigma": 0.03533785450915843,
         "min_resolvable_leak_fraction": 0.8337337877415018,
         "detects_complete_leakage": true
+      },
+      "family_wise_corrected": {
+        "sigmas": 2.493716910321929,
+        "source": "runs/leakage_calibration.json",
+        "noise_band": 0.04406130268199221,
+        "min_resolvable_leak_fraction": 1.0395480225988685,
+        "detects_complete_leakage": false,
+        "min_folds_for_detection": null,
+        "moved_from_powered_to_blind": true
       }
     },
     "3": {
@@ -563,6 +590,15 @@
         "noise_band_2sigma": 0.017671260398720152,
         "min_resolvable_leak_fraction": 0.03727877771241557,
         "detects_complete_leakage": true
+      },
+      "family_wise_corrected": {
+        "sigmas": 2.5496947803317793,
+        "source": "runs/leakage_calibration.json",
+        "noise_band": 0.022528160200250225,
+        "min_resolvable_leak_fraction": 0.04752475247524732,
+        "detects_complete_leakage": true,
+        "min_folds_for_detection": 1,
+        "moved_from_powered_to_blind": false
       }
     },
     "3917": {
@@ -703,10 +739,26 @@
         "noise_band_2sigma": 0.015743438706947777,
         "min_resolvable_leak_fraction": 1.112059261390762,
         "detects_complete_leakage": false
+      },
+      "family_wise_corrected": {
+        "sigmas": 2.5298985646395415,
+        "source": "runs/leakage_calibration.json",
+        "noise_band": 0.01991465149359889,
+        "min_resolvable_leak_fraction": 1.4066985645932988,
+        "detects_complete_leakage": false,
+        "min_folds_for_detection": null,
+        "moved_from_powered_to_blind": false
       }
     }
   },
   "n_tasks_powered_pooled": 3,
+  "tasks_powered_family_wise_corrected": [
+    3,
+    31
+  ],
+  "tasks_moved_to_blind_by_the_correction": [
+    3913
+  ],
   "tasks_powered_pooled": [
     3,
     31,

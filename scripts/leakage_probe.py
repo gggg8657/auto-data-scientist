@@ -64,7 +64,8 @@ from ads.openml_io import get_task, task_splits  # noqa: E402
 # A probe is only evidence about the code it ran.  Same digest the benchmark
 # records, so `report.py` can refuse a probe produced by a different `ads/`
 # than the runs it is being asked to clear.
-from scripts.run_benchmark import (agent_source_digest,  # noqa: E402
+from scripts.run_benchmark import (RunnerBusy,  # noqa: E402
+                                   acquire_output_lock, agent_source_digest,
                                    environment)
 
 REPO = Path(__file__).resolve().parents[1]
@@ -295,6 +296,22 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args()
 
+    # The probe writes one shared path and takes tens of minutes, so it needs
+    # the same mutual exclusion `run_benchmark.py` got on 2026-09-10 and for
+    # the same measured reason: a second instance of this loop is live in this
+    # repository and has committed to it twice this turn. Without a lock two
+    # probes would interleave fits, both write `runs/leakage_probe.json`, and
+    # the surviving record would be whichever finished last -- with the other's
+    # verdict silently gone. `acquire_output_lock` records the argv and pid of
+    # the holder, so a refusal says who has it.
+    lock_dir = args.out.parent / ".leakage_probe.lock.d"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        lock = acquire_output_lock(lock_dir, sys.argv)
+    except RunnerBusy as e:
+        print(f"another leakage probe owns the output: {e}", flush=True)
+        return 3
+
     power = json.loads((REPO / "runs" / "leakage_power.json").read_text())
     min_folds = {int(k): v for k, v in power["min_folds_for_detection"].items()}
     task_ids = args.tasks if args.tasks else sorted(min_folds)
@@ -307,6 +324,7 @@ def main() -> int:
         task_ids = [t for t in task_ids if t in min_folds]
     if not task_ids:
         print("nothing probeable; not writing a record", flush=True)
+        lock.unlink(missing_ok=True)
         return 2
 
     results = []
@@ -421,6 +439,7 @@ def main() -> int:
     print(f"cleared: {record['tasks_cleared']}", flush=True)
     print(f"unprobeable by this instrument: "
           f"{record['tasks_this_instrument_cannot_probe']}", flush=True)
+    lock.unlink(missing_ok=True)
     return 1 if leak else 0
 
 

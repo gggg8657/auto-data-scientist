@@ -75,6 +75,7 @@ from ads.openml_io import get_task, task_splits  # noqa: E402
 BENCH = REPO / "runs" / "bench"
 OUT = REPO / "runs" / "leakage_power.json"
 NOISE_SIGMAS = 2.0          # same constant as leakage_probe.py, on purpose
+CALIB = REPO / "runs" / "leakage_calibration.json"
 
 
 def true_fold_rates(task_id: int) -> tuple[dict, dict] | None:
@@ -320,6 +321,55 @@ def main() -> int:
             },
         }
 
+    # ------------------ the second reading of the threshold, and it costs power
+    # `runs/leakage_calibration.json` measures that the pre-registered rule --
+    # max over k permutations, each at a nominal one-sided 2 sigma -- has a
+    # family-wise false-alarm rate up to 21.4%, not 5%, and derives the sigma
+    # that would hold the family at 5%. That correction is in the direction the
+    # protocol may not be moved (a LEAKAGE verdict sinks clause 2, so a looser
+    # trigger errs against the KPI), which is why the pre-registered reading
+    # stays primary there.
+    #
+    # But it lands on *this* script in the opposite direction: a wider band is
+    # a higher detection threshold, so it makes `phi_min` worse and can move a
+    # task from powered to blind. Reporting only the 2-sigma column would be
+    # claiming power the corrected threshold does not have, so both are here.
+    calib = json.loads(CALIB.read_text()) if CALIB.exists() else None
+    if calib:
+        for tid_s, t in tasks.items():
+            if t.get("status") != "measured":
+                continue
+            c = (calib.get("tasks") or {}).get(tid_s)
+            if not c or not c.get("sigmas_for_5pct_family_wise"):
+                continue
+            z = c["sigmas_for_5pct_family_wise"]
+            scale = z / NOISE_SIGMAS
+            q = t["pooled"]
+            band_c = q["noise_band_2sigma"] * scale
+            gap = q["gap"]
+            mf = None
+            for F in range(1, len(t["per_fold"]) + 1):
+                sub = t["per_fold"][:F]
+                n_ = sum(r["n_test"] for r in sub)
+                a_ = sum(r["accuracy_intact_mean_over_seeds"] * r["n_test"]
+                         for r in sub) / n_
+                p_ = sum(r["majority_rate"] * r["n_test"] for r in sub) / n_
+                b_ = z * math.sqrt(p_ * (1 - p_) / n_)
+                if a_ - p_ > b_:
+                    mf = F
+                    break
+            t["family_wise_corrected"] = {
+                "sigmas": z,
+                "source": "runs/leakage_calibration.json",
+                "noise_band": band_c,
+                "min_resolvable_leak_fraction": (
+                    float("inf") if gap <= 0 else band_c / gap),
+                "detects_complete_leakage": bool(gap > band_c),
+                "min_folds_for_detection": mf,
+                "moved_from_powered_to_blind": bool(
+                    q["detects_complete_leakage"] and gap <= band_c),
+            }
+
     powered = [t for t in tasks.values()
                if t.get("status") == "measured"
                and t["pooled"]["detects_complete_leakage"]]
@@ -338,6 +388,18 @@ def main() -> int:
         "no_new_runs": True,
         "tasks": tasks,
         "n_tasks_powered_pooled": len(powered),
+        # Under the family-wise-corrected threshold. Reported because a task
+        # that is powered only at the uncorrected band is powered only at a
+        # 21% false-alarm rate, and saying "powered" without that is claiming
+        # more than the measurement supports.
+        "tasks_powered_family_wise_corrected": sorted(
+            t["task_id"] for t in tasks.values()
+            if (t.get("family_wise_corrected") or {}).get(
+                "detects_complete_leakage")),
+        "tasks_moved_to_blind_by_the_correction": sorted(
+            t["task_id"] for t in tasks.values()
+            if (t.get("family_wise_corrected") or {}).get(
+                "moved_from_powered_to_blind")),
         "tasks_powered_pooled": sorted(t["task_id"] for t in powered),
         # What `report.py`'s clause-2 gate reads: a task is only cleared by a
         # probe run on at least this many folds.  A task absent from this map
@@ -378,7 +440,11 @@ def main() -> int:
               f"folds>={t['min_folds_for_detection'] or '-'} "
               f"(per-fold {t['n_folds_detecting_complete_leakage']}"
               f"/{t['n_folds']})")
-    print(f"\npowered (pooled): {record['tasks_powered_pooled']}")
+    print(f"\npowered @2sigma       : {record['tasks_powered_pooled']}")
+    print(f"powered @family-wise : "
+          f"{record['tasks_powered_family_wise_corrected']}")
+    print(f"moved to blind by it : "
+          f"{record['tasks_moved_to_blind_by_the_correction']}")
     print(f"unpowered      : {record['tasks_unpowered_pooled']}")
     print(f"-> {OUT}")
     return 0

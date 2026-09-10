@@ -1932,3 +1932,154 @@ content of `runs/leakage_power.json`. A fold with one class present returns
 the AUROC reading on all five tasks — is **not yet tested**, because running the
 probe means competing with the confirmatory run that is two cells from done
 after four and a half hours. It runs when that finishes.
+
+### The two instances' findings interact, and the interaction costs a task
+
+The concurrent instance of this loop, working the same repo in the same turn,
+built `scripts/leakage_calibration.py` — the calibration codex asked for and
+that I had listed as "not built". Its result: the pre-registered rule (a maximum
+over k=10 permutations, each at a nominal one-sided 2σ) has a family-wise
+false-alarm rate of up to **21.4%**, not 5%, and holding the family at 5%
+requires **2.553σ** rather than 2. It states two ways that figure is an upper
+bound (the k permutations share `X_train`/`X_test` and are positively
+correlated, which lowers the true rate; and a shuffled-label fit concentrates
+on the prior, so its accuracy variance is below `Binomial(n, p_maj)`), and it
+correctly keeps the pre-registered rule primary: an inflated false-alarm rate
+makes LEAKAGE *easier* to declare, and a LEAKAGE verdict **sinks** clause 2, so
+the pre-registered rule errs against the KPI. Loosening it would be the
+forbidden direction.
+
+**But that correction lands on the power analysis in the opposite direction,
+and I would have missed it.** A wider band is a higher detection threshold, so
+it makes `phi_min` worse. Computed rather than asserted, from data on disk:
+
+| task | phi_min @2σ | detects @2σ | phi_min @family-wise | detects @family-wise |
+|---|---|---|---|---|
+| 3 kr-vs-kp | 0.037 | yes, ≥1 fold | 0.048 | yes, ≥1 fold |
+| 31 credit-g | 0.498 | yes, ≥1 fold | 0.635 | yes, **≥4 folds** |
+| 3913 kc2 | 0.834 | yes, ≥6 folds | **1.040** | **no** |
+| 3917 kc1 | 1.112 | no | 1.407 | no |
+| 10101 blood-transfusion | 4.051 | no | 5.043 | no |
+
+**kc2 moves from powered to blind.** So the honest count is **2 of 5** tasks on
+which this instrument can see a complete leak, not 3, and credit-g needs four
+pooled folds rather than one. Both columns are generated into WEEKEND.md; the
+diagonal — a correction that is conservative for one clause and anti-
+conservative for another, from one number — is the point, and it is the second
+time this weekend that one quantity has read differently in two places.
+
+The clause-2 gate **keeps the 2σ task set**, deliberately: it requires a probe
+to clear three tasks rather than two, so it is the more demanding of the two.
+Switching to the corrected set would shrink what must be probed, and that is
+the direction a protocol may never be moved — even when the corrected reading
+is the better-calibrated one.
+
+### And a bug in the generator, found by using it
+
+Running `scripts/report.py --interim` printed `wrote .../RESULTS.md`. The flag
+documented as "write `runs/interim_report.md` instead of `RESULTS.md`" was the
+one flag that *guaranteed* RESULTS.md was rewritten mid-run: the condition read
+`if not args.interim and not explicit_out and benchmark_processes_alive()`, so
+`--interim` **suppressed** the in-flight guard instead of forcing it. The guard
+itself was fine — `benchmark_processes_alive()` returns `True` and I checked
+that separately; the flag inverted it.
+
+Direction: flattering-hazard. Mid-run, clause 3 reads `False` because the
+ledger cannot reconcile against attempts that have no record yet — a known
+false negative — and this would have committed that as the repository's
+verdict. **I triggered it**, RESULTS.md and README.md were restored from HEAD,
+and `test_interim_forces_the_interim_path_instead_of_suppressing_the_guard`
+now asserts the condition on the source.
+
+One deliberate asymmetry while fixing it: the `HEADLINE` block of WEEKEND.md is
+built from the in-flight `runs/bench` records and stays suppressed mid-run, but
+the new `LEAKPOWER` block's only source is `runs/leakage_power.json`, a
+completed measurement, so it refreshes. Holding a stale power table out of the
+document a reader actually opens buys nothing. A test asserts each block has
+the rule that matches its source.
+
+### The class audit, and it found the rule I had written twenty minutes earlier
+
+Having named the generalisation, I ran it rather than resolving to. Question:
+*which decision rules in this repository take a maximum, a minimum or a
+first-crossing over repeated random draws, and is each one's family
+calibrated?* Scanned all 13 `scripts/*.py` and `report.py`. Recorded in
+`runs/leakage_calibration.json` under `class_audit`, with what was examined and
+cleared as well as what was found, so a reader knows the scope.
+
+**Three instances, all in `leakage_probe.py`:** the per-fold accuracy rule and
+the pooled accuracy rule (both calibrated above, 15.3–22.3%), and — the one
+that matters — **the AUROC rule I had written in this same turn, twenty minutes
+after diagnosing the shape.** `max(aucs) > auc_thr` is the identical
+construction. Calibrated: per-comparison **0.02275**, family-wise **0.2056**,
+and **2.568σ** would give a nominal 5%. Prior-independent, because the
+Mann-Whitney null is centred at 0.5 with an SE that depends only on `n1, n2` —
+which is the same property that made the statistic worth adding. Same direction
+as the accuracy rule, so the 2σ version is again the stricter, and the AUROC
+reading enters no clause in any case.
+
+That is the honest scoreboard on this: I diagnosed a class of defect, wrote a
+new instance of it in the same turn, and only found it because I ran the audit
+instead of trusting the diagnosis. The audit is the artefact worth keeping, not
+the diagnosis.
+
+**Two candidates examined and cleared**, recorded because an audit that only
+lists hits is not an audit: `verify_metric.py:172` `bool(np.max(sep) > TOL)` is
+a maximum over *deterministic* published runs comparing two aggregation
+formulas — no random draws, no family; and `report.py`'s clause conjunctions
+are intersections over tasks, which are conservative rather than inflationary.
+
+### A concurrent instance of this loop wrote in this repository again, and I committed its work under my message
+
+Turn 6 recorded a second `claude` process running the same loop in this repo and
+flagged it as needing a human. It is still there, and this turn it did real
+work: `WEEKEND.md` gained a 57-line section, `report.py` gained 86 lines
+generating it, and `test_report.py` gained two tests. My `git add -A` swept all
+of that into commit `2c6445c`, whose message describes none of it. **I cannot
+rewrite that history — the brief forbids it — so the correction lives here and
+in this commit message.**
+
+Having found it, the obligation is to audit it rather than to assume it. Two
+checks:
+
+1. **Is the block generated or hand-typed?** Generated. `report.py:1601`
+   rewrites the region between `<!-- LEAKPOWER:BEGIN -->` and `:END` from
+   `runs/leakage_power.json`, and its two new tests assert the mid-run headline
+   suppression does *not* suppress that block. `tests/test_report.py` **12
+   passed**.
+2. **Is every figure in it derivable from a run in this repository?** Checked
+   all ten cells against the JSONs. Yes, exactly:
+
+| task | phi_min 2σ (doc) | recomputed | phi_min family-wise (doc) | recomputed |
+|---|---|---|---|---|
+| 31 | 0.498 | 0.498 | 0.635 | 0.635 |
+| 10101 | 4.051 | 4.051 | 5.043 | 5.043 |
+| 3913 | 0.834 | 0.834 | 1.040 | 1.040 |
+| 3 | 0.037 | 0.037 | 0.048 | 0.048 |
+| 3917 | 1.112 | 1.112 | 1.407 | 1.407 |
+
+The family-wise column is `phi_min(2σ) × (σ_for_5% / 2)` from
+`runs/leakage_calibration.json`, per task. Sound.
+
+**And its conclusion is sharper than mine, so I am adopting it rather than
+restating my own.** I had reported the direction of the FWER correction as
+pessimistic and stopped there. It caught the direction *flip*: a wider band
+sinks clause 2 less easily (pessimistic, where I found it) but it is also a
+**higher detection threshold**, which *costs power*. Under the corrected band
+kc2's `phi_min` goes 0.834 → **1.040**, crossing 1. So:
+
+> the honest count of tasks on which this instrument can see a complete leak is
+> **2 of 5**, not 3.
+
+It also verified the choice I had made without checking: the clause-2 gate uses
+the 2σ task set `[3, 31, 3913]`, which requires a probe to clear **three**
+tasks rather than two, so it is the more demanding of the two sets. Switching
+to the corrected set would shrink what has to be probed, which is the direction
+a protocol may never move. The gate stays as it is, and now for a stated reason
+rather than by accident.
+
+**Unchanged, and still needing a human:** two instances of one loop in one
+repository, sharing `runs/`, `report.py` and a git index. This turn it produced
+good work and I caught it only because I read a file I was about to edit. The
+next collision may be a mid-flight edit of a file a running producer came from,
+which is a failure mode this repository has already had twice.
