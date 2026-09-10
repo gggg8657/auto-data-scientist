@@ -1349,3 +1349,31 @@ The cheap discipline: when a defect is found, grep for its *shape* — every oth
 `set(` over an identity, every other reader of a multi-writer file, every other
 default output path — before moving on. That is a ten-minute sweep and it would
 have caught all three.
+
+### The shape-sweep, run rather than promised, and it found nothing
+
+Having said the discipline is "grep for the defect's shape before moving on", I
+ran it on all three shapes from this turn. The result is negative and that is
+worth one paragraph, because a sweep that finds nothing is the only evidence
+that the ones it did find were not the tip of something.
+
+- **`set()` over an identity that can recur.** `reconcile_ledger` still sets
+  `on_disk` over `(task, seed)` from run *files*, so a duplicated file is
+  invisible *there* — but `verdict()` already counts `random_state` with a
+  `Counter` and reports `seeds_duplicated`, which is the check codex's attack
+  was closed with. Covered, not a second instance. The remaining `set()` uses
+  in `report.py` are membership tests or distinct-value counts, where a set is
+  the right structure.
+- **Readers of the multi-writer ledger.** Three: `report.py` (fixed this turn
+  to filter by `role`), `record_kill.py` (filters by `task_id`, `seed` and
+  `pid`, and `pid` is unique, so role cannot confuse it), `run_benchmark.py`
+  (append-only, never reads). No further instance.
+- **Scripts whose default output is a tracked document.** Only `report.py`
+  writes documents at all, and it now has four `default=None` guards so an
+  explicit `--out` cannot drag `README.md` or `WEEKEND.md` along. The other
+  five stages write to `runs/*.json`, which is their product rather than a
+  sibling's.
+
+Ten minutes, no new defects. The honest reading is that the three found this
+turn were found because I was *looking at* the ledger, not because the ledger
+is uniquely bad — and the sweep is what distinguishes those two explanations.
