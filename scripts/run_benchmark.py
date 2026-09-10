@@ -91,6 +91,100 @@ def register_attempt(**fields) -> None:
         os.fsync(fh.fileno())
 
 
+class RunnerBusy(SystemExit):
+    """Another runner already owns this output directory."""
+
+
+def acquire_output_lock(out_dir: Path, argv: list[str]) -> Path:
+    """Refuse to start if another runner owns `out_dir`. Not a precaution.
+
+    The runner's only guard against re-running a cell was `out.exists()`,
+    checked *before* a fold loop that takes minutes to hours. Two runners
+    started against the same role therefore both pass that check for the same
+    (task, seed) and both proceed. `write_json_atomic` guarantees each record
+    is whole; it guarantees nothing about *which* process's record survives,
+    while both append `started`/`completed` lines to one shared ledger.
+
+    This is not hypothetical. On 2026-09-10 two instances of this project's own
+    loop were running against this repository and `runs/attempts.jsonl` records
+    two `started` lines for one confirmatory cell:
+
+        18:16:08  started task 10101 seed 6  pid 936115
+        18:36:36  started task 10101 seed 6  pid 1493119
+
+    An earlier version of this docstring called that a double-launch race. It
+    was not, and the correction matters more than the original claim: the two
+    are twenty minutes apart, and the first process was *killed* -- the other
+    loop instance decided, reasonably, to relaunch with a lower thread cap on a
+    box at load 360. So the real sequence is a deliberate replacement, and what
+    the ledger shows is the gap named in `critique_log.md` the turn before: the
+    runner cannot express an operator interruption, so a killed attempt leaves
+    a bare `started` indistinguishable from the deletion the ledger exists to
+    catch.
+
+    The lock is still the right fix, for a reason the corrected story makes
+    sharper. The replacement was *silent*: nothing in the repository records
+    that a runner was stopped and another started in its place. With a lock,
+    the second runner could not have started without either waiting or
+    breaking the lock, and breaking it appends a `lock_broken` event naming
+    both holders. The lock does not prevent the operator's decision; it
+    prevents the decision from going unrecorded.
+
+    Independently, and this part was right: `reconcile_ledger` takes `started`
+    as a *set*, so once some process writes `completed` for that cell both
+    `started` lines collapse to one and the evidence that two runners touched
+    it disappears from the reconciliation -- for exactly the reason codex's
+    duplicated-seed attack worked. A set cannot count. That is a flaw in
+    report.py rather than here, and it is recorded as such.
+
+    So: an exclusive lock per output directory, created with `O_EXCL` so the
+    creation itself is the atomic operation rather than a check followed by a
+    write. It records who holds it. A lock whose pid is gone is stale and is
+    broken with the reason appended to the ledger, because a crashed runner
+    must not block the weekend; a lock whose pid is alive refuses to start.
+    """
+    lock = out_dir / ".runner.lock"
+    me = {"pid": os.getpid(), "host": platform.node(),
+          "argv": argv,
+          "started_utc": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())}
+    for attempt in (1, 2):
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        except FileExistsError:
+            try:
+                held = json.loads(lock.read_text())
+            except (OSError, json.JSONDecodeError):
+                held = {}
+            pid = held.get("pid")
+            alive = False
+            if isinstance(pid, int):
+                alive = Path(f"/proc/{pid}").exists()
+            if alive and attempt == 1:
+                raise RunnerBusy(
+                    f"another runner owns {out_dir}: pid {pid} on "
+                    f"{held.get('host')} since {held.get('started_utc')}, "
+                    f"argv {held.get('argv')}. Two runners on one output "
+                    "directory interleave records for the same (task, seed) "
+                    "and both write to one ledger. Wait for it, or use a "
+                    "different --role. If you are certain it is dead, remove "
+                    f"{lock}.")
+            # stale: the holder is gone. Break it, on the record.
+            register_attempt(event="lock_broken", role=None,
+                             stale_lock_holder=held, breaker=me,
+                             reason="lock file present but holder pid is not "
+                                    "alive; a crashed runner must not block "
+                                    "the queue")
+            lock.unlink(missing_ok=True)
+            continue
+        else:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(json.dumps(me, indent=2))
+                fh.flush()
+                os.fsync(fh.fileno())
+            return lock
+    raise RunnerBusy(f"could not acquire {lock} after breaking a stale lock")
+
+
 def agent_source_digest() -> dict:
     """Pin the exact agent code a run was produced by.
 
@@ -186,61 +280,74 @@ def main() -> int:
 
     out_dir = BENCH if args.role == "confirmatory" else RUNS / "dev"
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Refuse to share an output directory with another runner. See
+    # acquire_output_lock: this repository has a ledger recording two
+    # different pids claiming one confirmatory cell.
+    lock = acquire_output_lock(out_dir, sys.argv[1:])
     env = environment()
     print(f"role={args.role}  tasks={task_ids}  seeds={seeds}  "
-          f"registry_sha={registry_sha[:12]}", flush=True)
-    for seed in seeds:
-        for tid in task_ids:
-            out = out_dir / f"task_{tid}_seed{seed}.json"
-            if out.exists() and not args.force:
-                print(f"task {tid} seed {seed}: {out.name} exists, skipping",
-                      flush=True)
-                continue
-            print(f"=== task {tid} (seed {seed}) ===", flush=True)
-            t0 = time.time()
-            register_attempt(event="started", task_id=tid, seed=seed,
-                             role=args.role, pid=os.getpid(),
-                             registry_sha256=registry_sha,
-                             ads_sha256=env.get("ads_sha256"),
-                             max_folds=args.max_folds,
-                             off_registry=off_registry,
-                             out_file=out.name)
-            try:
-                rec = run_task(tid, random_state=seed, max_folds=args.max_folds)
-            except Exception as e:
-                print(f"task {tid} seed {seed} FAILED: {type(e).__name__}: {e}",
-                      flush=True)
-                write_json_atomic(
-                    out_dir / f"task_{tid}_seed{seed}.FAILED.json",
-                    {"task_id": tid, "seed": seed,
-                     "role": args.role,
-                     "error": f"{type(e).__name__}: {e}",
-                     "registry_sha256": registry_sha,
-                     "env": env})
-                register_attempt(event="failed", task_id=tid, seed=seed,
-                                 role=args.role,
-                                 error=f"{type(e).__name__}: {e}"[:300],
-                                 seconds=round(time.time() - t0, 1),
-                                 out_file=out.name)
-                continue
-            rec["env"] = env
-            rec["role"] = args.role
-            rec["registry_sha256"] = registry_sha
-            rec["off_registry"] = off_registry
-            rec["max_folds"] = args.max_folds
-            # A partial run is not a benchmark run; the report must see it.
-            rec["complete"] = args.max_folds is None
-            write_json_atomic(out, rec)
-            register_attempt(event="completed", task_id=tid, seed=seed,
-                             role=args.role,
-                             accuracy_pooled=rec["accuracy_pooled"],
-                             n_folds_run=rec["n_folds_run"],
-                             n_interventions=rec["n_interventions"],
-                             seconds=round(time.time() - t0, 1),
-                             out_file=out.name)
-            print(f"task {tid} seed {seed}: pooled acc "
-                  f"{rec['accuracy_pooled']:.4f} over {rec['n_folds_run']} "
-                  f"folds, {time.time()-t0:.0f}s -> {out.name}", flush=True)
+          f"registry_sha={registry_sha[:12]}  lock={lock.name}", flush=True)
+    try:
+      for seed in seeds:
+          for tid in task_ids:
+              out = out_dir / f"task_{tid}_seed{seed}.json"
+              if out.exists() and not args.force:
+                  print(f"task {tid} seed {seed}: {out.name} exists, skipping",
+                        flush=True)
+                  continue
+              print(f"=== task {tid} (seed {seed}) ===", flush=True)
+              t0 = time.time()
+              register_attempt(event="started", task_id=tid, seed=seed,
+                               role=args.role, pid=os.getpid(),
+                               registry_sha256=registry_sha,
+                               ads_sha256=env.get("ads_sha256"),
+                               max_folds=args.max_folds,
+                               off_registry=off_registry,
+                               out_file=out.name)
+              try:
+                  rec = run_task(tid, random_state=seed, max_folds=args.max_folds)
+              except Exception as e:
+                  print(f"task {tid} seed {seed} FAILED: {type(e).__name__}: {e}",
+                        flush=True)
+                  write_json_atomic(
+                      out_dir / f"task_{tid}_seed{seed}.FAILED.json",
+                      {"task_id": tid, "seed": seed,
+                       "role": args.role,
+                       "error": f"{type(e).__name__}: {e}",
+                       "registry_sha256": registry_sha,
+                       "env": env})
+                  register_attempt(event="failed", task_id=tid, seed=seed,
+                                   role=args.role,
+                                   error=f"{type(e).__name__}: {e}"[:300],
+                                   seconds=round(time.time() - t0, 1),
+                                   out_file=out.name)
+                  continue
+              rec["env"] = env
+              rec["role"] = args.role
+              rec["registry_sha256"] = registry_sha
+              rec["off_registry"] = off_registry
+              rec["max_folds"] = args.max_folds
+              # A partial run is not a benchmark run; the report must see it.
+              rec["complete"] = args.max_folds is None
+              write_json_atomic(out, rec)
+              register_attempt(event="completed", task_id=tid, seed=seed,
+                               role=args.role,
+                               accuracy_pooled=rec["accuracy_pooled"],
+                               n_folds_run=rec["n_folds_run"],
+                               n_interventions=rec["n_interventions"],
+                               seconds=round(time.time() - t0, 1),
+                               out_file=out.name)
+              print(f"task {tid} seed {seed}: pooled acc "
+                    f"{rec['accuracy_pooled']:.4f} over {rec['n_folds_run']} "
+                    f"folds, {time.time()-t0:.0f}s -> {out.name}", flush=True)
+    finally:
+        # Release only our own lock: if a stale-lock break handed ownership to
+        # someone else mid-run, unlinking theirs would be worse than leaking.
+        try:
+            if json.loads(lock.read_text()).get("pid") == os.getpid():
+                lock.unlink(missing_ok=True)
+        except (OSError, json.JSONDecodeError):
+            pass
     return 0
 
 

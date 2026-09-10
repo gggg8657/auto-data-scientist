@@ -1031,3 +1031,168 @@ task set gets iterated until the story is clean. Instead the report will carry
 two of the five discriminate (`kr-vs-kp`, `qsar-biodeg`) and which three do
 not, and can discount accordingly. Naming the weakness of a measurement I have
 already committed to is the honest move; re-rolling it is not.
+
+### The floor, measured over the pool — and my own headline does not survive it
+
+`scripts/falsifiability_floor.py` ran both frozen controls through the outer
+folds of **all 51 candidates**, 0 failed to load (`runs/falsifiability_floor.json`):
+
+| pool | `prior` clears | `stump` clears | clears **neither** |
+|---|---|---|---|
+| all 51 candidates | 15 | 25 | **25 / 51 (49%)** |
+| the registered five | 4 | 4 | **1 / 5** |
+
+**The descriptive finding is worse than last turn's and it is about the
+benchmark, not about me.** Under the majority-class floor, 36 of 51 candidates
+looked falsifiable. Under a *procedure* floor — the threshold must clear an
+untuned depth-3 tree as well — only **25 of 51** do. So on roughly **half** of
+OpenML-CC18's small-and-medium tasks, "within 5% of the median published run"
+is a bar that three splits of a decision tree clear. That is a property of
+`median-of-published-runs` as a target on this suite, and it would apply to
+anyone using the same construction.
+
+**And now the correction. My headline from last turn does not survive.** I
+wrote, and put in `RESULTS.md`, `README.md`, `WEEKEND.md` and `paper_draft.md`:
+*"So it is not luck. Ranking candidates by number of published evaluations
+selects, at better than the 5% level, for tasks whose ±5% band sits beneath
+triviality"*, on an exact hypergeometric p = 0.0222.
+
+Re-run against the floor that actually means something:
+
+| floor | base rate | registered | expected in a random 5 | exact p (lower tail) |
+|---|---|---|---|---|
+| majority-class rate | 36/51 | 1/5 | 3.53 | **0.0222** |
+| every frozen control | 25/51 | 1/5 | 2.45 | **0.18711** |
+
+**p = 0.187. Not significant.** The causal claim about my selection rule holds
+*only* under the criterion I have since shown to be circular, and it dies under
+the criterion I replaced it with. The honest scoping is narrower and still
+worth stating:
+
+- **Survives:** popularity on CC18 selects for tasks clearable by the *class
+  prior* (p = 0.0222). That is a real statement — popularity tracks the small
+  imbalanced classics — and it is exactly as strong as the majority-rate
+  criterion is meaningful, which is: enough to indict the class-prior route and
+  nothing more.
+- **Withdrawn:** popularity selects for tasks clearable by *any* trivial
+  procedure. p = 0.187 against a 49% base rate. My five being 1-of-5 is
+  unsurprising when half the pool is 1-of-5-ish; **I was reading a low count
+  against the wrong base rate.**
+- **Unaffected, and now the real headline:** 25 of 51 candidates, and 1 of my
+  5, have a threshold that clears every frozen control. The task set is weak;
+  what is *not* established is that my rule made it weaker than chance would
+  have.
+
+That is two consecutive turns in which the claim I withdrew was my own, and
+both times the mechanism was the same: **I strengthened the test and my own
+result failed it.** Last turn it was the gate (a 3-seed `PASS` withdrawn); this
+turn it is the selection-effect claim. The pattern I should have seen earlier is
+that a criterion which makes one of my controls fail *by construction* will
+also make my significance test look good by construction, because both are
+downstream of the same too-easy floor. A p-value computed against a base rate
+that a circular criterion produced is not evidence about anything.
+
+What would distinguish the withdrawn claim from its replacement, if anyone wants
+to settle it: the hypergeometric test at n=5 has very little power against a
+49% base rate — it cannot reject unless 0 or 1 of 5 lands, which is why 1/5
+gives 0.187. Testing the *rule* rather than the *draw* would do it: correlate
+popularity rank against `threshold - stump` over all 51 candidates, where n=51
+rather than 5. That is one line on data already in
+`runs/falsifiability_floor.json` and is the next thing to run, not a guess.
+
+---
+
+## 2026-09-10, turn 8 — the runner had no mutual exclusion, and I got the story wrong first
+
+### The hypothesis, written before the change
+
+`run_benchmark.py`'s only guard against re-running a cell was `out.exists()`,
+checked *before* a fold loop that takes minutes to hours. So two runners
+started against the same `--role` would both pass that check for the same
+`(task, seed)` and both proceed; `write_json_atomic` guarantees each record is
+whole and guarantees nothing about which process's record survives, while both
+append `started`/`completed` lines to one shared ledger. **Prediction:** a
+second runner launched against `runs/bench` right now would be accepted and
+would begin re-running cells.
+
+### Confirmed, in the crudest way
+
+I launched one (`--role dev --tasks 37 --seeds 0 --max-folds 1`). It started
+immediately, alongside the live confirmatory run, and printed
+`=== task 37 (seed 0) ===`. The prediction holds.
+
+That probe cost something and I am recording it rather than tidying it away: it
+left a bare `started` for `(37, 0)` in `runs/attempts.jsonl`, which is now an
+unresolved attempt forever, because the runner still cannot express an
+interruption. My own diagnostic created exactly the artefact I complained about
+last turn.
+
+### And then the interesting part, which is that my first story was wrong
+
+`runs/attempts.jsonl` had **two `started` lines for one confirmatory cell**:
+
+    18:16:08  started task 10101 seed 6  pid 936115
+    18:36:36  started task 10101 seed 6  pid 1493119
+
+I wrote that into the lock's docstring and its test as a *double-launch race* —
+two runners colliding. It is not. The lines are **twenty minutes apart**, my
+runner (936115) is gone with **no `EXIT=` line in its log**, and pid 1493119
+was launched with `ADS_N_JOBS=8` writing to `logs/bench_verdict_capped.log`.
+The other loop instance killed my run and relaunched it with a lower thread cap
+on a box at load ~360. That is a *reasonable* decision — I considered exactly
+it last turn and declined, on the grounds that the slowdown arrived between two
+consecutive folds of one configuration and so was external load rather than my
+thread count. Reasonable people can differ on that, and it had the better claim
+to act since it was the one measuring.
+
+Both the docstring and the test are corrected to the measured sequence. I want
+the correction on the record more than the original claim, because the wrong
+version was *more* alarming and would have read as better evidence for the
+change I wanted to make. A race is a bug in my code; a deliberate replacement
+is a coordination failure between two instances. I had the second and wrote up
+the first.
+
+### What the lock is actually for, after the correction
+
+Not to override the operator. The replacement was **silent**: nothing in the
+repository records that a runner was stopped and another started in its place,
+and I only found out because I went looking at pids. With a lock, the second
+runner must either wait or break it, and breaking it appends a `lock_broken`
+event naming both holders. **The lock does not prevent the decision; it
+prevents the decision from going unrecorded.** `O_EXCL` so the creation is
+itself the atomic operation — a check-then-write lock would reproduce the
+`out.exists()` race it replaces. A lock whose holder pid is dead is broken, on
+the record, because a crashed runner must not block the weekend.
+
+Six tests. The one that matters is
+`test_a_stale_lock_is_broken_but_only_on_the_record`.
+
+### Two flaws in `report.py` found on the way, recorded and NOT fixed
+
+The other instance is live in `report.py` (it wrote it 40 seconds before my
+commit), so editing it would clobber. Both are recorded here instead:
+
+**1. The ledger is shared across roles; reconciliation is not.**
+`reconcile_ledger` takes `started`/`completed` over **all** events but builds
+`on_disk` from `runs/bench` only. So a `dev`-role attempt appears as an
+unresolved attempt in the *confirmatory* clause-3 accounting. Measured: with
+the probe's `(37, 0)` dev attempt on the ledger, `reconciled` reads `False` and
+`attempts_started_but_unresolved` reads `[[37, 0], [10101, 6]]`. Direction:
+pessimistic, a false negative — but it is still a corrupted measurement, and
+**the successor run I queued last turn would have done this fifteen times over
+and sunk clause 3 for the KPI.** That is my own queued job silently poisoning
+the headline reading. Fix: filter the ledger by `role`, which is already
+recorded on every line.
+
+**2. A duplicated `started` is invisible, because a set cannot count.**
+`started` is a `set`, so once any process writes `completed` for `(10101, 6)`
+both `started` lines collapse to one and the evidence that two runners touched
+that cell leaves the reconciliation entirely. This is the *same* defect codex
+found in the seed accounting — "a set cannot see a duplicate" — reappearing one
+layer down in the ledger, in code written *after* that lesson. Fix: count
+occurrences, and report any cell with more than one `started` and fewer
+terminal records than starts.
+
+Both are the flattering-direction/pessimistic-direction pair of the same
+omission, and both live in the function whose docstring claims the ledger makes
+hiding a result cost "two coordinated edits instead of one".
