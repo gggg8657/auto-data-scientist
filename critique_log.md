@@ -257,3 +257,104 @@ than on 10101 (321 flows, 30% missing).
   already defaults to the canonical path; it needs to run across the five
   selected tasks once the registry regenerates.
 - No adversary has been run against this design yet. Still true, still a gap.
+
+### The adversary, asked the right question
+
+The addendum's rung 4 is to ask `codex` *"how would you make this pass?"*
+rather than *"what is wrong with this?"*. The pre-measurement form of that
+question is sharper still, and it is the one I asked: **"how would you fake
+this KPI under this exact design, without editing any number by hand and
+without failing any existing test?"** It returned eight ranked attacks. Its
+own framing of the result is worth quoting, because it is the correct
+diagnosis of what this repo's tests do and do not cover:
+
+> "I would attack the evidence-selection process, not the arithmetic. The
+> design verifies that retained artifacts agree with one another; it does not
+> establish that they represent an untouched, prospectively executed
+> experiment."
+
+> "The existing recomputation, partial-run, missing-task, and registry-binding
+> checks close real shortcuts. They do not yet establish evidence
+> completeness, genuine pre-registration chronology, or independent
+> enforcement of 'no intervention.'"
+
+Four were real and are closed this turn. One I had already found and fixed
+independently the same turn, which is the only one I would claim as a draw.
+
+**#3, duplicated seeds — real, and I had it first.** `ours` is a mean over run
+*files*; completeness was checked against the *set* of `random_state` values.
+A set cannot see a duplicate. `cp task_31_seed2.json task_31_seed2_rerun.json`
+reweights the mean toward the luckiest seed with no number edited and no test
+failing. Measured on a three-seed screen of (0.74, 0.75, 0.78): **0.7567 →
+0.7660**, which is larger than several gaps this benchmark will have to
+decide. Closed by making run files a bijection with the registered seeds.
+
+**#2, the escalation that was registered and never enforced — real, and the
+worst of the eight**, because it required no action at all to exploit: run the
+three screen seeds and report. `run_protocol.escalation_rule` had said "8 seeds
+and an exact test" since before any result existed, `report.py` checked only
+that the screen seeds were *present*, and "an exact test" named no test. Both
+are now specified and enforced; the definition is in `report.py` and the
+p-values are pinned in `tests/test_escalation_gate.py`. Note what this does to
+turn 1's prediction: if we clear the primary reading comfortably, escalation
+never triggers and the screen is enough. It bites exactly where it should —
+tasks whose verdict is inside our own noise.
+
+**#5, developing on the confirmatory tasks — real.** `git rev-parse HEAD` was
+recorded; the tree that actually ran was not. Adjust a threshold in `ads/`,
+re-run, report: every run genuine, zero logged interventions, HEAD unchanged.
+Closed with a digest over `ads/*.py` plus a dirty flag, and **it fired
+immediately** — `ads/agent.py` was already modified vs HEAD. The content turned
+out benign (the `N_JOBS` knob, covered by
+`test_n_jobs_does_not_change_predictions`), which is the point: the check
+cannot tell benign from not, so the tree has to be clean before the
+confirmatory run, and now it must be.
+
+**#4, deleting unfavourable attempts — real.** `mv` the bad files out of
+`runs/bench/` and every check passes on what remains; the regeneration test
+faithfully reproduces the curated collection. Closed with
+`runs/attempts.jsonl`, written *before* each attempt's outcome is known, and
+reconciled in `report.py`. Honest limit, in the docstring rather than here:
+it is append-only by convention, not by permission. It converts a one-command
+deletion into two coordinated edits and puts the reconciliation in
+`RESULTS.md` where a reader sees it.
+
+**#1, passing the weak reading while failing the strong ones — real as a
+criticism, and I am not changing the primary.** `median_run` was
+pre-registered, the brief named it, and swapping the primary now — even for
+something harder — is still rewriting the target after the fact. What was
+wrong is that `strict_pass` was computed and left unbinding. The
+strictest-baseline verdict is now derived and reported beside the primary one,
+so a PASS on the weak reading with a FAIL on the selected-solution readings is
+visible in the status block, not buried in a column.
+
+**And the one substantive correction to my own documentation.** codex:
+
+> "the producer's claim that both 'best' readings are necessarily stricter
+> than `median_run` overstates the mathematics."
+
+It is right, and this is a false claim I wrote. `median_flow_best ≥
+median_flow` is guaranteed on the same groups; `median_flow_best ≥ median_run`
+is **not** — a task with many weak flows can have a per-flow-best median below
+the median over all runs, because `median_run` is weighted by how often each
+flow was submitted. The `asymmetry_note` in `fetch_baselines.py` asserts the
+"best" readings "are strictly harder". That has to become a statement about
+which reading *is* strictest per task, which the registry already records
+empirically in `strictest_baseline`. Queued for the moment the fetch releases
+the file — editing it now would repeat exactly the mid-flight-edit race of
+finding 3.
+
+**#6 (identity encoded as a measured property), #7 (poisoning the evaluation
+cache before freezing it) and #8 (label leakage via a feature fingerprint)
+are real and are not closed.** #6 is partly answered now: the literal-id scan
+was replaced by an invariance test — renaming every column and reversing their
+order leaves the chosen family, the logged decisions and 100% of predictions
+unchanged — which closes the schema-fingerprint route but not a rule keyed on
+values, and I have said so where the test lives rather than implying more. #7
+is correct that a sha256 computed over rows I control proves consistency, not
+authentic acquisition; the cheap partial answer is a uniqueness check on
+`run_id` and a candidate-membership check, neither of which is built. #8 is
+architecturally open: `ads/evaluate.py` holds the full labelled frame in the
+same process that calls the agent, so isolation would mean a subprocess with
+only the permitted arrays mounted. All three are in `WEEKEND.md` as work, not
+as answered.
