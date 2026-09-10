@@ -899,3 +899,135 @@ recorded `killed` event with a reason, plus a reconciliation rule requiring
 every killed cell to have a later `completed` record and file — strictly more
 information on the record, and no ability to hide a result, since the same
 cell re-runs to the same number. Named in `WEEKEND.md` as work.
+
+---
+
+## 2026-09-10, turn 7 — a near-miss on my own process, and the ablation the falsifiability finding demands
+
+### First, a decision I nearly got wrong from one data point
+
+On picking the loop back up, the primary 8-seed run looked stalled: the log's
+last line showed `task 10101 fold 7 ... (495.64s)` for a fold that had taken
+14s during the screen, and `uptime` reported load **370 on 192 cores** with two
+other tracks running. I diagnosed thread thrashing — my process holds ~46 cores
+and 328 threads while asking for `n_jobs=-1` — projected ~12 hours to finish,
+and was about to kill the run and relaunch it with `ADS_N_JOBS` capped.
+
+Then I measured instead of projecting, from `seconds_total` in the run records:
+
+| task | s0 | s1 | s2 | s3 | s4 | s5 | s6 |
+|---|---|---|---|---|---|---|---|
+| 3 | 346 | 338 | 731 | 220 | 229 | 218 | – |
+| 3917 | 252 | 250 | 484 | 197 | 174 | 190 | – |
+| 31 | 295 | 290 | 270 | 193 | 184 | 182 | 174 |
+| 3913 | 134 | 108 | 148 | 124 | 117 | 128 | – |
+| 10101 | 120 | 134 | 137 | 148 | 145 | 141 | – |
+
+Per-seed wall totals: **1148, 1119, 1771, 882, 848, 860 s**. Seeds 3–5 ran
+*faster* than the screen's seeds 0–2, not slower. And the fold-time
+distribution for the task that looked stuck has median **12.9 s** with a single
+maximum of 495.6 s — one outlier fold, not a trend. Remaining work is ~26
+minutes, not 12 hours.
+
+So the intervention would have **destroyed eight completed folds to fix a
+problem that did not exist**, and the evidence for the problem was one slow
+line plus a load average. Two lessons, and the second is the one that
+generalises:
+
+1. A load average on a shared box says nothing about *my* job's throughput.
+   `seconds_total` per run record does, it was already on disk, and reading it
+   took thirty seconds.
+2. This is the **same error shape** as the two the adversaries found this
+   weekend, pointed at my own process instead of at a document: an anecdote
+   (one fold) standing in for a distribution (fifty folds), with the
+   interpretation running in whichever direction I had already started moving.
+   `runs/bench/*.json` carried the distribution the whole time.
+
+The cap itself would have been *safe* — `tests/test_agent.py::
+test_n_jobs_does_not_change_predictions` asserts `ADS_N_JOBS` is a pure
+orchestration knob, and its docstring names this exact use ("the core cap used
+to share this box with two other tracks would be a silent protocol change" if
+it were not). Safety was never the issue; necessity was, and I had not checked
+it.
+
+### The hypothesis for this turn, written before the run
+
+The falsifiability finding leaves one thing unanswered, and it is the thing the
+successor task set rests on. `runs/target_difficulty.json` selects the
+successor five by **threshold above the majority-class rate**. That makes
+`prior` fail by construction — its accuracy *is* the majority rate — so the
+criterion cannot be evidence about anything harder than a majority-class
+predictor. But on the registered five, the control that nearly passed
+everything was not `prior`: it was the untuned depth-3 `stump`, which cleared
+**4 of 5** on the primary reading and **4 of 5** on the strictest.
+
+**H1: a threshold above the majority-class rate is sufficient for the clause to
+be falsifiable** — i.e. on the successor five, *both* controls fail the primary
+reading.
+
+**Prediction, recorded before running.** `prior` fails 5/5, by construction and
+therefore uninformatively. `stump` is the test, and I predict it **clears 2 or
+3 of the 5** — the headrooms are `kr-vs-kp` +0.3897, `wdbc` +0.2541,
+`qsar-biodeg` +0.1371, `diabetes` +0.0639, `phoneme` +0.0053, and a depth-3
+tree is far stronger than the majority class, so the two thin-headroom tasks
+should fall to it. If that happens **H1 is false**: "above the majority rate"
+is necessary but nowhere near sufficient, my successor rule is inadequate as
+written, and the honest successor criterion is a **stump floor** rather than a
+majority floor — still blind to our accuracy, since a frozen depth-3 tree's
+score is a property of the dataset and not of our agent.
+
+If instead `stump` fails all five, H1 survives, the successor rule is sound as
+recorded, and the recommendation in `WEEKEND.md` stands unchanged.
+
+Either way this is decision-relevant rather than decorative: the successor five
+are already queued to run (`tmux ads-successor`), and if the criterion that
+chose them is inadequate then the labelled second measurement needs a
+different, and stated, selection rule before its numbers mean anything.
+
+### H1 is false, and the prediction was right
+
+`runs/negative_control_successor.json` — same frozen controls, same outer folds,
+same pooled statistic, baselines taken from the frozen registry so nothing was
+fetched after the fact:
+
+| control | registered five | successor five (majority-rate rule) |
+|---|---|---|
+| `prior` clears primary | **4/5** | **0/5** |
+| `stump` clears primary | **4/5** | **3/5** |
+| `stump` clears strictest | 4/5 | 2/5 |
+
+`prior` failing 0/5 on the successor set is **uninformative by construction** —
+the criterion that chose those tasks is "threshold above the majority-class
+rate", and `prior`'s accuracy *is* the majority-class rate. That was the point
+of asking. The informative row is `stump`, and it clears **3 of 5**
+(`wdbc` 0.9262 vs thr 0.8815, `diabetes` 0.7409 vs 0.7150, `phoneme` 0.7685 vs
+0.7118), which is what I predicted before running it (2 or 3 of 5, with the
+thin-headroom tasks falling first — `diabetes` +0.0639 and `phoneme` +0.0053
+did fall, and so did `wdbc` despite +0.2541, which I did not anticipate).
+
+**So H1 is false: a threshold above the majority-class rate is necessary and
+nowhere near sufficient.** The successor rule as I recorded it last turn is
+inadequate as a falsifiability criterion, and I am recording that rather than
+quietly leaving the rule in place — it was in `runs/target_difficulty.json`,
+`RESULTS.md`, `README.md`, `WEEKEND.md` and `paper_draft.md` §7 as *the*
+successor criterion after one turn of existing.
+
+What the successor rule **does** buy, and it is not nothing: it eliminates the
+majority-class route entirely (4/5 → 0/5). What it does not buy is elimination
+of the depth-3-tree route (4/5 → 3/5). The correct floor is a **procedure**
+floor, not a class-prior floor: select tasks whose threshold clears *every*
+frozen control. That remains blind to our accuracy for the same reason the
+controls are — a frozen procedure's score is a property of the dataset — and it
+costs one cheap run per candidate, which is why `scripts/falsifiability_floor.py`
+can measure it over all 51 candidates rather than 5.
+
+**What I am deliberately not doing:** re-choosing the queued successor run's
+task set. `tmux ads-successor` will measure the unmodified agent on the five
+already named, whose baselines were frozen before any run existed, and that
+measurement is informative regardless of how strong its selection criterion
+was. Swapping the set now — on the third criterion in two turns — is how a
+task set gets iterated until the story is clean. Instead the report will carry
+`stump`'s clearance **per task** beside those rows, so a reader can see which
+two of the five discriminate (`kr-vs-kp`, `qsar-biodeg`) and which three do
+not, and can discount accordingly. Naming the weakness of a measurement I have
+already committed to is the honest move; re-rolling it is not.

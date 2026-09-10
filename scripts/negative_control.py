@@ -140,12 +140,33 @@ def main() -> int:
     ap.add_argument("--baselines", default=str(RUNS / "baselines.json"))
     ap.add_argument("--out", default=str(RUNS / "negative_control.json"))
     ap.add_argument("--controls", nargs="*", default=list(CONTROLS))
+    ap.add_argument("--tasks", type=int, nargs="*", default=None,
+                    help="task ids to test instead of the registered five. "
+                         "Used to ask the falsifiability question of a "
+                         "*candidate* task set before trusting it: the "
+                         "successor set in runs/target_difficulty.json was "
+                         "chosen by 'threshold above the majority-class rate', "
+                         "which makes `prior` fail by construction and so "
+                         "cannot be evidence about anything stronger. Every "
+                         "task must still be in the frozen registry, so no "
+                         "baseline here is fetched after the fact.")
     args = ap.parse_args()
 
     base = json.loads(Path(args.baselines).read_text())
-    selected = [t for t in base["tasks"] if t["selected"]]
+    if args.tasks:
+        by_id = {t["task_id"]: t for t in base["tasks"]}
+        unknown = [t for t in args.tasks if t not in by_id]
+        if unknown:
+            raise SystemExit(
+                f"tasks {unknown} are not in the frozen registry; a control "
+                "may only be measured against a pre-registered baseline")
+        selected = [by_id[t] for t in args.tasks]
+    else:
+        selected = [t for t in base["tasks"] if t["selected"]]
     out = {"generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
            "metric": base["metric"],
+           "task_ids": [t["task_id"] for t in selected],
+           "is_the_registered_set": not bool(args.tasks),
            "why": "Is the KPI falsifiable? Frozen incapable procedures through "
                   "the same outer folds, the same pooled metric and the same "
                   "pre-registered baselines as the agent.",

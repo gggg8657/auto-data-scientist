@@ -846,6 +846,8 @@ def main() -> int:
             "### Was the weak task set bad luck, or did the rule cause it?",
             ""]
         td = read_json(REPO / "runs/target_difficulty.json")
+        _ff = read_json(REPO / "runs/falsifiability_floor.json")
+        _ncs = read_json(REPO / "runs/negative_control_successor.json")
         if td:
             doc += [
                 "Answerable with no runs at all, and blind to our accuracy by "
@@ -878,8 +880,13 @@ def main() -> int:
                 "construction, since that control's accuracy **is** the "
                 "majority rate. Measured on those five "
                 "(`runs/negative_control_successor.json`): `prior` clears "
-                "0 of 5, as guaranteed, and the untuned depth-3 tree still "
-                "clears **3 of 5**. So clearing the class-prior floor does "
+                + (f"{_ncs['controls']['prior']['n_clearing_primary']} of "
+                   f"{_ncs['controls']['prior']['n_tasks']}, as guaranteed, "
+                   "and the untuned depth-3 tree still clears **"
+                   f"{_ncs['controls']['stump']['n_clearing_primary']} of "
+                   f"{_ncs['controls']['stump']['n_tasks']}**"
+                   if _ncs else "[not measured]")
+                + ". So clearing the class-prior floor does "
                 "not make a threshold demanding; the floor that matters is a "
                 "*procedure* floor. The candidates are — "
                 + ", ".join(f"`{r['dataset_name']}` (rank "
@@ -1184,6 +1191,7 @@ def main() -> int:
     if dev_bench:
         all_tasks = {t["task_id"]: t for t in base["tasks"]}
         td = read_json(REPO / "runs/target_difficulty.json") or {}
+        nc_succ = read_json(REPO / "runs/negative_control_successor.json")
         successor = [r["task_id"]
                      for r in td.get("a_falsifiable_five_under_a_blind_rule", [])]
         drows = []
@@ -1201,6 +1209,15 @@ def main() -> int:
                                  base.get("run_protocol") or {})
             hr = next((r["headroom"] for r in td.get("tasks", [])
                        if r["task_id"] == tid), None)
+            # Which of these rows actually discriminate? The set was chosen by
+            # "threshold above the majority-class rate", which makes `prior`
+            # fail by construction and says nothing about anything stronger.
+            # Measured: the untuned depth-3 stump clears 3 of these 5. So the
+            # per-task stump verdict travels with the row rather than a reader
+            # having to trust the selection rule.
+            sc = next((r for r in (nc_succ or {}).get("controls", {})
+                       .get("stump", {}).get("tasks", [])
+                       if r["task_id"] == tid), None)
             drows.append([
                 tid, t["dataset_name"], t["rank_by_n_runs"], len(accs),
                 fmt(ours), fmt(t["median_run"]),
@@ -1211,7 +1228,11 @@ def main() -> int:
                 f"{e['exact_test']['k']}/{e['exact_test']['n']}",
                 f"{e['exact_test']['p']:.4f}",
                 "CALLED" if e["called"] else
-                ("screen only" if e["escalation_required"] else "not called")])
+                ("screen only" if e["escalation_required"] else "not called"),
+                fmt(sc["accuracy_pooled"]) if sc else NM,
+                ("stump CLEARS — row does not discriminate"
+                 if sc and sc["clears_primary"] else
+                 "stump fails — row discriminates" if sc else NM)])
         n_seeds_dev = max((len(v) for v in dev_bench.values()), default=0)
         doc += [
             "## A different measurement: the successor task set", "",
@@ -1233,7 +1254,8 @@ def main() -> int:
             table(drows, ["task", "dataset", "rank", "seeds", "ours (pooled)",
                           "median_run", "rel gap", "vs primary",
                           "vs strictest", "threshold headroom over majority",
-                          "k/n above", "p", "verdict"]), "",
+                          "k/n above", "p", "verdict", "stump",
+                          "does this row discriminate?"]), "",
             (f"**{n_seeds_dev} seeds: screen, not verdict.** The same gate "
              "applies — no task is called under the registered verdict seed "
              "count, so nothing here is a called result and none of it is a "

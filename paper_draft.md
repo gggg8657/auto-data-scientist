@@ -340,6 +340,40 @@ instead of it. Testing five tasks at α = 0.05 needs no multiplicity correction,
 because the claim requires all five to reject: that is an intersection-union
 test, and a false global pass needs at least one true task null rejected.
 
+### 6.1 Two noise sources, and we spent our effort on the smaller one
+
+The seed test constrains the agent's own randomness with the data held fixed.
+The other axis — which fold you happen to be scored on — is measurable from the
+same run records, since each one carries its ten outer-fold accuracies. Putting
+a one-sided 95% lower bound on the mean per-fold relative margin against the
+pre-registered −0.05 tolerance, non-inferiority holds on all five tasks, under
+a naive `s/√K` bound and under the Nadeau & Bengio (2003) variance inflation
+`(1/K + n_test/n_train)·s²` alike. That is a stronger result than the sign
+test in the sense that matters: it uses the magnitudes the sign test discards,
+and it lies on the axis generalisation actually depends on.
+
+Both bounds are reported because the honest one is not obvious. The folds have
+disjoint test sets and heavily overlapping training sets, so `s/√K` understates
+the variance — the flattering direction — while the correction is *derived* for
+repeated random subsampling and is applied here as a conservative adjustment.
+We do not pool the eighty fold-by-seed scores as eighty independent
+observations; that buys power by assuming away exactly the dependence at issue.
+
+The number that matters in this subsection is not the interval. It is the
+ratio: **the fold-to-fold standard deviation of the relative margin exceeds the
+seed-to-seed range by 1.6× to 4.4×.** We had rewritten the gate, logged three
+protocol amendments, added seven tests and spent two hours of compute
+escalating from three seeds to eight — all on the axis that is measurably the
+smaller of the two. The seed work was not wrong; the old gate really was biased
+at small *n* and the tie handling really did inflate Type I error to 17.4%. It
+was misallocated, and the check that would have said so cost nothing and used
+data already on disk.
+
+Stated as a prediction and then checked: if fold variance dominates, adding
+seeds 3–6 should move the per-task means by far less than the fold spread. It
+moved them by +0.13%, +0.18%, +0.11%, −0.05% and +0.15% relative, against fold
+standard deviations of 0.37%–4.09% — about an order of magnitude less.
+
 ## 6.5 The audit that none of the above performs: is the target demanding?
 
 Everything to this point asks whether *our* number is honest. It is the wrong
@@ -398,6 +432,28 @@ the problem*, so a target can be pre-registered, hash-pinned, externally
 re-fetched, amendment-logged, and vacuous. A negative control is the cheapest
 check in this repository — a quarter of an hour — and it moved the
 interpretation of the headline more than anything else built this weekend.
+
+### 6.6 The failure mode this paper kept committing
+
+§6.1 and §6.5 are the same mistake twice, and we would rather name it once than
+present two coincidences. In both cases we invested heavily in rigour **on the
+axis we were already looking at**, and the axis that dominated went unmeasured
+until an adversary or a cheap diagnostic pointed at it:
+
+- seed variance was constrained with a rewritten gate, an amendment ledger and
+  a compute escalation, while split variance — 1.6–4.4× larger — sat
+  uncomputed in run records already on disk;
+- the *provenance* of our claim was constrained by nine layers of checks, while
+  the *difficulty of the target* went unexamined until a dummy classifier
+  cleared four of five thresholds.
+
+The corrective is one line and it is not "be more careful": **measure the sizes
+of the things you are choosing between, before choosing which to constrain.**
+Both diagnostics were available at the start, both were cheap — one needed no
+runs at all and the other a quarter of an hour — and both would have reordered
+the work. Rigour is not free of opportunity cost, and effort spent proving a
+small term is indistinguishable, from the outside, from effort spent hiding a
+large one.
 
 ## 7. What would make this a stronger paper
 
