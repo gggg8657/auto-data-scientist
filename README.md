@@ -54,6 +54,31 @@ a mathematical one: only `median_flow_best ≥ median_flow` holds by constructio
 and task 10101 is a live counterexample to the rest, with `median_flow_best`
 0.7500 **below** `median_run` 0.7634.
 
+**How demanding is that target? Less than it looks, and this is measured.**
+On **four of the five registered tasks, `0.95 × median_run` sits at or below
+the dataset's own majority-class rate**, so a `DummyClassifier(strategy=
+"prior")` clears the primary clause there without using a single feature. Two
+frozen negative controls — that dummy and an untuned depth-3 decision tree —
+were run through the *same* outer folds and the same pooled statistic as the
+agent, and each clears the primary reading on 4 of 5 tasks
+(`runs/negative_control.json`).
+
+Nor was that bad luck. Of the 51 candidates passing the size filter, 36 have a
+threshold above their majority-class rate; the top-5-by-published-runs rule
+selected **1** of them, against 3.53 expected under random selection — exact
+hypergeometric **p = 0.0222** (`runs/target_difficulty.json`). Ranking by
+popularity is defensible for determining a median, and it also selects for the
+small famous imbalanced classics whose medians sit near triviality. **A
+selection rule has to be blind to your result *and* blind to the difficulty of
+the target; only the first was designed for.**
+
+What survives is the **joint** five-task criterion, which neither control
+clears because both collapse on the one balanced task. So a `PASS` on this KPI
+should be read as *"clears five tasks including one where triviality fails"* —
+not as *"beat a human five times"*. A successor task set chosen by a rule still
+blind to our accuracy is recorded, and **offered rather than substituted**: the
+registered five remain the measurement.
+
 `q75`, `q90` and `max_published` appear in the tables as **context, never as the
 target**: they say how far the published frontier is above the median, which is
 what a reader needs to judge how demanding the median is.
@@ -114,9 +139,15 @@ it**; `DecisionLog.record` raises on a decision carrying no evidence.
 ```
 ads/                package: profiling, decisions, the agent, evaluation
 scripts/
-  fetch_baselines.py   stage 1 — pre-register the five baselines (run first)
-  run_benchmark.py     stage 2 — run the agent on the five selected tasks
-  report.py            regenerate RESULTS.md and the table above from runs/*.json
+  fetch_baselines.py   stage 1  — pre-register the five baselines (run first)
+  verify_evals.py      stage 1b — re-fetch a digest-seeded sample of the
+                                  baseline evidence from OpenML and compare
+  target_difficulty.py stage 1c — how demanding is the target, across the pool?
+                                  (blind to our runs; needs no run of ours)
+  run_benchmark.py     stage 2  — run the agent on the five selected tasks
+  negative_control.py  stage 2b — frozen incapable procedures, same folds:
+                                  is the clause falsifiable at all?
+  report.py            regenerate RESULTS.md and the tables above from runs/*.json
 tests/
 runs/                  the JSON record; every number in every document comes from here
 ```
@@ -126,9 +157,19 @@ runs/                  the JSON record; every number in every document comes fro
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python scripts/fetch_baselines.py     # writes runs/baselines.json
+.venv/bin/python scripts/verify_evals.py        # writes runs/evals_provenance.json
+.venv/bin/python scripts/target_difficulty.py   # writes runs/target_difficulty.json
 .venv/bin/python scripts/run_benchmark.py       # writes runs/bench/task_*.json
+.venv/bin/python scripts/negative_control.py    # writes runs/negative_control.json
 .venv/bin/python scripts/report.py              # regenerates RESULTS.md
 ```
+
+`run_benchmark.py` with no flags runs the **pre-registered screen** (3 seeds,
+from `run_protocol.seeds_screen`). Escalating to the 8-seed verdict set is an
+explicit act — `--seeds 0 1 2 3 4 5 6 7` — and no task can be *called* on
+fewer, because the exact sign test's p-value floor of `1/2^n` cannot reach
+α = 0.05 at n < 5 and the full registered set is required to rule out optional
+stopping.
 
 No number in this repository is hand-typed. `scripts/report.py` is the only
 thing that writes a number into a document, and it reads only `runs/*.json`.
