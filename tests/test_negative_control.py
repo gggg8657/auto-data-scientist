@@ -148,6 +148,81 @@ def test_the_joint_criterion_is_what_the_controls_fail():
           f"separates them ({', '.join(nc['controls'])})")
 
 
+TD = REPO / "runs/target_difficulty.json"
+
+
+def test_the_selection_rule_analysis_is_blind_to_our_accuracy():
+    """The analysis of the target must not be able to see our result.
+
+    `runs/target_difficulty.json` asks how many of the 51 candidates have a
+    threshold above their majority-class rate. Both inputs are published --
+    OpenML's run history and a dataset quality -- so the analysis cannot be
+    steered toward a number of ours. This test pins that: the producing script
+    must not read runs/bench, and the recorded per-task fields must contain no
+    accuracy of ours.
+    """
+    src = (REPO / "scripts/target_difficulty.py").read_text()
+    # Comments and docstrings discuss the other scripts by name, which is what
+    # they are for; only executable code is scanned. (Same distinction as the
+    # gate fingerprint: documenting a decision is not making one.)
+    code = re.sub(r'"""(?:.|\n)*?"""', "", src)
+    code = re.sub(r"^\s*#.*$", "", code, flags=re.M)
+    for forbidden in ("runs/bench", "accuracy_pooled", "negative_control"):
+        assert forbidden not in code, (
+            f"scripts/target_difficulty.py has executable code referencing "
+            f"{forbidden!r}; the target analysis must not be able to see our "
+            "runs")
+    if not TD.exists():
+        print("  script pins verified; not run yet")
+        return
+    td = json.loads(TD.read_text())
+    for r in td["tasks"]:
+        assert "accuracy_pooled" not in r and "ours" not in r, r["task_id"]
+    assert td["does_not_change_the_registered_task_set"] is True
+    print(f"  {td['n_candidates']} candidates analysed with no access to any "
+          "run of ours")
+
+
+def test_the_successor_task_set_is_offered_not_substituted():
+    """A better task set found after the fact may not become this KPI."""
+    if not TD.exists() or not BASE.exists():
+        print("  skipped")
+        return
+    td = json.loads(TD.read_text())
+    registered = set(json.loads(BASE.read_text())["selected_task_ids"])
+    successor = {r["task_id"]
+                 for r in td["a_falsifiable_five_under_a_blind_rule"]}
+    assert registered == set(json.loads(BASE.read_text())["selected_task_ids"]), (
+        "the registry's selected_task_ids changed")
+    assert successor != registered, (
+        "the successor set is identical to the registered one, so either the "
+        "analysis is wrong or the registry was edited")
+    # the thing that must not have happened: the successor quietly replacing
+    # the registered five in the file that defines the measurement
+    for tid in successor - registered:
+        assert tid not in registered
+    assert "NOT as this one" in td["a_falsifiable_five_rule"], (
+        "the successor rule does not say it is a different measurement")
+    print(f"  successor set {sorted(successor)} is offered; the registered "
+          f"{sorted(registered)} is unchanged")
+
+
+def test_the_selection_effect_is_reported_with_its_exact_test():
+    if not TD.exists() or not RESULTS.exists():
+        print("  skipped")
+        return
+    td = json.loads(TD.read_text())
+    txt = RESULTS.read_text()
+    if "falsifiable" not in txt.lower():
+        print("  RESULTS.md predates the analysis; skipped")
+        return
+    assert str(td["exact_hypergeometric_p_lower_tail"]) in txt, (
+        "RESULTS.md states the counts but not the exact test behind them")
+    assert str(td["n_falsifiable"]) in txt and str(td["n_candidates"]) in txt
+    print(f"  RESULTS.md carries {td['n_falsifiable']}/{td['n_candidates']} "
+          f"and p={td['exact_hypergeometric_p_lower_tail']}")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

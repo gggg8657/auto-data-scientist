@@ -888,6 +888,46 @@ def main() -> int:
                 f"strictest on {c['n_clearing_strictest']}/{c['n_tasks']}, "
                 f"all five: {c['clears_all_five_primary']}."
                 for name, c in nc["controls"].items()), "",
+            "### Was the weak task set bad luck, or did the rule cause it?",
+            ""]
+        td = read_json(REPO / "runs/target_difficulty.json")
+        if td:
+            doc += [
+                "Answerable with no runs at all, and blind to our accuracy by "
+                "construction: both inputs are published data, the baseline "
+                "from OpenML's run history and the majority-class rate from a "
+                "dataset quality.", "",
+                f"Of the **{td['n_candidates']} candidates** that passed the "
+                "registered size filter, "
+                f"**{td['n_falsifiable']}** have a threshold *above* their "
+                "majority-class rate. Among the "
+                f"{td['n_selected']} the rule actually selected: "
+                f"**{td['n_falsifiable_among_selected']}**. A random five from "
+                "the same pool would be expected to contain "
+                f"**{td['expected_n_falsifiable_in_a_random_five']}**, and the "
+                "exact hypergeometric probability of drawing at most as few "
+                f"as were drawn is **p = "
+                f"{td['exact_hypergeometric_p_lower_tail']}**.", "",
+                "So it is not luck. Ranking candidates by number of published "
+                "evaluations — chosen because the median of a larger sample is "
+                "better determined, which is true and is still true — also "
+                "selects for the small, famous, imbalanced classics whose "
+                "medians sit near triviality. The registered rule was blind to "
+                "our accuracy and it was **not** blind to the difficulty of "
+                "the target, and only the first of those was designed for.", "",
+                "A successor rule that stays blind to our accuracy: the five "
+                "most-published candidates whose threshold exceeds their "
+                "majority-class rate — "
+                + ", ".join(f"`{r['dataset_name']}` (rank "
+                            f"{r['rank_by_n_runs']}, headroom "
+                            f"{r['headroom']:+.4f})"
+                            for r in td["a_falsifiable_five_under_a_blind_rule"])
+                + ". That is a **different measurement** and is offered as the "
+                "successor, never as this one. Swapping it in now would be "
+                "choosing a task set after seeing which one made the point.",
+                ""]
+
+        doc += [
             "**What this does to the claim.** The per-task clause is weak on "
             "the four imbalanced tasks and only `kr-vs-kp` discriminates on "
             "its own — a fact about the pre-registered target, not about the "

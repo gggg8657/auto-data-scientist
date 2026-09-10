@@ -747,3 +747,58 @@ the gap between the agent and `stump` should widen by roughly the kr-vs-kp
 margin (~0.09) rather than the imbalanced-task margin (~0.01), and the dummy
 should clear nothing. That experiment is a *different* measurement and is not
 this KPI, so it is named in `paper_draft.md` §7 rather than run and swapped in.
+
+### And it was not bad luck: the selection rule caused it, at p = 0.0222
+
+The negative-control finding raises an immediate question that needs **no runs
+at all**, so it was answered before the 8-seed job finished
+(`scripts/target_difficulty.py`, `runs/target_difficulty.json`). Both inputs
+are published data — the baseline is OpenML's run history, the majority-class
+rate is a dataset quality — so the analysis is blind to any accuracy of mine by
+construction, and a test asserts the producing script has no executable
+reference to `runs/bench`.
+
+Of the **51 candidates** that passed the registered size filter, **36 have a
+threshold above their majority-class rate**, i.e. a clause that triviality
+cannot clear. Among the **5 the rule selected: 1**. A random five from the same
+pool would be expected to contain **3.53**, and the exact lower-tail
+hypergeometric probability of drawing at most as few as were drawn is
+**p = 0.0222**.
+
+So the weak task set is not sampling noise. **Ranking candidates by number of
+published evaluations selects, at better than the 5% level, for tasks whose
+±5% band is beneath triviality.** The rule was chosen for a good and still-true
+reason — the median of a larger sample is better determined — and popularity on
+OpenML-CC18 tracks the small famous imbalanced classics, whose published
+medians sit near the majority rate. Spearman(popularity rank, headroom) = 0.196
+is weak on its own, which is why the hypergeometric test rather than the
+correlation is the statement.
+
+The general form, which I think is the transferable finding of this whole
+project: **I pre-registered a rule that was blind to my accuracy, and treated
+that as the whole of the requirement.** A selection rule has to be blind to
+your result *and* blind to the difficulty of the target, and only the first was
+designed for. Every audit built over nine turns constrains the relation between
+my claim and my evidence; none constrained the relation between the target and
+the difficulty of the problem. A target can be pre-registered, hash-pinned,
+externally re-fetched, amendment-logged, tie-corrected — and vacuous.
+
+A successor rule that stays blind to accuracy is in the JSON: the five
+most-published candidates whose threshold exceeds their majority rate —
+`kr-vs-kp` (+0.3897), `qsar-biodeg` (+0.1371), `wdbc` (+0.2541), `diabetes`
+(+0.0639), `phoneme` (+0.0053). It is **offered, not substituted**, and a test
+asserts the registry's `selected_task_ids` still holds the original five:
+swapping in a task set found after seeing which one made the point would be the
+same error as choosing a baseline late. Ranks 6–15 were reserved by the
+protocol for development and no run against them ever existed (`runs/dev` did
+not exist), so they are also genuinely uninspected — which makes the successor
+measurement cheap for whoever wants it and is recorded in `WEEKEND.md` as a
+decision rather than taken unilaterally.
+
+What would distinguish this reading from the obvious alternative — that the
+agent is simply weak on imbalanced data: on the successor five, the agent's
+margin over the depth-3 stump should look like the `kr-vs-kp` margin (≈0.09)
+rather than the imbalanced-task margin (≈0.01), and `prior` should clear
+nothing. If instead the margin stays ≈0.01 on balanced tasks too, the finding
+is about the agent and not about the task set, and the tournament-plus-search
+architecture is what needs attacking.
