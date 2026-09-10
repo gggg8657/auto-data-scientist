@@ -1377,3 +1377,42 @@ that the ones it did find were not the tip of something.
 Ten minutes, no new defects. The honest reading is that the three found this
 turn were found because I was *looking at* the ledger, not because the ledger
 is uniquely bad — and the sweep is what distinguishes those two explanations.
+
+### I was wrong about the thread cap, and the paired folds say so
+
+Last turn I declined to cap `ADS_N_JOBS`, reasoning that the slowdown "arrived
+between two consecutive folds of the same configuration, so it is external load
+and not my thread count, and cutting my own share would not recover a 35×
+factor on a saturated box." The first clause was right and the conclusion did
+not follow. The other loop instance capped it anyway, which gives a paired
+comparison on the *same task, seed and folds*:
+
+| fold | `ADS_N_JOBS=-1` (killed run) | `ADS_N_JOBS=8` (capped run) |
+|---|---|---|
+| 0 | 12.15s | 335.96s |
+| 1 | 12.05s | 74.51s |
+| 2 | 11.39s | 82.39s |
+| 3–6 | 12.96 / 12.94 / 13.01 / 14.33s | — |
+| 7 | **495.64s** | — |
+| 8 | **560.57s** | — |
+
+Folds 0–6 of the uncapped arm ran at box load ~125 and are not comparable.
+Folds 7–8 ran at load ~360, the same regime the capped arm has run in
+throughout. So the comparison that means anything is **495–560s uncapped
+against 74–82s capped**, roughly **6–7×**, with fold 0's 336s excluded as a
+warm-up (it includes dataset load and cache population — and its 4× gap to
+folds 1–2 *within* the same arm is the right caution about how noisy this is).
+
+This is a screen, not a verdict: two folds per arm, and load drifted
+unmeasured between them. But 6× is far outside the capped arm's own 74–82s
+spread, and the direction is unambiguous. **On a shared box at ~2× physical
+oversubscription, capping threads bought most of the throughput back**, and my
+"would not recover" was an assertion where a measurement was available — I had
+the uncapped numbers and could have run three capped folds to find out, for
+about four minutes of compute.
+
+The general form, which is the third time this weekend: I reasoned about the
+*mechanism* (external load, not my configuration) correctly and then drew a
+*quantitative* conclusion from it without measuring the quantity. Being right
+about which variable dominates does not tell you the size of the effect of the
+other one.
