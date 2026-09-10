@@ -2132,3 +2132,62 @@ hazard, not a validation, and it stays in `WEEKEND.md` as needing a human.
 - Nothing pushed. `RESULTS.md` in git still predates any accuracy, deliberately.
 - Box load 406–543 throughout, dominated by another track's jobs, which is why
   every timing this turn is labelled as uncontrolled.
+
+### The registered prediction holds on all five, and two tasks are sharper than the prediction
+
+`runs/auc_power.json`. One fit per task, fold 0, seed 0 — a **screen, not a
+verdict**, and the band is the widest each task offers, so every `phi_min` here
+is an upper bound on its pooled value. Both `phi` columns are the *same* fold,
+the *same* fit and the *same* 2σ convention, so they are like-for-like with each
+other; neither is comparable band-for-band with the pooled table in
+`runs/leakage_power.json`.
+
+| task | dataset | acc | p_maj | gap_acc | AUROC | gap_auc | Brier | φ_acc | φ_auc | powered by |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | kr-vs-kp | 0.9938 | 0.5219 | +0.4719 | 0.9999 | +0.4999 | 0.0043 | **0.118** | 0.129 | both |
+| 31 | credit-g | 0.8500 | 0.7000 | +0.1500 | 0.8269 | +0.3269 | 0.1485 | 0.611 | **0.387** | both |
+| 3917 | kc1 | 0.8673 | 0.8483 | +0.0190 | 0.8489 | +0.3489 | 0.0933 | 2.605 | **0.318** | rank only |
+| 10101 | blood-transfusion | 0.7600 | 0.7600 | **+0.0000** | 0.7812 | +0.2812 | 0.1587 | ∞ | **0.559** | rank only |
+| 3913 | kc2 | 0.7736 | 0.7925 | **−0.0189** | 0.8593 | +0.3593 | 0.1236 | ∞ | **0.549** | rank only |
+
+Powered at fold 0 under accuracy: **[3, 31]**. Under the rank reading: **all
+five**. Rescued: **[3913, 3917, 10101]**. `prediction_holds_on_all_five: true`.
+
+**The two rows that are stronger than what I predicted.** On
+blood-transfusion the agent's fold-0 accuracy equals the majority rate to four
+decimal places — `gap_acc = +0.0000` exactly — so the accuracy reading has
+*literally zero* dynamic range there and `phi_acc` is not large but undefined.
+The same fit has **AUROC 0.7812**. On kc2 the accuracy gap is **negative**
+(0.7736 against a majority rate of 0.7925: the agent scores *below* a
+majority-class predictor on that fold) while its AUROC is **0.8593**. In both
+cases the agent holds substantial rank information about the held-out fold that
+the hard-label metric reports as nothing or worse than nothing. That is the
+hypothesis in its purest available form, and I would not have predicted the
+exact-zero row.
+
+**Where it does not win, which matters more than where it does.** On kr-vs-kp
+`phi_auc` (0.129) is *worse* than `phi_acc` (0.118). AUROC saturates at 0.9999
+so its gap cannot exceed 0.5, while accuracy's gap runs to 0.4719 against a
+narrower binomial band. So **the rank reading is not uniformly better**, and
+anyone reading the three rescued rows should also read this one: the right
+answer is both readings side by side, not a replacement. Reported that way.
+
+**What this does and does not license.** It says the *instrument* can be made
+to have power on all five — which retires "two of the five are unprobeable at
+any fold count" as a statement about the task and re-labels it a statement
+about the choice of statistic. It does **not** license promoting the rank
+reading into clause 2 yet, and I am not doing so, for a reason that is easy to
+gloss over: **everything above is the intact arm only.** `phi_min` is computed
+from `AUROC_intact`, and a leakage *verdict* needs the permuted arm, which no
+run has yet produced on real data. Promotion would also be a genuine
+tightening — the probe would have to clear 5 tasks instead of 3 — so it is in
+the permitted direction and it should happen, once
+`scripts/leakage_probe.py` has run and the permuted AUROCs are on disk beside
+the permuted accuracies. Registering the intent here so that doing it later is
+not a choice made after seeing which reading flattered the result.
+
+**Also visible, and consistent with turn 7.** Fold 0's accuracies sit far from
+the pooled 8-seed values — credit-g 0.8500 vs 0.7582, kc2 0.7736 vs 0.8374 —
+which is the fold-to-fold spread turn 7 measured as exceeding the seed-to-seed
+range by 1.5x to 6.4x, showing up again. It is the reason this table is labelled
+a screen and the reason `min_folds_for_detection` exists at all.

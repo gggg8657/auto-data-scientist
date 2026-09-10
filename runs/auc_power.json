@@ -1,0 +1,229 @@
+{
+  "generated": "2026-09-10T23:13:05+0000",
+  "purpose": "test the turn-10 registered prediction that the rank reading has power where the accuracy reading has none",
+  "registered_prediction": "phi_min < 1 under the AUROC reading on all five tasks, and the two unprobeable tasks (3917, 10101) become probeable at 1-2 folds",
+  "scope": "fold 0 only, one seed, so the band is the widest the task offers and phi_min here is an upper bound on the pooled value. A screen, not a verdict.",
+  "enters_no_clause": true,
+  "n_fits": 5,
+  "random_state": 0,
+  "env": {
+    "ads_sha256": "14ac971659faff242877908195d42c5bc0530ed1b5a855daeef31cd3b298b2ac",
+    "ads_files": [
+      "__init__.py",
+      "agent.py",
+      "decisions.py",
+      "evaluate.py",
+      "openml_io.py",
+      "profile.py"
+    ],
+    "ads_dirty_vs_head": false,
+    "ads_dirty_detail": null,
+    "python": "3.11.15",
+    "platform": "Linux-6.8.0-58-generic-x86_64-with-glibc2.39",
+    "numpy": "2.3.5",
+    "pandas": "3.0.2",
+    "sklearn": "1.8.0",
+    "openml": "0.15.1",
+    "cpu_count": 192,
+    "git_commit": "d73f38aab5da8fc53bced5a803bf56a0a1552b98"
+  },
+  "tasks": {
+    "31": {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "fold": 0,
+      "repeat": 0,
+      "random_state": 0,
+      "n_test": 100,
+      "seconds": 56.8,
+      "family": "extra",
+      "probabilities_available": true,
+      "accuracy_reading_this_fold": {
+        "accuracy_intact": 0.85,
+        "majority_rate": 0.7,
+        "noise_band_2sigma": 0.09165151389911685,
+        "gap": 0.15000000000000002,
+        "min_resolvable_leak_fraction": 0.611010092660779,
+        "detects_complete_leakage": true
+      },
+      "accuracy_reading_pooled_8seed": {
+        "n_test_total": 1000,
+        "accuracy_intact": 0.75825,
+        "majority_rate": 0.7,
+        "gap": 0.058250000000000024,
+        "noise_band_2sigma": 0.028982753492378877,
+        "min_resolvable_leak_fraction": 0.49755799986916505,
+        "detects_complete_leakage": true
+      },
+      "rank_reading_this_fold": {
+        "auc_intact": 0.8269047619047618,
+        "brier_intact": 0.1484562222222222,
+        "noise_band_mannwhitney_2sigma": 0.12661653143150797,
+        "gap": 0.3269047619047618,
+        "min_resolvable_leak_fraction": 0.38731932411677616,
+        "detects_complete_leakage": true
+      }
+    },
+    "10101": {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "fold": 0,
+      "repeat": 0,
+      "random_state": 0,
+      "n_test": 75,
+      "seconds": 9.0,
+      "family": "logreg",
+      "probabilities_available": true,
+      "accuracy_reading_this_fold": {
+        "accuracy_intact": 0.76,
+        "majority_rate": 0.76,
+        "noise_band_2sigma": 0.09863062404750367,
+        "gap": 0.0,
+        "min_resolvable_leak_fraction": null,
+        "detects_complete_leakage": false
+      },
+      "accuracy_reading_pooled_8seed": {
+        "n_test_total": 748,
+        "accuracy_intact": 0.7697192513368984,
+        "majority_rate": 0.7620320855614974,
+        "gap": 0.0076871657754010725,
+        "noise_band_2sigma": 0.03114046030662543,
+        "min_resolvable_leak_fraction": 4.050967705974924,
+        "detects_complete_leakage": false
+      },
+      "rank_reading_this_fold": {
+        "auc_intact": 0.7811890838206628,
+        "brier_intact": 0.15869465293677676,
+        "noise_band_mannwhitney_2sigma": 0.1571348402636772,
+        "gap": 0.28118908382066277,
+        "min_resolvable_leak_fraction": 0.558822690157826,
+        "detects_complete_leakage": true
+      }
+    },
+    "3913": {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "fold": 0,
+      "repeat": 0,
+      "random_state": 0,
+      "n_test": 53,
+      "seconds": 50.1,
+      "family": "rf",
+      "probabilities_available": true,
+      "accuracy_reading_this_fold": {
+        "accuracy_intact": 0.7735849056603774,
+        "majority_rate": 0.7924528301886793,
+        "noise_band_2sigma": 0.11141333618714389,
+        "gap": -0.018867924528301883,
+        "min_resolvable_leak_fraction": null,
+        "detects_complete_leakage": false
+      },
+      "accuracy_reading_pooled_8seed": {
+        "n_test_total": 522,
+        "accuracy_intact": 0.837404214559387,
+        "majority_rate": 0.7950191570881227,
+        "gap": 0.04238505747126431,
+        "noise_band_2sigma": 0.03533785450915843,
+        "min_resolvable_leak_fraction": 0.8337337877415018,
+        "detects_complete_leakage": true
+      },
+      "rank_reading_this_fold": {
+        "auc_intact": 0.8593073593073594,
+        "brier_intact": 0.12364441951307688,
+        "noise_band_mannwhitney_2sigma": 0.19738550848793068,
+        "gap": 0.35930735930735935,
+        "min_resolvable_leak_fraction": 0.5493500296471323,
+        "detects_complete_leakage": true
+      }
+    },
+    "3": {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "fold": 0,
+      "repeat": 0,
+      "random_state": 0,
+      "n_test": 320,
+      "seconds": 81.7,
+      "family": "extra",
+      "probabilities_available": true,
+      "accuracy_reading_this_fold": {
+        "accuracy_intact": 0.99375,
+        "majority_rate": 0.521875,
+        "noise_band_2sigma": 0.05584817413924559,
+        "gap": 0.47187500000000004,
+        "min_resolvable_leak_fraction": 0.11835374652025554,
+        "detects_complete_leakage": true
+      },
+      "accuracy_reading_pooled_8seed": {
+        "n_test_total": 3196,
+        "accuracy_intact": 0.9962453066332918,
+        "majority_rate": 0.522215269086358,
+        "gap": 0.47403003754693385,
+        "noise_band_2sigma": 0.017671260398720152,
+        "min_resolvable_leak_fraction": 0.03727877771241557,
+        "detects_complete_leakage": true
+      },
+      "rank_reading_this_fold": {
+        "auc_intact": 0.9998825877656451,
+        "brier_intact": 0.004304166666666666,
+        "noise_band_mannwhitney_2sigma": 0.06471246421920518,
+        "gap": 0.4998825877656451,
+        "min_resolvable_leak_fraction": 0.12945532771696314,
+        "detects_complete_leakage": true
+      }
+    },
+    "3917": {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "fold": 0,
+      "repeat": 0,
+      "random_state": 0,
+      "n_test": 211,
+      "seconds": 49.9,
+      "family": "extra",
+      "probabilities_available": true,
+      "accuracy_reading_this_fold": {
+        "accuracy_intact": 0.8672985781990521,
+        "majority_rate": 0.8483412322274881,
+        "noise_band_2sigma": 0.04938645091745775,
+        "gap": 0.018957345971563955,
+        "min_resolvable_leak_fraction": 2.6051352858958996,
+        "detects_complete_leakage": false
+      },
+      "accuracy_reading_pooled_8seed": {
+        "n_test_total": 2109,
+        "accuracy_intact": 0.8595813858971754,
+        "majority_rate": 0.8454243717401612,
+        "gap": 0.014157014157014203,
+        "noise_band_2sigma": 0.015743438706947777,
+        "min_resolvable_leak_fraction": 1.112059261390762,
+        "detects_complete_leakage": false
+      },
+      "rank_reading_this_fold": {
+        "auc_intact": 0.8489001396648045,
+        "brier_intact": 0.09333109335724278,
+        "noise_band_mannwhitney_2sigma": 0.11107230855671979,
+        "gap": 0.3489001396648045,
+        "min_resolvable_leak_fraction": 0.3183498540970182,
+        "detects_complete_leakage": true
+      }
+    }
+  },
+  "tasks_powered_under_rank_reading_fold0": [
+    3,
+    31,
+    3913,
+    3917,
+    10101
+  ],
+  "tasks_powered_under_accuracy_reading_fold0": [
+    3,
+    31
+  ],
+  "prediction_holds_on_all_five": true,
+  "tasks_rescued_by_the_rank_reading": [
+    3913,
+    3917,
+    10101
+  ]
+}
