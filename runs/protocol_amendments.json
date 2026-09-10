@@ -1,7 +1,7 @@
 {
   "what_this_file_is": "Append-only record of every change to the measurement protocol made AFTER runs/baselines.json was frozen. The registry itself is sha256-pinned into every run record, so it cannot be edited without orphaning the runs measured against it; amendments therefore live here instead. Each entry states what the registered rule was, what it is now, which direction the change moves the difficulty, and whether results had already been seen when it was made. tests/test_protocol_amendments.py asserts that no amendment is recorded as making a clause easier.",
   "why_it_exists": "codex, 2026-09-10, asked how to make the KPI's clause 2 pass legitimately, answered first with a chronology objection: 'The code says the particular test was chosen after seeing the screen, and the registry still contains the old conditional escalation rule. If no earlier timestamped record specifies this test, call this a protocol amendment.' That is correct. The exact sign test was named in this repository on 2026-09-10 in response to an adversary, not on 2026-09-09 when the protocol was registered, and the 3-seed screen had already been read when the gate was rewritten. Calling that 'pre-registered' would be false. It is an amendment, and the defence is not that it was planned but that it is strictly stricter.",
-  "gate_code_sha256": "6cf3408119c9338d97e230963237543ca9e22851e01dfd350d1b57249a79b0ef",
+  "gate_code_sha256": "cbdb1ee27b5aa0be486430e02cabf049fc7f99053ec416fc1f4bdaa133f66d78",
   "gate_code_covers": "scripts/report.py functions exact_sign_test_above, escalation_state, verdict, load_bench, reconcile_ledger, tolerance_readings, joint_seed_event, clean_seed_subset, with comments and docstrings stripped so documenting a decision does not read as changing it",
   "amendments": [
     {
@@ -86,6 +86,20 @@
       "why": "agy #4: the fingerprint covered the three functions that compute the test but not the ones that choose its inputs, so load_bench could skip .FAILED.json files and reconcile_ledger could return a hard-coded reconciled:True with the fingerprint still matching. agy #5: 'direction: stricter' is a JSON string and no test can verify mathematical strictness -- so the concrete knobs a loosening would have to turn are pinned individually instead. Both flattering.",
       "credit": "agy, 2026-09-10.",
       "still_owed": "a test cannot prove strictness in general; the pins make a loosening a visible diff in a test file rather than a one-character edit in a script."
+    },
+    {
+      "id": 6,
+      "date": "2026-09-10",
+      "clause": "3_end_to_end_no_intervention",
+      "registered_rule": "load_bench put every non-.FAILED run file into the per-task sample regardless of `complete`, so a record written with --max-folds would be averaged in as though it were the full-fold measurement, and run_benchmark would then skip the real run because the file existed",
+      "amended_rule": "records with complete=False or a non-null max_folds are separated from the sample, listed in the report, and sink clause 3; load_bench returns them as a third value so no caller can ignore them",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "seeds 0-5 of the 8-seed run, all five tasks clearing their thresholds on every complete seed. No partial record existed in runs/bench at the time, so this changes no reading of the registered five.",
+      "effect_on_the_claim_as_it_stood": "none on this data; it changes the reading only where a partial record exists, which previously passed silently.",
+      "why": "A concurrent instance of this same loop ran `run_benchmark.py --role dev --tasks 37 --seeds 0 --max-folds 1` into runs/dev while a successor measurement was queued to write there. A one-fold accuracy is not a noisy ten-fold accuracy; it is a different statistic whose bias depends on which fold ran. Third appearance of this bug class this weekend after etch-operator-twin's partial checkpoints and this repository's own joint-event table counting a not-yet-run task as a failure. The recurring shape is absence or partiality being coerced into a value instead of routing to 'no result'.",
+      "credit": "found via a concurrent loop instance's debug run; the defect was mine and predated it.",
+      "still_owed": "nothing for this route. A `successor` role writing to runs/successor was added as the cheaper second line of defence, so a labelled measurement never shares a directory with development runs."
     }
   ]
 }
