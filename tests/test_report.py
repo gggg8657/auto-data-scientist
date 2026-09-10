@@ -81,6 +81,23 @@ VERDICT_SEEDS = tuple(range(8))
 # attempt was started and abandoned" is a claim with no record behind it.
 LEDGER_OK = {"ledger_present": True, "reconciled": True}
 
+# Amendment 7: clause 2 now also requires a fresh, powered, clean leakage
+# probe. The fixtures below supply one, so tests about the *other* gates keep
+# testing those gates; the leakage gate itself is exercised directly in
+# `test_the_leakage_gate_*` below.
+AGENT_SHA = "same"   # matches the digest _run() stamps
+POWER_OK = {"min_folds_for_detection": {"100": 1, "101": 1},
+            "tasks_unpowered_pooled": [102, 103, 104]}
+LEAK_OK = {"verdict": "NO_LEAKAGE_DETECTED",
+           "task_ids": [100, 101],
+           "tasks_cleared": [100, 101],
+           "env": {"ads_sha256": AGENT_SHA}}
+
+
+def _verdict(*a, leakage=LEAK_OK, power=POWER_OK, **kw):
+    """`R.verdict` with a clean leakage probe injected by default."""
+    return R.verdict(*a, leakage=leakage, power=power, **kw)
+
 
 def _bench(n_tasks=5, acc=0.80, seeds=VERDICT_SEEDS):
     """One run per registered *verdict* seed.
@@ -113,10 +130,10 @@ def test_verdict_is_derived_and_a_single_failing_task_sinks_clause_2():
     base = _base()
     bench = _bench(5)
     rows = _rows(base)
-    v = R.verdict(rows, base, bench, None, LEDGER_OK)
+    v = _verdict(rows, base, bench, None, LEDGER_OK)
     assert v["status"] == "PASS", v
     rows[3]["primary_pass"] = False
-    v = R.verdict(rows, base, bench, None, LEDGER_OK)
+    v = _verdict(rows, base, bench, None, LEDGER_OK)
     assert v["clauses"]["2_within_5pct_of_human_baseline"] is False
     assert v["status"] == "NOT MET as measured", v["status"]
     print("  one failing task flips clause 2 and the status")
@@ -127,7 +144,7 @@ def test_a_single_intervention_sinks_clause_3():
     bench = _bench(5)
     bench[102][0]["n_interventions"] = 1
     rows = _rows(base)
-    v = R.verdict(rows, base, bench, None, LEDGER_OK)
+    v = _verdict(rows, base, bench, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["n_interventions_total"] == 1
     print("  one logged intervention flips clause 3")
@@ -139,7 +156,7 @@ def test_partial_and_off_registry_runs_cannot_pass():
     for key, val in (("complete", False), ("off_registry", True)):
         bench = _bench(5)
         bench[101][0][key] = val
-        v = R.verdict(rows, base, bench, None, LEDGER_OK)
+        v = _verdict(rows, base, bench, None, LEDGER_OK)
         assert v["clauses"]["3_end_to_end_no_intervention"] is False, key
     print("  a truncated run and an off-registry run both sink clause 3")
 
@@ -150,7 +167,7 @@ def test_four_measured_tasks_is_not_a_pass():
     rows = [{"task_id": t, "ours": 0.80 if t < 104 else None,
              "primary_pass": True if t < 104 else None}
             for t in base["selected_task_ids"]]
-    v = R.verdict(rows, base, bench, None, LEDGER_OK)
+    v = _verdict(rows, base, bench, None, LEDGER_OK)
     assert v["clauses"]["2_within_5pct_of_human_baseline"] is False
     assert v["n_tasks_measured"] == 4 and v["n_tasks_registered"] == 5
     print("  4 of 5 measured is not clause 2")
@@ -195,13 +212,13 @@ def test_the_provenance_gate_fails_closed_on_missing_evidence():
     ledger = LEDGER_OK
 
     # baseline: with a reconciled ledger and complete records, clause 3 holds
-    v = R.verdict(rows, base, _bench(5), None, ledger)
+    v = _verdict(rows, base, _bench(5), None, ledger)
     assert v["clauses"]["3_end_to_end_no_intervention"] is True, v
 
     # 1. a run with no n_interventions field cannot testify that it is zero
     bench = _bench(5)
     del bench[102][0]["n_interventions"]
-    v = R.verdict(rows, base, bench, None, ledger)
+    v = _verdict(rows, base, bench, None, ledger)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["runs_missing_a_required_field"], v
     assert v["n_interventions_total"] == 0, (
@@ -212,7 +229,7 @@ def test_the_provenance_gate_fails_closed_on_missing_evidence():
     #    'all runs came from one agent' comparison
     bench = _bench(5)
     bench[103][1]["env"] = {"ads_dirty_vs_head": False}
-    v = R.verdict(rows, base, bench, None, ledger)
+    v = _verdict(rows, base, bench, None, ledger)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["runs_missing_an_agent_digest"], v
     assert v["distinct_agent_source_digests_across_runs"] == 2, (
@@ -221,7 +238,7 @@ def test_the_provenance_gate_fails_closed_on_missing_evidence():
 
     # 3. no ledger at all means 'no failed attempts' is unfalsifiable
     for absent in (None, {"ledger_present": False}):
-        v = R.verdict(rows, base, _bench(5), None, absent)
+        v = _verdict(rows, base, _bench(5), None, absent)
         assert v["clauses"]["3_end_to_end_no_intervention"] is False, absent
         assert v["ledger_present_and_reconciled"] is False
 
@@ -354,7 +371,7 @@ def test_a_partial_record_is_excluded_from_the_average_and_sinks_clause_3():
         assert len(full2[104]) == len(VERDICT_SEEDS) - 1, (
             "the partial replaced the real seed-0 record in the sample")
 
-        v = R.verdict(_rows(base), base, full2, failed2, LEDGER_OK, partial2)
+        v = _verdict(_rows(base), base, full2, failed2, LEDGER_OK, partial2)
         assert v["clauses"]["3_end_to_end_no_intervention"] is False
         assert v["n_partial_records_excluded_from_the_average"] == 1
         assert "max_folds=1" in v["partial_records"][0]

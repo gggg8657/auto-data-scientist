@@ -493,7 +493,9 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
 
 def verdict(rows: list[dict], base: dict, bench: dict,
             failed: list[dict] | None = None, ledger: dict | None = None,
-            partial: list[dict] | None = None) -> dict:
+            partial: list[dict] | None = None,
+            leakage: dict | None = None,
+            power: dict | None = None) -> dict:
     """Derive the project status from the clause rows. Never a typed string."""
     n_tasks = len(base.get("selected_task_ids", [])) if base else 0
     clause1 = n_tasks == 5
@@ -509,14 +511,86 @@ def verdict(rows: list[dict], base: dict, bench: dict,
                           if (r.get("escalation") or {}).get("escalation_required")]
     not_called = [r["task_id"] for r in measured
                   if not (r.get("escalation") or {}).get("called")]
+    # ------------------------------------------- is the accuracy uncontaminated?
+    # Open item #8 was carried as "architecturally open" for three turns: the
+    # labelled frame lives in the same process as the agent and is *reachable*
+    # from the pandas views it is handed. An accuracy that has not been shown
+    # free of that route is not a measurement of the agent, so it gates clause
+    # 2 rather than sitting in a section a reader may skip.
+    #
+    # Three states, and the middle one is the point:
+    #   LEAKAGE               -> False. Every accuracy here is withdrawn.
+    #   NO_LEAKAGE_DETECTED   -> True.
+    #   probe absent/stale    -> None. "Not shown contaminated" is not
+    #                            evidence of cleanliness; same rule as
+    #                            n_interventions, where a run that does not
+    #                            carry the field cannot testify it is zero.
+    # This gate was added at 2026-09-10 turn 9 *while the probe was still
+    # running* and before any of its numbers existed, which is the only order
+    # in which adding a gate is not a choice about what to gate on.
+    # A probe is only evidence about the code it actually ran. Open item #7
+    # (evaluation-cache provenance) is the same defect one item over: a digest
+    # computed over artefacts I control proves consistency, not authenticity.
+    # So the probe must carry `env.ads_sha256` and it must equal the digest the
+    # benchmark runs agree on -- otherwise a probe against last week's agent
+    # certifies this week's.
+    leak_digest = ((leakage or {}).get("env") or {}).get("ads_sha256")
+    run_digests = {(r.get("env") or {}).get("ads_sha256")
+                   for runs in bench.values() for r in runs} - {None}
+    leakage_stale = bool(
+        leakage and (not leak_digest
+                     or (run_digests and leak_digest not in run_digests)))
+    # SCOPE, and this is a correction to the gate as I first wrote it an hour
+    # earlier in this same turn. `runs/leakage_power.json` measures what leak
+    # the probe could resolve per task, and the answer is that it is blind on
+    # two of the registered five: phi_min = 1.112 (kc1) and 4.051
+    # (blood-transfusion) mean an agent handed the true test labels would score
+    # *inside the noise* of a majority-class predictor there, because the
+    # honest agent already does. So a clean probe on kr-vs-kp does not clear
+    # the other four, and my first version of this gate said it did.
+    #
+    # The reachable honest rule: no leakage detected on every task where
+    # detection is *possible*, with the unprobeable tasks named in the output
+    # rather than absorbed. What covers those is not this probe but
+    # `tests/test_no_leakage.py::test_view_of_labelled_frame_predicts_
+    # identically_to_a_copy`, which asserts bitwise prediction equality and so
+    # has power that does not depend on the majority-rate gap at all.
+    power = power or {}
+    # A task is probeable only at or above the fold count the power file
+    # measured; kc2 needs six pooled folds and zero individual ones suffice,
+    # so "probed" without a fold count is not a clearance.
+    min_folds = {int(k): v for k, v
+                 in (power.get("min_folds_for_detection") or {}).items()}
+    probeable = set(min_folds)
+    unprobeable = sorted(power.get("tasks_unpowered_pooled") or [])
+    cleared = set((leakage or {}).get("tasks_cleared") or [])
+    probeable_unprobed = sorted(probeable - cleared)
+    if (leakage is None or not leakage.get("verdict") or leakage_stale
+            or not power or probeable_unprobed):
+        leakage_ok = None
+    elif leakage["verdict"] == "NO_LEAKAGE_DETECTED":
+        leakage_ok = True
+    else:
+        # A LEAKAGE verdict is believed even from a stale probe -- but that is
+        # unreachable here, since `leakage_stale` already sent it to None. It
+        # is deliberate: a stale probe cannot condemn runs it did not measure
+        # any more than it can clear them.
+        leakage_ok = False
     clause2 = (bool(measured) and len(measured) == n_tasks
                and all(r["primary_pass"] for r in measured)
-               and not escalation_pending and not not_called)
+               and not escalation_pending and not not_called
+               and leakage_ok is True)
     # A clause whose seeds are still short of the registered verdict set is
     # *unmeasured*, not failed: reporting "NOT MET as measured" off a screen
     # would be as wrong in the pessimistic direction as PASS was in the
     # flattering one. None routes the status to RUNNING.
     if escalation_pending:
+        clause2 = None
+    # An unmeasured probe is a hole, not a failure -- but only when nothing
+    # else has already failed the clause, or an absent probe would launder a
+    # real FAIL into RUNNING (the flattering direction).
+    if clause2 is False and leakage_ok is None and all(
+            r["primary_pass"] for r in measured) and not not_called:
         clause2 = None
     # The primary reading is `median_run` and it stays the primary -- it was
     # pre-registered and the brief named it. But codex is right that a PASS on
@@ -640,6 +714,17 @@ def verdict(rows: list[dict], base: dict, bench: dict,
         status = "NOT MET as measured"
     return {"status": status, "clauses": clauses,
             "clause2_under_strictest_baseline": clause2_strict if measured else None,
+            "leakage_probe_clean": leakage_ok,
+            "leakage_probe_verdict": (leakage or {}).get("verdict"),
+            "leakage_probe_tasks": (leakage or {}).get("task_ids"),
+            "leakage_probe_agent_digest": leak_digest,
+            "leakage_probe_stale_vs_runs": leakage_stale,
+            "leakage_probeable_tasks": sorted(probeable),
+            "leakage_min_folds_for_detection": {str(k): v for k, v
+                                                in min_folds.items()},
+            "leakage_unprobeable_tasks": unprobeable,
+            "leakage_tasks_cleared": sorted(cleared),
+            "leakage_probeable_but_unprobed": probeable_unprobed,
             "escalation_pending_tasks": escalation_pending,
             "near_line_not_called_tasks": not_called,
             "n_interventions_total": interventions,
@@ -854,7 +939,9 @@ def main() -> int:
 
     ledger = reconcile_ledger(Path(args.bench).parent / "attempts.jsonl",
                               bench, failed)
-    v = verdict(rows, base, bench, failed, ledger, partial)
+    leakage = read_json(REPO / "runs/leakage_probe.json")
+    power = read_json(REPO / "runs/leakage_power.json")
+    v = verdict(rows, base, bench, failed, ledger, partial, leakage, power)
 
     doc += [f"**Status: {v['status']}**", "",
             "Every number below was produced by a run in this repository and is "

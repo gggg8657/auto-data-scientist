@@ -237,12 +237,68 @@ def test_strict_verdict_is_computed_beside_the_primary_one():
                   "n_interventions": 0, "registry_sha256": "same",
                   "_file": f"task_{t}_seed{s}.json"} for s in range(8)]
              for t in range(5)}
-    v = verdict(rows, base, bench)
+    # Amendment 7 added a leakage gate to clause 2. The subject of this test is
+    # the strictest-baseline reading, so a clean probe is injected rather than
+    # letting an absent one route the clause to None and hide what is asserted.
+    leak = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [0, 1],
+            "env": {"ads_sha256": "same"}}
+    power = {"min_folds_for_detection": {"0": 1, "1": 1},
+             "tasks_unpowered_pooled": [2, 3, 4]}
+    v = verdict(rows, base, bench, leakage=leak, power=power)
     assert v["clauses"]["2_within_5pct_of_human_baseline"] is True
     assert v["clause2_under_strictest_baseline"] is False, (
         "the strictest-baseline verdict must be reported, not just recorded")
     print("  primary clause 2 True while the strictest reading is False, "
           "both surfaced, both at 8 seeds")
+
+
+def test_the_leakage_gate_has_three_states_and_cannot_launder_a_fail():
+    """Amendment 7. Absent/stale/underpowered -> None, not True and not a
+    laundered False."""
+    accs = [0.90] * 8
+    def mkrows(primary_pass=True):
+        return [{"task_id": t, "ours": 0.90, "primary_pass": primary_pass,
+                 "strict_pass": True,
+                 "escalation": escalation_state(accs, 0.80, PROTOCOL),
+                 "escalation_strict": escalation_state(accs, 0.80, PROTOCOL)}
+                for t in range(5)]
+    base = {"selected_task_ids": list(range(5)), "run_protocol": PROTOCOL}
+    bench = {t: [{"task_id": t, "random_state": s, "accuracy_pooled": 0.9,
+                  "complete": True, "off_registry": False,
+                  "n_interventions": 0, "registry_sha256": "same",
+                  "env": {"ads_sha256": "same"},
+                  "_file": f"task_{t}_seed{s}.json"} for s in range(8)]
+             for t in range(5)}
+    power = {"min_folds_for_detection": {"0": 1, "1": 1},
+             "tasks_unpowered_pooled": [2, 3, 4]}
+    C = "2_within_5pct_of_human_baseline"
+
+    def c2(leakage, power=power, rows=None):
+        return verdict(rows or mkrows(), base, bench,
+                       leakage=leakage, power=power)["clauses"][C]
+
+    clean = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [0, 1],
+             "env": {"ads_sha256": "same"}}
+    assert c2(clean) is True, "a fresh, powered, clean probe must clear it"
+    assert c2(None) is None, "an absent probe is a hole, not a pass"
+    assert c2({**clean, "env": {}}) is None, (
+        "a probe with no agent digest cannot testify about these runs")
+    assert c2({**clean, "env": {"ads_sha256": "other"}}) is None, (
+        "a probe produced by a different ads/ than the runs is stale")
+    assert c2(clean, power={}) is None, (
+        "without the power file there is no way to know what the probe could "
+        "have detected")
+    assert c2({**clean, "tasks_cleared": [0]}) is None, (
+        "task 1 is probeable and was not cleared; a partial probe is not a "
+        "pass")
+    assert c2({**clean, "verdict": "LEAKAGE"}) is False, (
+        "a leak must sink the clause outright")
+    # And the direction that matters: an absent probe must not turn a genuine
+    # FAIL into RUNNING, which would be the flattering reading.
+    assert c2(None, rows=mkrows(primary_pass=False)) is False, (
+        "an absent probe laundered a failing accuracy into RUNNING")
+    print("  leakage gate: clean=True, absent/stale/undigested/unpowered/"
+          "partial=None, LEAKAGE=False, and it cannot launder a FAIL")
 
 
 if __name__ == "__main__":

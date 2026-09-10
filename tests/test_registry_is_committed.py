@@ -23,6 +23,7 @@ This catches the narrower case that one gets past: an uncommitted registry,
 where there is no committed version to compare against in the first place.
 """
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -125,6 +126,42 @@ def test_the_run_records_and_the_attempt_ledger_are_tracked_too():
         f"removing one leaves no diff: {untracked[:6]}")
     print(f"  {len(list(BENCH.glob('task_*.json')))} run records and the "
           "attempt ledger are all tracked")
+
+
+def test_every_test_file_is_actually_executable_by_ci():
+    """CI runs each test file as `python <file>`, so a file with no
+    `__main__` block reports green having run **zero** assertions.
+
+    Found on 2026-09-10 turn 9 while adding `tests/test_no_leakage.py`, which
+    is written for pytest and had no `__main__` block: it would have gone into
+    CI as a silent pass. This is the third appearance of the same shape in this
+    repository -- CI running 5 of 9 test files, `report.py` reading a stage no
+    CI step regenerated, and now a file CI executes but does not run -- so it
+    gets a test rather than a habit.
+
+    Also asserts the workflow's floor is not below the number of files present,
+    since a floor that trails the directory stops being a floor.
+    """
+    files = sorted((REPO / "tests").glob("test_*.py"))
+    assert files, "no test files discovered"
+    missing = [f.name for f in files if '__main__' not in f.read_text()]
+    assert not missing, (
+        f"{len(missing)} test file(s) have no `if __name__ == \"__main__\":` "
+        f"block, so `python <file>` runs nothing and CI passes on them: "
+        f"{missing}")
+
+    wf = sorted((REPO / ".github/workflows").glob("*.yml"))
+    assert wf, "no CI workflow found"
+    text = "\n".join(w.read_text() for w in wf)
+    m = re.search(r'-lt (\d+) \]; then', text)
+    assert m, ("the workflow no longer carries a numeric floor on the count of "
+               "discovered test files")
+    floor = int(m.group(1))
+    assert floor >= len(files), (
+        f"the CI floor is {floor} but {len(files)} test files exist, so "
+        f"{len(files) - floor} could be deleted without CI noticing")
+    print(f"  {len(files)} test files, every one has a __main__ block, "
+          f"CI floor {floor}")
 
 
 if __name__ == "__main__":

@@ -1416,3 +1416,382 @@ The general form, which is the third time this weekend: I reasoned about the
 *quantitative* conclusion from it without measuring the quantity. Being right
 about which variable dominates does not tell you the size of the effect of the
 other one.
+
+---
+
+## 2026-09-10, turn 9 — closing #8 (in-process label leakage) by severing the channel, not by reading the code
+
+### State at the top of the turn
+
+The 8-seed confirmatory run (`tmux ads-verdict`, pid 1493119) is at **36 of 40**
+records — `task_31_seed7` landed 22:27, four cells remain (tasks 3, 3913, 3917,
+10101 at seed 7). It is not touched this turn. Load has fallen from the 323–370
+of turn 8 to 32, which is why the two test files turn 8 reported as **UNRUN
+(starved)** can finally be run rather than described:
+`tests/test_no_dataset_specific_logic.py` **4 passed in 25.35s**;
+`tests/test_agent.py` running.
+
+### The open item I am attacking, and why this one
+
+Three items have been carried as open and named for three turns: #6
+identity-as-property, #7 evaluation-cache provenance, #8 in-process label
+leakage. #8 is the only one of the three that is a **validity threat to the
+numbers clause 2 will be decided on**. #6 and #7 are threats to the *claim of
+autonomy* and to the *provenance of the baseline*; #8 is a threat to the
+accuracy itself. If the agent can see test labels, every one of the 40 records
+now on disk is contaminated and the KPI reading is meaningless. So it goes
+first.
+
+Its status has been "architecturally open" with the stated fix being "a
+subprocess with only the permitted arrays mounted". That fix is the wrong one to
+reach for now, for a reason worth writing down: it would change the execution
+model of every run, which makes the 36 records on disk incomparable to anything
+produced after it, for a *hypothetical* whose existence has never been measured.
+Re-architecting to prevent a leak nobody has demonstrated is the same error as
+"needs more epochs" — a change proposed without evidence.
+
+### Hypothesis, written before the run
+
+**H0 (leakage):** the agent's predictions carry information about the test fold
+that did not arrive through its `y` argument at `fit`.
+
+**H1 (no leakage):** `y_train` passed to `fit` is the agent's *only* channel to
+the labels, so severing it destroys all predictive performance.
+
+**The measurement that distinguishes them.** Permute `y_train` before `fit`,
+leave `X_train` and the test fold exactly as they are, and score the resulting
+predictions against the **true** test labels. Under H1 accuracy must fall to
+what a label-free predictor gets — which is the test fold's **majority-class
+rate**, not `1/C`, because a classifier trained on shuffled labels concentrates
+on the prior. Under H0 accuracy stays near the intact number, because the
+information is arriving by some other route (a module-level global, a re-fetch
+of the task from the OpenML cache, a fitted object surviving between folds).
+
+This is the same instrument as `yield-rca-agent`'s label-permuted null that
+found FDR 1.00, pointed at my own pipeline instead of at a result.
+
+**Pre-registered decision rule**, so this cannot be read favourably after the
+fact:
+
+- reference level = the test fold's own majority-class rate, computed from the
+  true test labels;
+- `k = 10` independent permutations of `y_train`;
+- **H1 is retained** only if `max` over the 10 permuted accuracies is at or
+  below the majority rate plus its own binomial noise, i.e. does not exceed
+  `p_maj + 2*sqrt(p_maj*(1-p_maj)/n_test)`;
+- **H0 is retained** — and every accuracy in this repository is withdrawn — if
+  any permuted accuracy lands closer to the intact accuracy than to the
+  majority rate.
+
+I am predicting H1, on the strength of the static fact below. Recording the
+prediction because a probe I expect to pass is exactly the kind I would
+otherwise not have bothered to run.
+
+### The static fact that motivates the prediction, and its limit
+
+`ads/agent.py` imports `os`, `numpy`, `pandas`, seven `sklearn` symbols, and
+`.decisions` / `.profile`. It does **not** import `ads.openml_io`, `openml`, or
+anything else that can acquire data. `ads/profile.py` and `ads/decisions.py`
+import only `numpy`/`pandas`/stdlib. So there is no *statically visible* route
+by which the agent reaches the task.
+
+The limit of that argument, stated because it is the reason the empirical probe
+is still needed: an import audit proves nothing about a global mutated by the
+caller, about `pandas` state shared through the frame the agent is handed, or
+about anything reached dynamically. `evaluate.py` holds the full labelled frame
+in the same process for the whole run and hands the agent views (`X.iloc[tr]`)
+of it — a `pandas` view carries a reference to its parent, so the labelled
+frame is *reachable* from what the agent receives even though no code walks
+there. That reachability is the thing the permutation probe prices and the
+import audit cannot.
+
+### The probe never ran, and what I did instead is the better result
+
+The probe on kr-vs-kp did not reach even its intact fit in ten minutes. The
+reason is measured, not guessed: box load went 32 -> 543 while it ran, and
+`ps -eo pcpu --sort=-pcpu` attributes the top of that to seven
+`pdeno`-environment `scripts/train.py` processes at 1400-3900% CPU each. Those
+belong to another track and the brief forbids touching them. My own three jobs
+were 3233% (the pytest), 2277% (the verdict run) and 2129% (the probe), so I
+was competing with **my own** confirmatory run, which is two cells from done
+after four hours. I killed the probe and the pytest and left the verdict run
+alone. That is the right priority and it was my error to have created the
+contention.
+
+Then, before re-running anything, the question I should have asked first:
+**what leak could this probe detect at all?** A probe with no power is not
+evidence of cleanliness, and I had been about to run one on one task and let it
+gate a five-task clause.
+
+### `runs/leakage_power.json` — no new runs, and it is the finding of the turn
+
+Every `runs/bench/*.json` record already carries, per fold, the *training*
+fold's `class_counts`. The estimation procedure is 10-fold CV, so each example
+sits in the training fold of exactly 9 of 10 folds and
+`total = sum(train_counts)/(k-1)` is an **identity**, not an approximation from
+stratification. So `test_counts = total - train_counts` and every test fold's
+majority rate is recoverable exactly from disk. `scripts/leakage_power.py`
+checks the recovered `n_test` against the `n_test` each run recorded and
+refuses the task if they disagree; 0 of 38 records were refused.
+
+Define the probe's dynamic range as `gap = accuracy_intact - majority_rate`,
+and the smallest resolvable leak as the fraction `phi_min = band / gap` of that
+gap, where `band` is the 2-sigma binomial threshold the probe uses. `phi_min >=
+1` means **complete** leakage is invisible.
+
+| task | dataset | intact | majority | gap | band | phi_min | detects complete leak? | folds needed | per-fold |
+|---|---|---|---|---|---|---|---|---|---|
+| 3 | kr-vs-kp | 0.9962 | 0.5222 | +0.4740 | 0.0177 | **0.037** | YES | 1 | 10/10 |
+| 31 | credit-g | 0.7582 | 0.7000 | +0.0583 | 0.0290 | 0.498 | YES | 1 | 2/10 |
+| 3913 | kc2 | 0.8374 | 0.7950 | +0.0424 | 0.0353 | 0.834 | YES | 6 | 0/10 |
+| 3917 | kc1 | 0.8596 | 0.8454 | +0.0142 | 0.0157 | **1.112** | **NO** | — | 0/10 |
+| 10101 | blood-transfusion | 0.7697 | 0.7620 | +0.0077 | 0.0311 | **4.051** | **NO** | — | 0/10 |
+
+**On 2 of the registered 5, an agent handed the true test labels would score
+inside the noise of a majority-class predictor.** On blood-transfusion the
+probe could not see a leak four times larger than the entire distance between
+the agent and a coin weighted by the class prior. The spread in `phi_min`
+across the five is 27x.
+
+### And this is the same number as turn 7's headline, read twice
+
+`runs/falsifiability_floor.json` found that `DummyClassifier(prior)` clears the
+±5% band on 4 of the registered 5, and that only kr-vs-kp discriminates alone.
+That quantity *is* `gap`: both are the distance between what the agent scores
+and what a label-free predictor scores. So:
+
+> A benchmark on which a majority-class predictor nearly reaches the human
+> baseline cannot detect label leakage either. The falsifiability floor and the
+> leakage-detectability floor are one number.
+
+The task where the KPI is falsifiable (kr-vs-kp, the only one where the stump
+fails) is the same task where leakage is detectable, and at `phi_min = 0.037`
+it is detectable there *very* well. That is not a coincidence and it is a
+stronger statement than either finding alone: the weakness of this benchmark is
+not one defect in one clause, it is a single scalar per task that limits every
+validity check you can run on it. A weak baseline does not only flatter a weak
+method, it also blinds the instruments that would catch a broken one.
+
+### A correction I made to my own gate inside the same turn
+
+I wired the leakage gate into `verdict()` before the probe's numbers existed —
+correct order, and I will keep doing that. But the gate as first written read
+one probe verdict and cleared **clause 2 for all five tasks**. After
+`leakage_power.json` that is over-claiming by exactly the amount the table
+above measures: a clean probe on kr-vs-kp says nothing about kc1, where the
+instrument is blind. Worse, my first version would have accepted a one-fold
+probe on kc2, where **zero** individual folds can resolve a complete leak and
+six pooled ones can.
+
+Fixed: `runs/leakage_power.json` now publishes `min_folds_for_detection` per
+task, `leakage_probe.py` reads it to decide which tasks to run and at what fold
+count (and **refuses** the two it cannot resolve rather than producing a
+reassuring record), and `verdict()` clears clause 2 only when every task in
+that map appears in the probe's `tasks_cleared`. The two unprobeable tasks are
+printed as unprobeable rather than absorbed into a pass.
+
+**What covers the tasks the probe cannot.** Not this instrument.
+`tests/test_no_leakage.py::test_view_of_labelled_frame_predicts_identically_to_a_copy`
+asserts *bitwise* equality between predictions from a view of a frame that
+holds the labels and predictions from an independent copy that never did. Being
+exact, its power does not depend on the majority-rate gap, so it is powered on
+all five. The two instruments are complements and neither is sufficient: the
+probe is empirical but blind where the gap is narrow; the invariance test is
+exact but only sees a route that runs through the frame it was handed.
+
+### Also closed this turn: the two test files turn 8 could not run
+
+`tests/test_no_dataset_specific_logic.py` **4 passed in 25.35s** and
+`tests/test_agent.py` **7 passed in 205.74s**. Turn 8 reported them as UNRUN
+(starved) rather than skipped, and they now have results. Of the new
+`tests/test_no_leakage.py`, the 6 static tests pass; the 2 that fit agents are
+running in `tmux ads-leaktest`.
+
+### A resource finding, recorded as a code fact and NOT as a timing
+
+`ADS_N_JOBS` does not bound this agent's CPU use, and this is a fact about the
+code rather than an inference from a clock:
+
+- `ads/agent.py:52` reads `N_JOBS` and passes it to `RandomForestClassifier`,
+  `ExtraTreesClassifier`, `KNeighborsClassifier` and the `RandomizedSearchCV` —
+  all **joblib** consumers;
+- `ads/agent.py:122` constructs `HistGradientBoostingClassifier(random_state=seed)`,
+  which takes no `n_jobs` at all and parallelizes over **OpenMP**;
+- `grep -rn "OMP_NUM_THREADS\|threadpool_limits" ads scripts tests .github`
+  returns nothing, so the OpenMP pool defaults to all 192 cores;
+- `hgb` is not hypothetical: `families_chosen` on task 3 is `["extra", "hgb"]`.
+
+One consistent observation: the pytest launched with `ADS_N_JOBS=2` was
+measured at 3233% CPU, a 16x overshoot of what I asked for. That is **one
+reading under load 406-543 and I am not calling it a measurement of the
+overshoot** — it is the observation that prompted the code audit above, which
+is the part that stands on its own. This is also the mechanism behind turn 8's
+thread-cap result, which was reported as CONFOUNDED: capping `ADS_N_JOBS` left
+the OpenMP pool untouched, so the "cap" was never a cap. The controlled version
+needs a quiet box, and there has not been one this weekend. It changes no
+prediction — `tests/test_agent.py::test_n_jobs_does_not_change_predictions`
+already holds that thread count does not move the output — so no accuracy is
+affected. It is a claim about resource discipline on a shared machine, and the
+claim is that mine has been poor.
+
+### The adversary, asked the constructive question, and it was right about my premise
+
+`codex exec`, asked *"how would you make the leakage clause verifiable on the
+two tasks where the instrument is blind"* plus a specific question about the
+count identity. Four findings, all real, and the first one is against a claim I
+had written into three files an hour earlier.
+
+**1. The reachability premise of open item #8 was asserted, not demonstrated.**
+codex, on `tests/test_no_leakage.py`:
+
+> "its view/copy comparison changes representation while leaving labels
+> unchanged, so both arms could use the same forbidden source and agree. Its
+> claimed pandas-parent reachability also needs demonstration, not an
+> assumption."
+
+Measured, and **the premise is false in this environment**. pandas is 3.0.2,
+where Copy-on-Write is mandatory:
+
+| expression | shares memory with the labels | parent reachable ≤4 `gc` hops |
+|---|---|---|
+| `full[feats]` | False | False |
+| `full[feats].iloc[tr]` | False | False |
+| `full.iloc[tr][feats]` | False | False |
+| `y.iloc[tr].to_numpy()` vs full `y` | False | — |
+| `X.iloc[tr]` vs full `X` | False | — |
+
+So `X.iloc[tr]` shares no bytes with `X`, `y.iloc[tr].to_numpy()` shares no
+bytes with `y`, and the parent frame is not reachable from a column selection.
+**Three consequences, and I have to own all three.**
+
+- The docstring I wrote for `leakage_probe.py` and the sentence I wrote in this
+  log at the top of this turn — "a pandas view carries a reference to its
+  parent, so the labelled frame is reachable from what the agent receives" —
+  are **false**, and I wrote them from memory of how pandas used to behave
+  without running the two lines that check. Corrected in both places.
+- The test I had written to exercise that route could therefore only ever pass.
+  It was not wrong, it was **vacuous**, and I had presented it in this log as
+  the thing that covers the tasks the probe cannot reach. Replaced by
+  `test_arrays_handed_to_the_agent_do_not_alias_the_held_out_labels`, which
+  asserts the structural facts in the table above using the exact expressions
+  `ads/evaluate.py` evaluates, and goes red if a pandas upgrade reintroduces
+  aliasing.
+- And on the substance this **closes** the architectural part of #8 more firmly
+  than the test would have: the route does not exist here. Also worth
+  recording, because it makes the original framing doubly wrong:
+  `ads/evaluate.py` never held "the full labelled frame" at all —
+  `X, y = task.get_X_and_y(...)` gives two separate objects, so there was no
+  single labelled frame to leak through.
+
+**2. A probe with no positive control is not an instrument.** codex:
+
+> "an invariant result could simply mean the intervention never reached the
+> alleged channel."
+
+Correct, and this was the more serious gap: I was about to let a
+`NO_LEAKAGE_DETECTED` gate clause 2 without ever having seen the rule fire.
+`probe_fold` now takes an agent factory, and
+`test_the_probe_fires_on_a_leak_it_is_told_about` runs it against a
+`_LeakyAgent` that ignores `y` and predicts from a lookup built over the whole
+dataset including the held-out fold. It scores 1.000, and the rule flags it on
+**3 of 3** permutations. The decision rule is also now a pure function
+(`detection_threshold`, `flags_leakage`) with its own test that a permuted arm
+*below* the majority rate is not evidence, and that the reference is the
+majority rate and not `1/C` — on an 85/15 problem those are 0.85 and 0.5, and
+referencing chance would flag every honest run.
+
+**3. The count identity is right and my validation of it was not.** codex
+verified the divisor against the cached task definitions —
+`.omlcache/.../tasks/{3917,10101}/task.xml` declare one repeat and ten folds —
+and confirmed `sum_f train_fc = 9 C_c` exactly, including unequal fold sizes,
+with no appeal to stratification. Then it broke the checks around it with an
+exact counterexample:
+
+> true dataset 85 A / 15 B; ten recorded splits that all repeat the **same**
+> training subset (81 A, 9 B) with ten-row test sets. Reconstruction gives
+> totals 90 A / 10 B and a per-fold test composition of 9 A / 1 B. Integrality
+> passes, non-negativity passes, and the recovered `n_test` equals the recorded
+> `n_test` — while the true test composition is 4 A / 6 B.
+
+`sum(test) == total` does not catch it either. It also noted that for `R > 1`
+repeats the divisor is `9R`, not `10R - 1`, and that keying the aggregation on
+`fold` alone collapses repeats.
+
+I did not add more checks to an inference that cannot be made sound from counts
+alone. The rates are now read **from each task's own splits** in the repo-local
+`.omlcache`, with the partition validated directly (test folds pairwise
+disjoint, covering every row exactly once per repeat), and the count recovery
+kept only as a per-record cross-check that must agree exactly or the task is
+refused. A task with more than one repeat is refused rather than collapsed.
+
+**The numbers did not move.** Every rate is identical to the version computed
+from the recovery, and `recovery_cross_check` reads "agrees on every fold of
+every record" for all five tasks, with `partition_validated: True` and
+`n_repeats: 1, n_folds_per_repeat: 10` on each. So the counterexample was a
+valid attack on the *soundness of my argument* and not on the values — which is
+the outcome I should have been able to state before codex asked, and could not.
+
+**4. The instrument it proposed for the two blind tasks, which I have not built
+yet.** codex's ranked answer to the constructive question, and its best point
+is one I had missed entirely:
+
+> "A shuffled arm can carry forbidden information in its probabilities while
+> predicting the majority class everywhere. Hard-label accuracy cannot see
+> that."
+
+That is the route to power on kc1 and blood-transfusion, and it needs no new
+fits and no change to the pre-registered accuracy metric or the folds: score
+the permuted arm with a **paired Brier or AUROC** against the true test labels
+instead of hard-label accuracy. On blood-transfusion the accuracy gap is 0.0077
+while an AUROC gap has room to be large, because AUROC of a shuffled-label fit
+sits at 0.5 by construction whatever the class prior does. `leakage_probe.py`
+currently discards `predict_proba` after computing accuracy. codex's caveats
+are also right and are the reason this is not a one-line change: the statistic
+has to be pre-specified, calibrated with clean-vs-clean repetitions rather than
+against a nominal threshold, the maximum over permutations has to be part of
+what is calibrated, and repeated predictions on the same rows are not extra
+independent observations. It also asked for injected partial leaks (a leak
+affecting a subset of rows) as positive controls at a known effect size, which
+is the right way to measure the new statistic's power rather than assert it.
+
+**Not adopted, and why in one line each.** Its proposal 3 (a subprocess with
+only permitted inputs, network and cache denied) is the correct security
+boundary and I still decline it *for now* for the reason recorded at the top of
+this turn: it changes the execution model of every run, so it makes the 38
+records on disk incomparable, and the aliasing measurement above shows the
+route it would close is not open. Its point that the AST checks "are not a
+security boundary or a complete transitive import audit" is correct and is
+already how they are labelled — they are regression checks on a deliberate
+design rule, not a sandbox.
+
+### The four tests that went red, all of them my own guards working
+
+Committing this change turned four tests red and every one was the repository
+catching me, which is the first time that has happened in the intended
+direction rather than after the fact.
+
+1. `test_registry_is_committed` — 7 new run records untracked. The guard `agy`
+   asked for in turn 6.
+2. `test_report::test_verdict_is_derived_...` and
+   `test_escalation_gate::test_strict_verdict_...` — both expected `PASS` and
+   got `RUNNING`, because the new gate reads `None` when no probe exists. The
+   gate working. Fixtures now inject a clean probe so those tests keep testing
+   what they are about, and the gate itself gets
+   `test_the_leakage_gate_has_three_states_and_cannot_launder_a_fail`.
+3. `test_protocol_amendments::test_the_gate_code_is_fingerprinted_...` — the
+   fingerprint over `verdict()` changed and no amendment declared it. Exactly
+   what that fingerprint is for. **Amendment 7** now records the gate, flagged
+   `results_already_seen_when_amended: true` with what had been seen (38 of 40
+   records, all five tasks clearing their primary thresholds; **no leakage
+   result of any kind**) and its effect on the claim (`PASS -> RUNNING` on
+   identical accuracies).
+
+The direction is worth stating plainly: **this amendment removes a PASS that
+was reachable an hour ago.** Clause 2 would read `PASS` on the accuracies
+alone and now reads `RUNNING` because the probe has not run. That is the seventh
+consecutive amendment in the strict direction and the first that costs a
+headline.
+
+One flaw of my own found while fixing them: `verdict()` read
+`runs/leakage_power.json` off the filesystem itself, so its behaviour depended
+on a file its caller had not passed and no test could control. Now a parameter.

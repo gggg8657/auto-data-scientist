@@ -1,0 +1,724 @@
+{
+  "generated": "2026-09-10T22:57:52+0000",
+  "purpose": "power of the label-permutation leakage probe, per task, computed from records already on disk",
+  "derivation": "majority rates read from each task's own splits in the repo-local .omlcache, with the partition validated (test folds pairwise disjoint and covering every row exactly once per repeat). The count-based recovery total=sum(train)/(k-1) is retained only as a cross-check on each record and must agree exactly; see the module docstring for codex's counterexample against relying on it.",
+  "noise_sigmas": 2.0,
+  "no_new_runs": true,
+  "tasks": {
+    "31": {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "status": "measured",
+      "n_records": 8,
+      "records_refused": [],
+      "split_shape": {
+        "n_repeats": 1,
+        "n_folds_per_repeat": 10,
+        "n_rows": 1000,
+        "partition_validated": true
+      },
+      "rates_source": "the task's own splits (.omlcache), partition validated",
+      "recovery_cross_check": "agrees on every fold of every record",
+      "per_fold": [
+        {
+          "fold": 0,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.8087500000000001,
+          "n_seeds": 8,
+          "gap": 0.10875000000000012,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 0.8427725416010732,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 1,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.74625,
+          "n_seeds": 8,
+          "gap": 0.04625000000000001,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 1.981654354575498,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 2,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.7424999999999999,
+          "n_seeds": 8,
+          "gap": 0.04249999999999998,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 2.156506209390985,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 3,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.7925,
+          "n_seeds": 8,
+          "gap": 0.09250000000000003,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 0.990827177287749,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 4,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.7112499999999999,
+          "n_seeds": 8,
+          "gap": 0.011249999999999982,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 8.146801235477064,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 5,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.76125,
+          "n_seeds": 8,
+          "gap": 0.06125000000000003,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 1.4963512473325187,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 6,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.75875,
+          "n_seeds": 8,
+          "gap": 0.05875000000000008,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 1.5600257684956031,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 7,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.75625,
+          "n_seeds": 8,
+          "gap": 0.05625000000000002,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 1.6293602470954094,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 8,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.765,
+          "n_seeds": 8,
+          "gap": 0.06500000000000006,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 1.410023290755642,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 9,
+          "n_test": 100,
+          "majority_rate": 0.7,
+          "accuracy_intact_mean_over_seeds": 0.74,
+          "n_seeds": 8,
+          "gap": 0.040000000000000036,
+          "noise_band_2sigma": 0.09165151389911681,
+          "min_resolvable_leak_fraction": 2.291287847477918,
+          "detects_complete_leakage": false
+        }
+      ],
+      "n_folds_detecting_complete_leakage": 2,
+      "n_folds": 10,
+      "min_folds_for_detection": 1,
+      "median_min_resolvable_leak_fraction": 1.5946930077955064,
+      "pooled": {
+        "n_test_total": 1000,
+        "accuracy_intact": 0.75825,
+        "majority_rate": 0.7,
+        "gap": 0.058250000000000024,
+        "noise_band_2sigma": 0.028982753492378877,
+        "min_resolvable_leak_fraction": 0.49755799986916505,
+        "detects_complete_leakage": true
+      }
+    },
+    "10101": {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "status": "measured",
+      "n_records": 8,
+      "records_refused": [],
+      "split_shape": {
+        "n_repeats": 1,
+        "n_folds_per_repeat": 10,
+        "n_rows": 748,
+        "partition_validated": true
+      },
+      "rates_source": "the task's own splits (.omlcache), partition validated",
+      "recovery_cross_check": "agrees on every fold of every record",
+      "per_fold": [
+        {
+          "fold": 0,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.76,
+          "n_seeds": 8,
+          "gap": 0.0,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 1,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.7866666666666666,
+          "n_seeds": 8,
+          "gap": 0.026666666666666616,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": 3.698648401781393,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 2,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.7333333333333333,
+          "n_seeds": 8,
+          "gap": -0.026666666666666727,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 3,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.7333333333333333,
+          "n_seeds": 8,
+          "gap": -0.026666666666666727,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 4,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.795,
+          "n_seeds": 8,
+          "gap": 0.03500000000000003,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": 2.8180178299286727,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 5,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.77,
+          "n_seeds": 8,
+          "gap": 0.010000000000000009,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": 9.863062404750353,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 6,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.795,
+          "n_seeds": 8,
+          "gap": 0.03500000000000003,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": 2.8180178299286727,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 7,
+          "n_test": 75,
+          "majority_rate": 0.76,
+          "accuracy_intact_mean_over_seeds": 0.7616666666666667,
+          "n_seeds": 8,
+          "gap": 0.0016666666666667052,
+          "noise_band_2sigma": 0.09863062404750363,
+          "min_resolvable_leak_fraction": 59.17837442850081,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 8,
+          "n_test": 74,
+          "majority_rate": 0.7702702702702703,
+          "accuracy_intact_mean_over_seeds": 0.7804054054054054,
+          "n_seeds": 8,
+          "gap": 0.010135135135135087,
+          "noise_band_2sigma": 0.09780122726473518,
+          "min_resolvable_leak_fraction": 9.649721090120584,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 9,
+          "n_test": 74,
+          "majority_rate": 0.7702702702702703,
+          "accuracy_intact_mean_over_seeds": 0.7820945945945946,
+          "n_seeds": 8,
+          "gap": 0.011824324324324342,
+          "noise_band_2sigma": 0.09780122726473518,
+          "min_resolvable_leak_fraction": 8.271189505817592,
+          "detects_complete_leakage": false
+        }
+      ],
+      "n_folds_detecting_complete_leakage": 0,
+      "n_folds": 10,
+      "min_folds_for_detection": null,
+      "median_min_resolvable_leak_fraction": 8.271189505817592,
+      "pooled": {
+        "n_test_total": 748,
+        "accuracy_intact": 0.7697192513368984,
+        "majority_rate": 0.7620320855614974,
+        "gap": 0.0076871657754010725,
+        "noise_band_2sigma": 0.03114046030662543,
+        "min_resolvable_leak_fraction": 4.050967705974924,
+        "detects_complete_leakage": false
+      }
+    },
+    "3913": {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "status": "measured",
+      "n_records": 8,
+      "records_refused": [],
+      "split_shape": {
+        "n_repeats": 1,
+        "n_folds_per_repeat": 10,
+        "n_rows": 522,
+        "partition_validated": true
+      },
+      "rates_source": "the task's own splits (.omlcache), partition validated",
+      "recovery_cross_check": "agrees on every fold of every record",
+      "per_fold": [
+        {
+          "fold": 0,
+          "n_test": 53,
+          "majority_rate": 0.7924528301886793,
+          "accuracy_intact_mean_over_seeds": 0.7853773584905661,
+          "n_seeds": 8,
+          "gap": -0.007075471698113178,
+          "noise_band_2sigma": 0.1114133361871439,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 1,
+          "n_test": 53,
+          "majority_rate": 0.7924528301886793,
+          "accuracy_intact_mean_over_seeds": 0.8584905660377359,
+          "n_seeds": 8,
+          "gap": 0.06603773584905659,
+          "noise_band_2sigma": 0.1114133361871439,
+          "min_resolvable_leak_fraction": 1.6871162336910366,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 2,
+          "n_test": 52,
+          "majority_rate": 0.8076923076923077,
+          "accuracy_intact_mean_over_seeds": 0.8413461538461539,
+          "n_seeds": 8,
+          "gap": 0.033653846153846145,
+          "noise_band_2sigma": 0.10930741539592406,
+          "min_resolvable_leak_fraction": 3.2479917717646014,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 3,
+          "n_test": 52,
+          "majority_rate": 0.8076923076923077,
+          "accuracy_intact_mean_over_seeds": 0.8365384615384616,
+          "n_seeds": 8,
+          "gap": 0.028846153846153855,
+          "noise_band_2sigma": 0.10930741539592406,
+          "min_resolvable_leak_fraction": 3.7893237337253662,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 4,
+          "n_test": 52,
+          "majority_rate": 0.8076923076923077,
+          "accuracy_intact_mean_over_seeds": 0.9038461538461539,
+          "n_seeds": 8,
+          "gap": 0.09615384615384615,
+          "noise_band_2sigma": 0.10930741539592406,
+          "min_resolvable_leak_fraction": 1.1367971201176104,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 5,
+          "n_test": 52,
+          "majority_rate": 0.7884615384615384,
+          "accuracy_intact_mean_over_seeds": 0.8533653846153846,
+          "n_seeds": 8,
+          "gap": 0.06490384615384615,
+          "noise_band_2sigma": 0.11326956982499159,
+          "min_resolvable_leak_fraction": 1.7451904091554262,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 6,
+          "n_test": 52,
+          "majority_rate": 0.7884615384615384,
+          "accuracy_intact_mean_over_seeds": 0.8461538461538461,
+          "n_seeds": 8,
+          "gap": 0.05769230769230771,
+          "noise_band_2sigma": 0.11326956982499159,
+          "min_resolvable_leak_fraction": 1.9633392102998537,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 7,
+          "n_test": 52,
+          "majority_rate": 0.7884615384615384,
+          "accuracy_intact_mean_over_seeds": 0.78125,
+          "n_seeds": 8,
+          "gap": -0.007211538461538436,
+          "noise_band_2sigma": 0.11326956982499159,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 8,
+          "n_test": 52,
+          "majority_rate": 0.7884615384615384,
+          "accuracy_intact_mean_over_seeds": 0.8269230769230769,
+          "n_seeds": 8,
+          "gap": 0.038461538461538436,
+          "noise_band_2sigma": 0.11326956982499159,
+          "min_resolvable_leak_fraction": 2.9450088154497833,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 9,
+          "n_test": 52,
+          "majority_rate": 0.7884615384615384,
+          "accuracy_intact_mean_over_seeds": 0.8413461538461539,
+          "n_seeds": 8,
+          "gap": 0.05288461538461542,
+          "noise_band_2sigma": 0.11326956982499159,
+          "min_resolvable_leak_fraction": 2.141824593054385,
+          "detects_complete_leakage": false
+        }
+      ],
+      "n_folds_detecting_complete_leakage": 0,
+      "n_folds": 10,
+      "min_folds_for_detection": 6,
+      "median_min_resolvable_leak_fraction": 2.052581901677119,
+      "pooled": {
+        "n_test_total": 522,
+        "accuracy_intact": 0.837404214559387,
+        "majority_rate": 0.7950191570881227,
+        "gap": 0.04238505747126431,
+        "noise_band_2sigma": 0.03533785450915843,
+        "min_resolvable_leak_fraction": 0.8337337877415018,
+        "detects_complete_leakage": true
+      }
+    },
+    "3": {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "status": "measured",
+      "n_records": 7,
+      "records_refused": [],
+      "split_shape": {
+        "n_repeats": 1,
+        "n_folds_per_repeat": 10,
+        "n_rows": 3196,
+        "partition_validated": true
+      },
+      "rates_source": "the task's own splits (.omlcache), partition validated",
+      "recovery_cross_check": "agrees on every fold of every record",
+      "per_fold": [
+        {
+          "fold": 0,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 0.9946428571428572,
+          "n_seeds": 7,
+          "gap": 0.4727678571428572,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11813022669679897,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 1,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 0.9888392857142857,
+          "n_seeds": 7,
+          "gap": 0.4669642857142857,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11959838438997143,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 2,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 0.9959821428571428,
+          "n_seeds": 7,
+          "gap": 0.47410714285714284,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11779652549144079,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 3,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 0.9991071428571429,
+          "n_seeds": 7,
+          "gap": 0.4772321428571429,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11702517312620216,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 4,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 0.9982142857142857,
+          "n_seeds": 7,
+          "gap": 0.47633928571428574,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11724452677779766,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 5,
+          "n_test": 320,
+          "majority_rate": 0.521875,
+          "accuracy_intact_mean_over_seeds": 1.0,
+          "n_seeds": 7,
+          "gap": 0.478125,
+          "noise_band_2sigma": 0.05584817413924559,
+          "min_resolvable_leak_fraction": 0.11680663872260515,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 6,
+          "n_test": 319,
+          "majority_rate": 0.5203761755485894,
+          "accuracy_intact_mean_over_seeds": 0.9941782355575458,
+          "n_seeds": 7,
+          "gap": 0.4738020600089564,
+          "noise_band_2sigma": 0.05594273958680119,
+          "min_resolvable_leak_fraction": 0.11807196360805963,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 7,
+          "n_test": 319,
+          "majority_rate": 0.5235109717868338,
+          "accuracy_intact_mean_over_seeds": 0.9928347514554411,
+          "n_seeds": 7,
+          "gap": 0.4693237796686073,
+          "noise_band_2sigma": 0.05592731895695822,
+          "min_resolvable_leak_fraction": 0.11916574735771726,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 8,
+          "n_test": 319,
+          "majority_rate": 0.5235109717868338,
+          "accuracy_intact_mean_over_seeds": 0.9986565158978953,
+          "n_seeds": 7,
+          "gap": 0.47514554411106147,
+          "noise_band_2sigma": 0.05592731895695822,
+          "min_resolvable_leak_fraction": 0.11770565808754728,
+          "detects_complete_leakage": true
+        },
+        {
+          "fold": 9,
+          "n_test": 319,
+          "majority_rate": 0.5235109717868338,
+          "accuracy_intact_mean_over_seeds": 1.0,
+          "n_seeds": 7,
+          "gap": 0.4764890282131662,
+          "noise_band_2sigma": 0.05592731895695822,
+          "min_resolvable_leak_fraction": 0.1173737812320373,
+          "detects_complete_leakage": true
+        }
+      ],
+      "n_folds_detecting_complete_leakage": 10,
+      "n_folds": 10,
+      "min_folds_for_detection": 1,
+      "median_min_resolvable_leak_fraction": 0.11775109178949403,
+      "pooled": {
+        "n_test_total": 3196,
+        "accuracy_intact": 0.9962453066332918,
+        "majority_rate": 0.522215269086358,
+        "gap": 0.47403003754693385,
+        "noise_band_2sigma": 0.017671260398720152,
+        "min_resolvable_leak_fraction": 0.03727877771241557,
+        "detects_complete_leakage": true
+      }
+    },
+    "3917": {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "status": "measured",
+      "n_records": 7,
+      "records_refused": [],
+      "split_shape": {
+        "n_repeats": 1,
+        "n_folds_per_repeat": 10,
+        "n_rows": 2109,
+        "partition_validated": true
+      },
+      "rates_source": "the task's own splits (.omlcache), partition validated",
+      "recovery_cross_check": "agrees on every fold of every record",
+      "per_fold": [
+        {
+          "fold": 0,
+          "n_test": 211,
+          "majority_rate": 0.8483412322274881,
+          "accuracy_intact_mean_over_seeds": 0.8659444820582262,
+          "n_seeds": 7,
+          "gap": 0.01760324983073802,
+          "noise_band_2sigma": 0.049386450917457796,
+          "min_resolvable_leak_fraction": 2.8055303078878846,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 1,
+          "n_test": 211,
+          "majority_rate": 0.8483412322274881,
+          "accuracy_intact_mean_over_seeds": 0.8659444820582262,
+          "n_seeds": 7,
+          "gap": 0.01760324983073802,
+          "noise_band_2sigma": 0.049386450917457796,
+          "min_resolvable_leak_fraction": 2.8055303078878846,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 2,
+          "n_test": 211,
+          "majority_rate": 0.8483412322274881,
+          "accuracy_intact_mean_over_seeds": 0.8361543669600542,
+          "n_seeds": 7,
+          "gap": -0.012186865267433955,
+          "noise_band_2sigma": 0.049386450917457796,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 3,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8598510494245091,
+          "n_seeds": 7,
+          "gap": 0.016249153689911866,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": 3.077815180857987,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 4,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8287068381855113,
+          "n_seeds": 7,
+          "gap": -0.014895057549085933,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": Infinity,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 5,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8456330399458362,
+          "n_seeds": 7,
+          "gap": 0.0020311442112389555,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": 24.622521446864233,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 6,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8869329722410291,
+          "n_seeds": 7,
+          "gap": 0.043331076506431865,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": 1.1541806928217393,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 7,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8571428571428571,
+          "n_seeds": 7,
+          "gap": 0.013540961408259888,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": 3.693378217029584,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 8,
+          "n_test": 211,
+          "majority_rate": 0.8436018957345972,
+          "accuracy_intact_mean_over_seeds": 0.8869329722410291,
+          "n_seeds": 7,
+          "gap": 0.043331076506431865,
+          "noise_band_2sigma": 0.050011891902905316,
+          "min_resolvable_leak_fraction": 1.1541806928217393,
+          "detects_complete_leakage": false
+        },
+        {
+          "fold": 9,
+          "n_test": 210,
+          "majority_rate": 0.8476190476190476,
+          "accuracy_intact_mean_over_seeds": 0.8625850340136054,
+          "n_seeds": 7,
+          "gap": 0.014965986394557818,
+          "noise_band_2sigma": 0.04960049879404081,
+          "min_resolvable_leak_fraction": 3.314215146692728,
+          "detects_complete_leakage": false
+        }
+      ],
+      "n_folds_detecting_complete_leakage": 0,
+      "n_folds": 10,
+      "min_folds_for_detection": null,
+      "median_min_resolvable_leak_fraction": 2.941672744372936,
+      "pooled": {
+        "n_test_total": 2109,
+        "accuracy_intact": 0.8595813858971754,
+        "majority_rate": 0.8454243717401612,
+        "gap": 0.014157014157014203,
+        "noise_band_2sigma": 0.015743438706947777,
+        "min_resolvable_leak_fraction": 1.112059261390762,
+        "detects_complete_leakage": false
+      }
+    }
+  },
+  "n_tasks_powered_pooled": 3,
+  "tasks_powered_pooled": [
+    3,
+    31,
+    3913
+  ],
+  "min_folds_for_detection": {
+    "31": 1,
+    "3913": 6,
+    "3": 1
+  },
+  "tasks_unpowered_pooled": [
+    3917,
+    10101
+  ]
+}

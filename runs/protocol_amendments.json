@@ -1,7 +1,7 @@
 {
   "what_this_file_is": "Append-only record of every change to the measurement protocol made AFTER runs/baselines.json was frozen. The registry itself is sha256-pinned into every run record, so it cannot be edited without orphaning the runs measured against it; amendments therefore live here instead. Each entry states what the registered rule was, what it is now, which direction the change moves the difficulty, and whether results had already been seen when it was made. tests/test_protocol_amendments.py asserts that no amendment is recorded as making a clause easier.",
   "why_it_exists": "codex, 2026-09-10, asked how to make the KPI's clause 2 pass legitimately, answered first with a chronology objection: 'The code says the particular test was chosen after seeing the screen, and the registry still contains the old conditional escalation rule. If no earlier timestamped record specifies this test, call this a protocol amendment.' That is correct. The exact sign test was named in this repository on 2026-09-10 in response to an adversary, not on 2026-09-09 when the protocol was registered, and the 3-seed screen had already been read when the gate was rewritten. Calling that 'pre-registered' would be false. It is an amendment, and the defence is not that it was planned but that it is strictly stricter.",
-  "gate_code_sha256": "cbdb1ee27b5aa0be486430e02cabf049fc7f99053ec416fc1f4bdaa133f66d78",
+  "gate_code_sha256": "47d5a4e465821856e4ad5f7d3f3fe8408b9899bfb37a535f6988a8b89e70f674",
   "gate_code_covers": "scripts/report.py functions exact_sign_test_above, escalation_state, verdict, load_bench, reconcile_ledger, tolerance_readings, joint_seed_event, clean_seed_subset, with comments and docstrings stripped so documenting a decision does not read as changing it",
   "amendments": [
     {
@@ -100,6 +100,19 @@
       "why": "A concurrent instance of this same loop ran `run_benchmark.py --role dev --tasks 37 --seeds 0 --max-folds 1` into runs/dev while a successor measurement was queued to write there. A one-fold accuracy is not a noisy ten-fold accuracy; it is a different statistic whose bias depends on which fold ran. Third appearance of this bug class this weekend after etch-operator-twin's partial checkpoints and this repository's own joint-event table counting a not-yet-run task as a failure. The recurring shape is absence or partiality being coerced into a value instead of routing to 'no result'.",
       "credit": "found via a concurrent loop instance's debug run; the defect was mine and predated it.",
       "still_owed": "nothing for this route. A `successor` role writing to runs/successor was added as the cheaper second line of defence, so a labelled measurement never shares a directory with development runs."
+    },
+    {
+      "id": 7,
+      "date": "2026-09-10",
+      "clause": "2_within_5pct_of_human_baseline",
+      "registered_rule": "clause 2 was decided by the pre-registered exact sign test on the accuracies alone. Nothing required those accuracies to have been shown free of label leakage; open item #8 had been carried as 'architecturally open' for three turns and gated nothing.",
+      "amended_rule": "clause 2 additionally requires runs/leakage_probe.json to exist, to carry an env.ads_sha256 matching the digest the benchmark runs agree on, and to report NO_LEAKAGE_DETECTED on every task that runs/leakage_power.json lists in min_folds_for_detection, at or above the fold count measured there. Absent, stale or incomplete -> the clause reads None (RUNNING), not True. The two tasks the instrument provably cannot resolve (3917, 10101) are named in the report as unprobeable rather than absorbed into a pass.",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "38 of the 40 records of the 8-seed confirmatory run, all five tasks clearing their primary thresholds. NO leakage probe result of any kind had been seen: the gate was written and committed while the probe had produced no output at all, and the power analysis that later narrowed its scope had not been written. So this cannot be a choice about what to gate on.",
+      "effect_on_the_claim_as_it_stood": "It withdrew a claim: PASS -> RUNNING on identical accuracies. A PASS was previously reachable on the accuracies alone, and as of this amendment no probe record exists, so clause 2 reads RUNNING on data that would otherwise have cleared it. Strictly against the flattering direction.",
+      "why": "An accuracy that has not been shown free of leakage is not a measurement of the agent. The gate was made scope-aware in the same turn after runs/leakage_power.json measured that the probe is blind on 2 of the 5 registered tasks (phi_min 1.112 on kc1, 4.051 on blood-transfusion): a clean probe on kr-vs-kp does not clear kc1, and the first version of this gate said it did.",
+      "what_it_does_not_do": "It does not certify the absence of leakage. It certifies that one named instrument, with a measured detection floor per task and a positive control (tests/test_no_leakage.py::test_the_probe_fires_on_a_leak_it_is_told_about), did not fire. Two of the five tasks are outside its reach at any fold count and the report says so."
     }
   ]
 }
