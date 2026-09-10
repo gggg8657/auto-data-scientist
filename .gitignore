@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+# raw stdout; the JSON artifacts under runs/ are the record
+logs/
+# per-loop heartbeat written by the overnight harness, not a repo artifact
+.heartbeat_*
+.tmp/
+# OpenML's own dataset cache; runs/evals/ is the committed evidence, not this
+.omlcache/

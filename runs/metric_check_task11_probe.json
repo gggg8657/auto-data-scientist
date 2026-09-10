@@ -1,0 +1,31 @@
+{
+  "tolerance": 1e-06,
+  "n_tasks_checked": 1,
+  "n_tasks_discriminating": 1,
+  "consistent": true,
+  "server_aggregation": "pooled",
+  "note": "Only tasks with unequal fold sizes can tell the two aggregations apart; the rest are reported as non-discriminating rather than as agreement.",
+  "tasks": [
+    {
+      "task_id": 11,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        62,
+        63
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 24531,
+      "n_flows_eligible": 801,
+      "n_flows_queried": 1,
+      "n_runs_joined": 200,
+      "max_abs_err_unweighted_mean": 0.0001460317460316718,
+      "median_abs_err_unweighted_mean": 3.6354326676923954e-05,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 0.00014603174603156077,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    }
+  ]
+}
