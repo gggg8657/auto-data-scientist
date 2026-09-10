@@ -207,14 +207,61 @@ to be a bijection with the registered seeds.
 from the outset that a task near the 5% line gets eight seeds "and an exact
 test". Nothing enforced it, and "an exact test" named no test. This was the
 worst of the eight because exploiting it required no action at all: run the
-three screen seeds and report. Both halves are now specified. A task is *near
-the line* when the distance from its mean to the threshold is smaller than its
-own observed seed range — our noise floor, not a hand-chosen number — and such a
-task cannot be called on the screen. The test is an exact one-sided sign test of
+three screen seeds and report. The test is an exact one-sided sign test of
 H₀: median ≤ 0.95 × baseline, with *k* of *n* seeds above the threshold and
 *p* = P(Binomial(*n*, ½) ≥ *k*). At the registered eight seeds, 8/8 gives
 p = 0.0039 and 6/8 gives p = 0.1445 — so a task clearing the line on a bare
 majority does not get called.
+
+**Our first version of that fix was itself the same defect.** We made the test
+*conditional*: a task counted as "near the line" when the distance from its
+mean to the threshold was smaller than its own observed seed range, and only
+near-line tasks got the test. That reads as principled — the noise floor rather
+than a hand-chosen number — and it is biased, in the flattering direction, by
+construction. The expected range of *n* i.i.d. draws is 1.69σ at *n* = 3
+against 2.85σ at *n* = 8, and the range sits in the *denominator*: running
+fewer seeds shrinks it and makes "comfortably clear, no test needed" easier to
+enter. **A gate that is easier to clear on less evidence is not a gate.** On
+our five-task screen every margin exceeded its seed range by 4.5× to 68×, so
+the pre-registered test ran on none of the five and the clause passed on point
+estimates alone. The test is now unconditional at the full registered seed set,
+which makes a three-seed screen uncallable arithmetically: *p* ≥ 1/2ⁿ, so
+*n* = 3 cannot reach α = 0.05 at any margin. The published rule and the
+enforced rule are now the same rule.
+
+**And the test itself was anti-conservative.** We cited the textbook sign test
+and implemented it faithfully — ties dropped, fair binomial over the survivors
+— without noticing that the textbook version assumes a *continuous*
+distribution. Accuracy is *k* correct out of a fixed *n*, so a tie at the
+threshold has real probability, and for a discrete distribution "the median is
+*T*" does not imply the non-ties split evenly. An adversary supplied the
+counterexample and we recomputed it: with P(A = T) = 0.6 and P(A > T) = 0.4 the
+median is exactly *T*, so H₀ is true, and the eight-seed gate rejected it
+**17.4%** of the time at a nominal 5%. Counting ties as non-wins and keeping
+them in the denominator puts that at **0.9%**. No number in this paper moves —
+no seed of ours lands on a threshold — but the guarantee the *p*-value
+advertises was not the guarantee it had.
+
+**Post-hoc rule changes need their own ledger, and the direction is the test of
+them.** All three fixes above were made *after* the screen was read, and the
+registry still carried the rule they replaced. The chronology objection is
+real: a rule chosen after seeing a result is not pre-registered, whatever its
+merits. But the symmetric error is to treat every post-hoc change as
+illegitimate, which would forbid fixing a defect once you can see it. The
+distinction we settled on, and now enforce, is **direction**: every amendment
+is recorded with what was registered, what replaced it, whether results had
+been seen, and what it did to the claim as it stood — and a test asserts that
+no amendment is recorded as making a clause *easier*. Amendment 1's defence is
+not that it was planned; it is that it took the project's status from `PASS` to
+`RUNNING` on identical run data. An amendment that withdraws a claim needs no
+chronological alibi. One that grants a claim cannot have one. The three
+functions that compute the verdict are fingerprinted in the same file, so a
+rule change that is not declared fails a test.
+
+What that record makes visible, rather than hides: three of the eight seeds in
+our confirmatory set were inspected before the amendment. A fully clean
+confirmatory reading would freeze the amended rule and then draw a disjoint
+seed set. Ours is disjoint from seed 3 onward, and the report says so.
 
 **Development on the confirmatory tasks.** Recording `git rev-parse HEAD` does
 not record the tree that ran. Every run now carries a digest over the agent
@@ -231,15 +278,29 @@ This is append-only by convention, not by permission, and we say so: it converts
 a one-command deletion into two coordinated edits and puts the reconciliation
 where a reader sees it.
 
+**The one check whose evidence comes from outside the repository.** A sha256
+over rows we produced proves the file has not changed since we wrote it, not
+that the rows are what OpenML published — and since every other check reads the
+same file, lowering a baseline in the cache and re-pinning would pass all of
+them. That half is unanswerable internally, so we ask the server: a seeded
+random sample of `run_id`s is drawn *before* any fetch, the seed and the rule
+are recorded, and each sampled row is re-fetched and compared value for value.
+125 rows across the five tasks, zero mismatches. Alongside it, the
+contamination routes that *are* answerable from the file: a duplicate `run_id`
+counts one submission twice in a median, a row from another task imports
+another task's difficulty, and a row carrying another metric blends it into an
+accuracy median — the same layout holds AUC and f-measure rows on the server.
+The output records what a spot check cannot prove, including the probability
+that tampering of a given fraction went undetected, and a test asserts those
+figures are present, so "verified" is not a word a reader has to take on trust.
+
 **Not closed, and named rather than glossed:** a rule keyed on feature values
-that encodes dataset identity while passing the invariance test; the provenance
-of the evaluation cache itself, where a hash computed over rows we control
-proves consistency rather than authentic acquisition (the cheap half — no
-repeated `run_id` across 3.4M cached evaluations — is checked; independent
-re-acquisition against a dated external snapshot is not built); and label
+that encodes dataset identity while passing the invariance test; and label
 leakage, since the evaluator holds the full labelled frame in the same process
-that calls the agent. The third is architectural and would need subprocess
-isolation.
+that calls the agent. The second is architectural and would need subprocess
+isolation. Cache provenance is now *partly* closed — the remaining gap is that
+a spot check of *k* rows would very likely miss a single edited row, which only
+a dated, independently acquired snapshot answers.
 
 ## 6. The noise floor, and why three seeds is a screen
 
@@ -250,11 +311,34 @@ random search. An early version pinned every estimator at a fixed
 spread far below the truth — and would have been believed. A test now fails if
 that regresses.
 
-Three seeds are reported as a **screen, not a verdict**. Escalation to eight
-seeds and the exact test above is required for any task whose margin is inside
-its own spread. This follows a lesson paid for elsewhere in this workspace:
-two identical invocations of one configuration differed by more than most of
-the effects that had been reported as findings.
+Three seeds are reported as a **screen, not a verdict**, and that sentence is
+now enforced rather than promised: because *p* ≥ 1/2ⁿ, a three-seed run cannot
+reach α = 0.05 in either direction, so no three-seed screen can produce a
+verdict however wide its margin looks. This follows a lesson paid for elsewhere
+in this workspace: two identical invocations of one configuration differed by
+more than most of the effects that had been reported as findings.
+
+The *p*-floor argument stops at *n* = 5, where an all-above run gives
+p = 0.031 and would reject — so stopping at the first rejection would report a
+sequentially monitored *p*-value as if it were fixed-sample. A task is
+therefore called only at the full registered seed count, whichever way the test
+comes out.
+
+**What eight seeds do not measure.** They re-draw the agent's own randomness on
+the *same* examples and the same outer folds, so they estimate algorithmic
+variance conditional on this data — not uncertainty about new data. We do not
+convert the eighty fold scores into eighty observations to buy power: their
+training sets overlap, and treating dependent folds as independent understates
+the variance (Bengio & Grandvalet, JMLR 2004).
+
+**A per-task verdict is not an end-to-end verdict**, which matters for a KPI
+whose second clause is *무개입*. Five tasks each failing on a *different* seed
+would pass every per-task test and never once produce a clean sweep. So we also
+report, per seed, whether **one unattended run cleared all five** — the reading
+a reader of "autonomous" actually wants — beside the per-task gate rather than
+instead of it. Testing five tasks at α = 0.05 needs no multiplicity correction,
+because the claim requires all five to reject: that is an intersection-union
+test, and a false global pass needs at least one true task null rejected.
 
 ## 7. What would make this a stronger paper
 
