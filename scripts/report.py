@@ -783,53 +783,7 @@ def main() -> int:
                     f"{v['ledger'].get('reconciled') if v['ledger'].get('ledger_present') else '[no ledger]'}",
                     str(v["clauses"]["3_end_to_end_no_intervention"])]],
                   ["#", "clause", "measured as", "met"]), "",
-            "## Our accuracy against the pre-registered baselines", "",
-            table(res_rows, [
-                "task", "dataset", "seeds", "ours (pooled)",
-                "median_run", "rel gap", "primary (>=0.95x)", "rel 2-sided",
-                "abs 2-sided", "median_flow", "vs flow", "strictest reading",
-                "strictest value", "vs strictest", "families chosen"]),
-            "",
-            "`rel gap` is `(ours - median_run) / median_run`; positive means we "
-            "are above the median published run. The three tolerance columns are "
-            "the three readings fixed in `runs/baselines.json` before any run — "
-            "all are shown so that none can be picked after the fact.", ""]
-
-    # ------------------------------------------- the gate, one row per task
-    test_rows = []
-    for row in rows:
-        e, es = row.get("escalation"), row.get("escalation_strict")
-        if not e:
-            test_rows.append([row["task_id"], row["name"], 0, NM, NM, NM,
-                              NM, NM, NM, NM])
-            continue
-        t_, ts = e["exact_test"], (es or {}).get("exact_test") or {}
-        test_rows.append([
-            row["task_id"], row["name"], e["n_seeds"], fmt(e["threshold"]),
-            f"{t_['k']}/{t_['n']}", f"{t_['p']:.4f}",
-            "CALLED" if e["called"] else
-            ("escalation pending" if e["escalation_required"] else "not called"),
-            f"{ts.get('k', NM)}/{ts.get('n', NM)}",
-            f"{ts['p']:.4f}" if ts else NM,
-            "CALLED" if (es or {}).get("called") else "not called"])
-    doc += [
-        "## The gate: the pre-registered exact test, per task", "",
-        "A task is **called** only when the one-sided exact sign test of "
-        "`H0: median over seeds <= 0.95 x baseline` rejects at alpha = "
-        f"{ALPHA}. "
-        f"The p-value floor is `1/2^n`, so a {len(base.get('run_protocol', {}).get('seeds_screen') or [])}"
-        "-seed screen cannot call a task in either direction and the status "
-        "cannot read PASS off one. This gate replaced "
-        "`margin > observed seed range` on 2026-09-10: that condition is "
-        "*easier* to satisfy the fewer seeds you run (E[range] is 1.69 sigma "
-        "at n=3 against 2.85 sigma at n=8, and it sits in the denominator), "
-        "so it skipped the test on all five tasks of the 3-seed screen and "
-        "passed the clause on point estimates. The margin reading is kept in "
-        "the spread table as a diagnostic.", "",
-        table(test_rows, ["task", "dataset", "seeds", "threshold (primary)",
-                          "k/n above", "p", "verdict (primary)",
-                          "k/n above (strictest)", "p (strictest)",
-                          "verdict (strictest)"]), ""]
+            ]
 
     # ------------------------------- is the clause falsifiable at all?
     nc = read_json(REPO / "runs/negative_control.json")
@@ -864,10 +818,11 @@ def main() -> int:
                     if ours_here is not None else NM])
         doc += [
             "## Is this clause falsifiable? The negative controls", "",
-            "The section a reader should look at before the ones above. Every "
-            "other check here asks whether *our* number is honest; this asks "
-            "whether the *target* is demanding, and the answer is only partly "
-            "yes.", "",
+            "This section comes before the accuracy tables on purpose. Every "
+            "other check in this document asks whether *our* number is "
+            "honest; this one asks whether the **target** is demanding, and "
+            "the answer is only partly yes — so it changes how the tables "
+            "below should be read.", "",
             f"**{nc['n_thresholds_below_majority_rate']} of 5 primary "
             "thresholds sit at or below the task's own majority-class rate**, "
             "so on those tasks the bar can be cleared by predicting the "
@@ -953,6 +908,55 @@ def main() -> int:
             "balanced task and, on the imbalanced ones, very little over three "
             "splits of a tree. That is a finding about the agent and it is not "
             "flattering; it is here because it is what the runs say.", ""]
+
+    doc += [
+            "## Our accuracy against the pre-registered baselines", "",
+            table(res_rows, [
+                "task", "dataset", "seeds", "ours (pooled)",
+                "median_run", "rel gap", "primary (>=0.95x)", "rel 2-sided",
+                "abs 2-sided", "median_flow", "vs flow", "strictest reading",
+                "strictest value", "vs strictest", "families chosen"]),
+            "",
+            "`rel gap` is `(ours - median_run) / median_run`; positive means we "
+            "are above the median published run. The three tolerance columns are "
+            "the three readings fixed in `runs/baselines.json` before any run — "
+            "all are shown so that none can be picked after the fact.", ""]
+
+    # ------------------------------------------- the gate, one row per task
+    test_rows = []
+    for row in rows:
+        e, es = row.get("escalation"), row.get("escalation_strict")
+        if not e:
+            test_rows.append([row["task_id"], row["name"], 0, NM, NM, NM,
+                              NM, NM, NM, NM])
+            continue
+        t_, ts = e["exact_test"], (es or {}).get("exact_test") or {}
+        test_rows.append([
+            row["task_id"], row["name"], e["n_seeds"], fmt(e["threshold"]),
+            f"{t_['k']}/{t_['n']}", f"{t_['p']:.4f}",
+            "CALLED" if e["called"] else
+            ("escalation pending" if e["escalation_required"] else "not called"),
+            f"{ts.get('k', NM)}/{ts.get('n', NM)}",
+            f"{ts['p']:.4f}" if ts else NM,
+            "CALLED" if (es or {}).get("called") else "not called"])
+    doc += [
+        "## The gate: the pre-registered exact test, per task", "",
+        "A task is **called** only when the one-sided exact sign test of "
+        "`H0: median over seeds <= 0.95 x baseline` rejects at alpha = "
+        f"{ALPHA}. "
+        f"The p-value floor is `1/2^n`, so a {len(base.get('run_protocol', {}).get('seeds_screen') or [])}"
+        "-seed screen cannot call a task in either direction and the status "
+        "cannot read PASS off one. This gate replaced "
+        "`margin > observed seed range` on 2026-09-10: that condition is "
+        "*easier* to satisfy the fewer seeds you run (E[range] is 1.69 sigma "
+        "at n=3 against 2.85 sigma at n=8, and it sits in the denominator), "
+        "so it skipped the test on all five tasks of the 3-seed screen and "
+        "passed the clause on point estimates. The margin reading is kept in "
+        "the spread table as a diagnostic.", "",
+        table(test_rows, ["task", "dataset", "seeds", "threshold (primary)",
+                          "k/n above", "p", "verdict (primary)",
+                          "k/n above (strictest)", "p (strictest)",
+                          "verdict (strictest)"]), ""]
 
     # --------------------------------------- the chronology-clean sub-reading
     # Measured, not typed. An earlier version of the paragraph below carried
