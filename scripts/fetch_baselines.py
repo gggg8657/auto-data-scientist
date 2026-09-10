@@ -255,12 +255,24 @@ def main() -> int:
                                     "against their selected model.",
             "context_only": ["q25", "q75", "q90", "max_published",
                              "min_published"],
-            "asymmetry_note": "median_run scores our *selected* model against "
-                              "the distribution of *all* human trials, "
-                              "failures included, which flatters us. Raised by "
-                              "codex before any result existed; the two 'best' "
-                              "readings are the answer and are strictly "
-                              "harder. Every table reports all four.",
+            "asymmetry_note": "median_run scores our *selected* model "
+                              "against the distribution of *all* human "
+                              "trials, failures included, which flatters us. "
+                              "Raised by codex before any result existed. The "
+                              "two 'best' readings are the symmetric answer, "
+                              "but they are NOT guaranteed to be harder: only "
+                              "median_flow_best >= median_flow holds by "
+                              "construction, and an earlier version of this "
+                              "note claimed 'strictly harder' of median_run "
+                              "too, which is false. Measured counterexample "
+                              "in this very registry: task 10101 has "
+                              "median_flow_best 0.7500 BELOW median_run "
+                              "0.7634, because median_run is weighted by how "
+                              "often each flow was submitted and this task "
+                              "has many weak flows. Which reading is hardest "
+                              "is therefore an empirical fact per task, "
+                              "recorded in strictest_baseline rather than "
+                              "asserted. Every table reports all four.",
         },
         "run_protocol": {
             "development_tasks": "ranks 6..15 by n_published_runs",

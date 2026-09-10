@@ -29,15 +29,30 @@ plus a random search on each of ten folds); among those, take the five with the
 most published evaluations, because the median of a larger sample is the
 better-determined baseline. Neither criterion can see our accuracy.
 
-**Human baseline, two readings, both fixed in advance.** OpenML stores every
+**Human baseline, four readings, all fixed in advance.** OpenML stores every
 `predictive_accuracy` a user ever uploaded for a task, computed under that task's
 own estimation procedure — so a published run and our run are numbers about the
-same splits.
+same splits. Every published evaluation is paged to **exhaustion**: two of these
+five tasks have over 385,000 of them, and a capped fetch takes an oldest-first
+prefix whose median is a different statistic (see `critique_log.md`, turn 2).
 
 - `median_run` — median over **all published runs**. Primary. One prolific
   uploader's 5000-point sweep counts 5000 times.
 - `median_flow` — median over **per-flow medians**, one number per published
   *method*. De-weights sweeps.
+- `median_flow_best` — median over each flow's **best** run: every method at its
+  best published configuration.
+- `median_uploader_best` — median over each uploader's **best** run. The
+  symmetric comparison, our selected model against their selected model.
+
+`median_run` is the primary because the brief named it and it was registered
+first; it is also the *weakest*, since it scores our selected model against the
+distribution of all human trials, failures included. The strictest of the four
+is recorded per task in `strictest_baseline` and its verdict is reported beside
+the primary one. Which reading is hardest is an **empirical** fact per task, not
+a mathematical one: only `median_flow_best ≥ median_flow` holds by construction,
+and task 10101 is a live counterexample to the rest, with `median_flow_best`
+0.7500 **below** `median_run` 0.7634.
 
 `q75`, `q90` and `max_published` appear in the tables as **context, never as the
 target**: they say how far the published frontier is above the median, which is
@@ -55,17 +70,41 @@ All three are reported for every task. Picking whichever one passes, after the
 fact, would be the same fraud as picking the baseline late.
 
 <!-- BASELINES:BEGIN -->
-*(`runs/baselines.json` not yet generated — run `python scripts/fetch_baselines.py`.)*
+### The five tasks and their pre-registered human baselines
+
+Fetched by `scripts/fetch_baselines.py` on **2026-09-10T12:56:40+0000**, before any agent run existed. Selected from OpenML-CC18 (study 99) by: `NumberOfInstances <= 20000 and NumberOfFeatures <= 100`, then the top 5 of 51 by `n_published_runs, descending`.
+
+| task | dataset | n | p | classes | published runs | flows | uploaders | **median_run** (primary) | median_flow | median_flow_best | median_uploader_best | strictest | q90 (context) | max (context) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 31 | credit-g | 1000 | 21 | 2 | 415112 | 1022 | 119 | 0.7250 | 0.7290 | 0.7310 | 0.7030 | median_flow_best | 0.7670 | 0.7860 |
+| 10101 | blood-transfusion-service-center | 748 | 5 | 2 | 385696 | 728 | 60 | 0.7634 | 0.7500 | 0.7500 | 0.7741 | median_uploader_best | 0.7781 | 0.8075 |
+| 3913 | kc2 | 522 | 22 | 2 | 173611 | 580 | 37 | 0.8276 | 0.8257 | 0.8295 | 0.8448 | median_uploader_best | 0.8448 | 0.8697 |
+| 3 | kr-vs-kp | 3196 | 37 | 2 | 173303 | 926 | 70 | 0.9599 | 0.9585 | 0.9634 | 0.9947 | median_uploader_best | 0.9944 | 0.9981 |
+| 3917 | kc1 | 2109 | 22 | 2 | 158237 | 525 | 29 | 0.8516 | 0.8473 | 0.8487 | 0.8615 | median_uploader_best | 0.8625 | 0.8734 |
+
+Metric is `predictive_accuracy` under each task's own estimation procedure, and it is the **size-weighted (pooled)** accuracy — measured, not assumed, in `runs/metric_check.json`. Raw evaluations are committed under `runs/evals/` with a sha256 per file in `runs/baselines.json`, and `tests/test_registry_frozen.py` recomputes every reading above from them, so a baseline cannot be edited without the tests failing.
+
+`median_run` counts a 5000-point sweep 5000 times and scores our *selected* model against the distribution of *all* human trials, failures included — an asymmetry that flatters us. `median_flow_best` and `median_uploader_best` are the symmetric readings: their selected solution against ours. All four are reported for every task.
 <!-- BASELINES:END -->
 
 ## What "무개입" is allowed to mean
 
 The agent may not branch on the **identity** of a dataset — no task id, no
-dataset name, anywhere in `ads/`. `tests/test_no_dataset_specific_logic.py`
-enforces that by searching the package for the benchmark's task ids and dataset
-names. Rules keyed on *measured properties* — `n`, `p/n`, cardinality,
-missingness, class imbalance — are the entire point; rules keyed on which
-dataset it is would be the way this clause gets faked.
+dataset name, anywhere in `ads/`. Rules keyed on *measured properties* — `n`,
+`p/n`, cardinality, missingness, class imbalance — are the entire point; rules
+keyed on which dataset it is would be the way this clause gets faked.
+
+`tests/test_no_dataset_specific_logic.py` enforces this two ways, because the
+obvious way does not work on its own. Dataset **names** are scanned in full, but
+literal **task ids** only for ids ≥ 1000: two of the five registered ids are
+`31` and `3`, and `ads/agent.py` legitimately contains
+`max_leaf_nodes=[15, 31, 63]` and `INNER_FOLDS_LARGE = 3`, so a bare-integer
+scan was failing on hyperparameters rather than on identity — a guard that is
+always red tells you nothing. The property the scan stood in for is therefore
+tested directly: renaming every column to an opaque label and reversing the
+column order leaves the chosen family, the logged decisions and **100% of
+predictions** unchanged. That closes the schema-fingerprint route; it cannot
+rule out a rule keyed on feature *values*, and the test says so.
 
 Every choice is written to a `DecisionLog` **with the profile quantity that drove
 it**; `DecisionLog.record` raises on a decision carrying no evidence.

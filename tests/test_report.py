@@ -37,28 +37,57 @@ def test_tolerance_readings_are_the_three_that_were_pre_registered():
 
 def _base(n=5):
     tasks = [{"task_id": 100 + i, "dataset_name": f"d{i}", "selected": True,
-              "median_run": 0.8, "median_flow": 0.75, "q90": 0.9,
-              "max_published": 0.95, "n_instances": 1, "n_features": 1,
+              "median_run": 0.8, "median_flow": 0.75,
+              # the four readings and the strictest of them, as the registry
+              # carries them; `median_flow_best` is deliberately BELOW
+              # `median_run` on one of these because that inequality is not
+              # guaranteed and task 10101 is a real counterexample (0.7500 vs
+              # 0.7634)
+              "median_flow_best": 0.78, "median_uploader_best": 0.82,
+              "strictest_baseline": "median_uploader_best",
+              "strictest_baseline_value": 0.82,
+              "q25": 0.7, "q75": 0.85, "q90": 0.9,
+              "max_published": 0.95, "min_published": 0.2,
+              "n_instances": 1, "n_features": 1,
               "n_classes": 2, "n_published_runs": 10, "n_distinct_flows": 3,
               "n_distinct_uploaders": 2} for i in range(n)]
     return {"generated": "t", "metric": "predictive_accuracy",
             "selected_task_ids": [t["task_id"] for t in tasks],
             "selection_rule": {"source": "s", "filter": "f", "top_k": n,
                                "n_with_evals": 40, "rank_by": "r"},
+            "run_protocol": {"seeds_screen": [0, 1, 2],
+                             "seeds_verdict": list(range(8)),
+                             "development_tasks": "ranks 6..15",
+                             "confirmatory_tasks": "ranks 1..5",
+                             "escalation_rule": "near the line -> 8 seeds",
+                             "every_attempt_recorded": "ledger"},
             "tasks": tasks}
 
 
-def _run(tid, acc, **kw):
-    r = {"task_id": tid, "accuracy_pooled": acc, "n_interventions": 0,
-         "families_chosen": ["hgb"], "complete": True, "off_registry": False,
-         "_file": f"task_{tid}.json"}
+def _run(tid, acc, seed=0, **kw):
+    r = {"task_id": tid, "accuracy_pooled": acc, "random_state": seed,
+         "n_interventions": 0, "families_chosen": ["hgb"], "complete": True,
+         "off_registry": False, "registry_sha256": "same",
+         "env": {"ads_sha256": "same", "ads_dirty_vs_head": False},
+         "_file": f"task_{tid}_seed{seed}.json"}
     r.update(kw)
     return r
 
 
+def _bench(n_tasks=5, acc=0.80):
+    """One run per registered screen seed, which is what the protocol asks for.
+
+    These fixtures used to carry a single seedless run per task, which passed
+    only because the fixture registry had no `run_protocol` for the seed
+    accounting to check against. Adding one turned them red -- correctly.
+    """
+    return {100 + i: [_run(100 + i, acc, seed=s) for s in (0, 1, 2)]
+            for i in range(n_tasks)}
+
+
 def test_verdict_is_derived_and_a_single_failing_task_sinks_clause_2():
     base = _base()
-    bench = {100 + i: [_run(100 + i, 0.80)] for i in range(5)}
+    bench = _bench(5)
     rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
             for t in base["selected_task_ids"]]
     v = R.verdict(rows, base, bench)
@@ -72,7 +101,7 @@ def test_verdict_is_derived_and_a_single_failing_task_sinks_clause_2():
 
 def test_a_single_intervention_sinks_clause_3():
     base = _base()
-    bench = {100 + i: [_run(100 + i, 0.80)] for i in range(5)}
+    bench = _bench(5)
     bench[102][0]["n_interventions"] = 1
     rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
             for t in base["selected_task_ids"]]
@@ -87,7 +116,7 @@ def test_partial_and_off_registry_runs_cannot_pass():
     rows = [{"task_id": t, "ours": 0.80, "primary_pass": True}
             for t in base["selected_task_ids"]]
     for key, val in (("complete", False), ("off_registry", True)):
-        bench = {100 + i: [_run(100 + i, 0.80)] for i in range(5)}
+        bench = _bench(5)
         bench[101][0][key] = val
         v = R.verdict(rows, base, bench)
         assert v["clauses"]["3_end_to_end_no_intervention"] is False, key
@@ -96,7 +125,7 @@ def test_partial_and_off_registry_runs_cannot_pass():
 
 def test_four_measured_tasks_is_not_a_pass():
     base = _base()
-    bench = {100 + i: [_run(100 + i, 0.80)] for i in range(4)}
+    bench = _bench(4)
     rows = [{"task_id": t, "ours": 0.80 if t < 104 else None,
              "primary_pass": True if t < 104 else None}
             for t in base["selected_task_ids"]]

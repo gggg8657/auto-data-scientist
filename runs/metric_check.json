@@ -1,0 +1,147 @@
+{
+  "tolerance": 1e-06,
+  "n_tasks_checked": 6,
+  "n_tasks_discriminating": 5,
+  "consistent": true,
+  "server_aggregation": "pooled",
+  "note": "Only tasks with unequal fold sizes can tell the two aggregations apart; the rest are reported as non-discriminating rather than as agreement.",
+  "tasks": [
+    {
+      "task_id": 31,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        100
+      ],
+      "folds_equal": true,
+      "n_scalars_cached": 415112,
+      "n_flows_eligible": 990,
+      "n_flows_queried": 44,
+      "n_runs_joined": 200,
+      "n_runs_with_ambiguous_denominators": 0,
+      "n_runs_used": 200,
+      "max_abs_err_unweighted_mean": 1.1102230246251565e-16,
+      "median_abs_err_unweighted_mean": 0.0,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 1.1102230246251565e-16,
+      "discriminating": false,
+      "verdict": "cannot discriminate \u2014 the two aggregations agree to 1.11e-16 on every run of this task",
+      "aggregation": "either"
+    },
+    {
+      "task_id": 10101,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        74,
+        75
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 385696,
+      "n_flows_eligible": 697,
+      "n_flows_queried": 17,
+      "n_runs_joined": 307,
+      "n_runs_with_ambiguous_denominators": 4,
+      "n_runs_used": 303,
+      "max_abs_err_unweighted_mean": 0.00017565158741628117,
+      "median_abs_err_unweighted_mean": 2.1968492556645458e-05,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 0.0001756515874163922,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    },
+    {
+      "task_id": 3913,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        52,
+        53
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 173611,
+      "n_flows_eligible": 549,
+      "n_flows_queried": 62,
+      "n_runs_joined": 200,
+      "n_runs_with_ambiguous_denominators": 105,
+      "n_runs_used": 95,
+      "max_abs_err_unweighted_mean": 0.00017891997397534443,
+      "median_abs_err_unweighted_mean": 3.433817682363394e-05,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 0.00017891997397534443,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    },
+    {
+      "task_id": 3,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        319,
+        320
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 173303,
+      "n_flows_eligible": 894,
+      "n_flows_queried": 19,
+      "n_runs_joined": 200,
+      "n_runs_with_ambiguous_denominators": 43,
+      "n_runs_used": 157,
+      "max_abs_err_unweighted_mean": 7.676376426657416e-05,
+      "median_abs_err_unweighted_mean": 3.9810244778504256e-06,
+      "max_abs_err_size_weighted": 2.220446049250313e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 7.676376426657416e-05,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    },
+    {
+      "task_id": 3917,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        210,
+        211
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 158237,
+      "n_flows_eligible": 494,
+      "n_flows_queried": 44,
+      "n_runs_joined": 200,
+      "n_runs_with_ambiguous_denominators": 106,
+      "n_runs_used": 94,
+      "max_abs_err_unweighted_mean": 6.902102187678061e-06,
+      "median_abs_err_unweighted_mean": 1.0401307483087763e-06,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 6.902102187678061e-06,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    },
+    {
+      "task_id": 11,
+      "n_folds": 10,
+      "fold_sizes_distinct": [
+        62,
+        63
+      ],
+      "folds_equal": false,
+      "n_scalars_cached": 24531,
+      "n_flows_eligible": 801,
+      "n_flows_queried": 1,
+      "n_runs_joined": 200,
+      "n_runs_with_ambiguous_denominators": 0,
+      "n_runs_used": 200,
+      "max_abs_err_unweighted_mean": 0.0001460317460316718,
+      "median_abs_err_unweighted_mean": 3.6354326676923954e-05,
+      "max_abs_err_size_weighted": 1.1102230246251565e-16,
+      "median_abs_err_size_weighted": 0.0,
+      "max_separation_between_aggregations": 0.00014603174603156077,
+      "discriminating": true,
+      "verdict": "server value is the SIZE-WEIGHTED (pooled) accuracy",
+      "aggregation": "pooled"
+    }
+  ]
+}
