@@ -2083,3 +2083,52 @@ repository, sharing `runs/`, `report.py` and a git index. This turn it produced
 good work and I caught it only because I read a file I was about to edit. The
 next collision may be a mid-flight edit of a file a running producer came from,
 which is a failure mode this repository has already had twice.
+
+### The probe had no mutual exclusion, and there are two of us
+
+`scripts/leakage_probe.py` writes one shared path, takes tens of minutes, and
+was launched from a queue while **a second instance of this loop is live in
+this repository** — it has committed twice this turn (`6011a8f`, `2c6445c`) and
+independently built the AUROC/Brier extension I had listed as unbuilt. Two
+probes would have interleaved fits, both written `runs/leakage_probe.json`, and
+the surviving record would have been whichever finished last, with the other's
+verdict silently gone. Exactly the failure `acquire_output_lock` was added to
+`run_benchmark.py` for on 2026-09-10, in a script written *after* that lesson.
+
+Now locked, reusing that helper so a refusal names the holder's pid and argv.
+Verified by running it rather than by reading it: first holder acquires, second
+raises `RunnerBusy`, and the lock is re-acquirable after release.
+
+### What the parallel instance built that I had only named
+
+Its `scripts/leakage_probe.py` change scores the permuted arm by **AUROC and
+Brier** on `predict_proba`, which is codex's route to power on the tasks where
+hard-label accuracy is blind, and it took the care I would have missed: it reads
+the probabilities off the *fitted pipeline* rather than adding a
+`predict_proba` method to `ads/agent.py`, because doing the latter would change
+the agent source digest and orphan the 38 records on disk. It also fixed the
+reference correctly — under label-independence expected AUROC is **0.5 whatever
+the class prior does**, which is precisely why the statistic has power where
+accuracy-vs-majority-rate does not.
+
+Two instances arriving at the same finding independently is not free evidence:
+we read the same `critique_log.md` and got the same codex output, so the
+agreement is correlated by construction. Where it did help is that we wrote the
+same-named CI test and mine would have silently shadowed theirs — theirs is
+strictly stronger, deriving the workflow's floor from the workflow instead of
+hardcoding a number, so I dropped mine. That collision is a coordination
+hazard, not a validation, and it stays in `WEEKEND.md` as needing a human.
+
+### State at the end of the turn
+
+- Confirmatory 8-seed run: **38 of 40**, 4h30m, `tmux ads-verdict`, untouched
+  all turn. Cells outstanding: task 3 seed 7, task 3917 seed 7.
+- Leakage probe: **not run**, queued behind the confirmatory run in
+  `tmux ads-leakprobe` so the two cannot compete. Clause 2 therefore reads
+  `None` and the status is `RUNNING`, which is the honest state under
+  amendment 7 and not a placeholder.
+- `runs/leakage_power.json`, `runs/leakage_calibration.json` complete. Both are
+  measurements from records already on disk; neither required a new fit.
+- Nothing pushed. `RESULTS.md` in git still predates any accuracy, deliberately.
+- Box load 406–543 throughout, dominated by another track's jobs, which is why
+  every timing this turn is labelled as uncontrolled.
