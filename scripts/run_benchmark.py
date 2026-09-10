@@ -231,10 +231,15 @@ def environment() -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baselines", default=str(RUNS / "baselines.json"))
-    ap.add_argument("--role", choices=("confirmatory", "dev"),
+    ap.add_argument("--role", choices=("confirmatory", "dev", "successor"),
                     default="confirmatory",
-                    help="confirmatory = the five registered tasks (ranks 1-5); "
-                         "dev = ranks 6-15, where the agent may be iterated on")
+                    help="confirmatory = the five registered tasks (ranks 1-5) "
+                         "-> runs/bench; dev = ranks 6-15, where the agent may "
+                         "be iterated on and where debug runs belong -> "
+                         "runs/dev; successor = a labelled second measurement "
+                         "on a different task set -> runs/successor, kept "
+                         "apart from dev so a debug run cannot be mistaken "
+                         "for it")
     ap.add_argument("--tasks", type=int, nargs="*", default=None,
                     help="debug only; stamps off_registry into the output")
     ap.add_argument("--seed", type=int, default=None,
@@ -278,7 +283,16 @@ def main() -> int:
     else:
         seeds = list(protocol.get("seeds_screen") or [0])
 
-    out_dir = BENCH if args.role == "confirmatory" else RUNS / "dev"
+    # `dev` is the protocol's development role and is where debug runs land.
+    # A *labelled second measurement* must not share a directory with debug
+    # runs: on 2026-09-10 a concurrent instance of this loop wrote a
+    # `--max-folds 1` record for task 37 into runs/dev while a successor
+    # measurement was queued to write there, and since the runner skips
+    # existing files that one-fold record would have stood in for the real run.
+    # report.py now excludes partial records from any average, but the cheaper
+    # protection is not to mix the two roles in one directory.
+    out_dir = (BENCH if args.role == "confirmatory"
+               else RUNS / ("successor" if args.role == "successor" else "dev"))
     out_dir.mkdir(parents=True, exist_ok=True)
     # Refuse to share an output directory with another runner. See
     # acquire_output_lock: this repository has a ledger recording two

@@ -311,6 +311,57 @@ def test_a_fixture_run_cannot_write_into_the_repositorys_own_documents():
           "README.md untouched")
 
 
+def test_a_partial_record_is_excluded_from_the_average_and_sinks_clause_3():
+    """The third appearance of this bug class this weekend.
+
+    A concurrent instance of this same loop ran
+    `run_benchmark.py --role dev --tasks 37 --seeds 0 --max-folds 1` into
+    `runs/dev/` while a successor measurement was queued to write there. That
+    one-fold debug record would have been averaged into the task's accuracy as
+    though it were the ten-fold measurement, and the runner would then have
+    *skipped* the real run because the file existed.
+
+    A one-fold accuracy is not a noisy ten-fold accuracy; it is a different
+    statistic whose bias depends on which fold happened to run. So partials are
+    separated from the sample, reported, and cannot coexist with a passing
+    clause 3. Same rule as the joint-event fix and as etch-operator-twin's
+    partial checkpoints: absence and partiality route to "no result", never to
+    a value.
+    """
+    import tempfile as _tf
+    base = _base()
+    with _tf.TemporaryDirectory() as d:
+        d = Path(d)
+        for tid in base["selected_task_ids"]:
+            for seed in VERDICT_SEEDS:
+                (d / f"task_{tid}_seed{seed}.json").write_text(
+                    json.dumps(_run(tid, 0.80, seed=seed)))
+        full, failed, partial = R.load_bench(d)
+        assert not partial and not failed
+        assert all(len(v) == len(VERDICT_SEEDS) for v in full.values())
+
+        # the twin's artifact: one fold, complete=False, max_folds=1
+        bad = _run(104, 0.10, seed=0)
+        bad.update({"complete": False, "max_folds": 1, "n_folds_run": 1})
+        (d / "task_104_seed0.json").write_text(json.dumps(bad))
+        full2, failed2, partial2 = R.load_bench(d)
+
+        assert len(partial2) == 1, partial2
+        assert partial2[0]["_file"] == "task_104_seed0.json"
+        accs = [r["accuracy_pooled"] for r in full2[104]]
+        assert 0.10 not in accs, (
+            "the one-fold debug record was averaged into task 104's accuracy")
+        assert len(full2[104]) == len(VERDICT_SEEDS) - 1, (
+            "the partial replaced the real seed-0 record in the sample")
+
+        v = R.verdict(_rows(base), base, full2, failed2, LEDGER_OK, partial2)
+        assert v["clauses"]["3_end_to_end_no_intervention"] is False
+        assert v["n_partial_records_excluded_from_the_average"] == 1
+        assert "max_folds=1" in v["partial_records"][0]
+    print("  a --max-folds record is kept out of the average, reported, and "
+          "sinks clause 3")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -63,14 +63,22 @@ were run through the *same* outer folds and the same pooled statistic as the
 agent, and each clears the primary reading on 4 of 5 tasks
 (`runs/negative_control.json`).
 
-Nor was that bad luck. Of the 51 candidates passing the size filter, 36 have a
-threshold above their majority-class rate; the top-5-by-published-runs rule
-selected **1** of them, against 3.53 expected under random selection — exact
-hypergeometric **p = 0.0222** (`runs/target_difficulty.json`). Ranking by
-popularity is defensible for determining a median, and it also selects for the
-small famous imbalanced classics whose medians sit near triviality. **A
-selection rule has to be blind to your result *and* blind to the difficulty of
-the target; only the first was designed for.**
+Nor is the class prior the right floor. Requiring the threshold to clear an
+untuned depth-3 tree as well, only **25 of 51** candidates qualify and **1 of
+the 5 registered** (`runs/falsifiability_floor.json`) — on about half of CC18's
+small tasks the ±5% band is cleared by three splits of a tree.
+
+Does the popularity ranking *cause* that? The honest answer needs the right
+test. An earlier version of this README quoted an exact hypergeometric over the
+five selected tasks (p = 0.0222); that test asks whether one draw of five is
+unusual and can reject only on the most extreme possible draw, so it is
+withdrawn as evidence. Over all 51 candidates: **Spearman(popularity rank,
+threshold − stump) = +0.281, one-sided permutation p = 0.0236**. The more
+published a task, the less its threshold clears a depth-3 tree — a modest, real
+effect. Ranking by popularity is defensible for determining a median, and it
+also selects for the small famous imbalanced classics. **A selection rule has
+to be blind to your result *and* blind to the difficulty of the target; only
+the first was designed for.**
 
 What survives is the **joint** five-task criterion, which neither control
 clears because both collapse on the one balanced task. So a `PASS` on this KPI

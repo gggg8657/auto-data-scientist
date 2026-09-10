@@ -1,0 +1,1449 @@
+{
+  "task_id": 3,
+  "dataset_name": "kr-vs-kp",
+  "data_id": 3,
+  "estimation_procedure": "crossvalidation",
+  "metric": "predictive_accuracy",
+  "random_state": 1,
+  "accuracy_pooled": 0.9974968710888611,
+  "n_correct": 3188,
+  "n_predictions": 3196,
+  "accuracy_mean": 0.997498040752351,
+  "accuracy_std": 0.003062264589183396,
+  "accuracy_folds": [
+    0.99375,
+    0.990625,
+    0.996875,
+    1.0,
+    1.0,
+    1.0,
+    0.9968652037617555,
+    0.9968652037617555,
+    1.0,
+    1.0
+  ],
+  "n_folds_run": 10,
+  "n_interventions": 0,
+  "families_chosen": [
+    "hgb"
+  ],
+  "seconds_total": 337.5,
+  "per_fold": [
+    {
+      "repeat": 0,
+      "fold": 0,
+      "accuracy": 0.99375,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 33.3,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.994088768115942,
+        "rf": 0.9909613526570048,
+        "extra": 0.9920042270531401,
+        "logreg": 0.962796497584541,
+        "knn": 0.9429770531400965
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047539.6162305
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047539.6162376
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047539.6163216
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9941 vs runner-up 0.9920",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.994088768115942,
+              "rf": 0.9909613526570048,
+              "extra": 0.9920042270531401,
+              "logreg": 0.962796497584541,
+              "knn": 0.9429770531400965
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047558.0051441
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047558.0061579
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.2, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9941 -> 0.9979",
+            "evidence": {
+              "tuned_score": 0.9979136473429951,
+              "default_score": 0.994088768115942,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047571.9333978
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 1,
+      "accuracy": 0.990625,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 34.6,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.994437198067633,
+        "rf": 0.9923520531400968,
+        "extra": 0.992352657004831,
+        "logreg": 0.9652324879227054,
+        "knn": 0.957582729468599
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047572.91235
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047572.9123545
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047572.912407
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9944 vs runner-up 0.9924",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.994437198067633,
+              "rf": 0.9923520531400968,
+              "extra": 0.992352657004831,
+              "logreg": 0.9652324879227054,
+              "knn": 0.957582729468599
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047593.9690259
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047593.9697495
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.2, 'clf__l2_regularization': 1.0}",
+            "rule": "random search improved inner CV 0.9944 -> 0.9969",
+            "evidence": {
+              "tuned_score": 0.9968713768115942,
+              "default_score": 0.994437198067633,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047606.574336
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 2,
+      "accuracy": 0.996875,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 43.56,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.9937409420289856,
+        "rf": 0.988875,
+        "extra": 0.9920036231884058,
+        "logreg": 0.9652288647342996,
+        "knn": 0.9523665458937198
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047607.5127306
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047607.5127347
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047607.5127904
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9937 vs runner-up 0.9920",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.9937409420289856,
+              "rf": 0.988875,
+              "extra": 0.9920036231884058,
+              "logreg": 0.9652288647342996,
+              "knn": 0.9523665458937198
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047623.5793567
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047623.5806932
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.2, 'clf__l2_regularization': 1.0}",
+            "rule": "random search improved inner CV 0.9937 -> 0.9962",
+            "evidence": {
+              "tuned_score": 0.9961757246376811,
+              "default_score": 0.9937409420289856,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047650.2146924
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 3,
+      "accuracy": 1.0,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 38.27,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.9930458937198067,
+        "rf": 0.9906123188405797,
+        "extra": 0.9913073671497585,
+        "logreg": 0.9627971014492754,
+        "knn": 0.9547977053140096
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047651.0699449
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047651.0699494
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047651.0700054
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9930 vs runner-up 0.9913",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.9930458937198067,
+              "rf": 0.9906123188405797,
+              "extra": 0.9913073671497585,
+              "logreg": 0.9627971014492754,
+              "knn": 0.9547977053140096
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047666.3294036
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047666.330267
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.06, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9930 -> 0.9958",
+            "evidence": {
+              "tuned_score": 0.9958278985507245,
+              "default_score": 0.9930458937198067,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047688.3130941
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 4,
+      "accuracy": 1.0,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 32.12,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.9937421497584541,
+        "rf": 0.9906141304347825,
+        "extra": 0.9920036231884056,
+        "logreg": 0.9648840579710145,
+        "knn": 0.9516696859903382
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047689.3449876
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047689.344992
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047689.3450449
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9937 vs runner-up 0.9920",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.9937421497584541,
+              "rf": 0.9906141304347825,
+              "extra": 0.9920036231884056,
+              "logreg": 0.9648840579710145,
+              "knn": 0.9516696859903382
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047704.7733471
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047704.7741568
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 15, 'clf__learning_rate': 0.1, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9937 -> 0.9951",
+            "evidence": {
+              "tuned_score": 0.9951322463768115,
+              "default_score": 0.9937421497584541,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047720.9485784
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 5,
+      "accuracy": 1.0,
+      "n_train": 2876,
+      "n_test": 320,
+      "family": "hgb",
+      "seconds": 30.38,
+      "tournament": {
+        "dummy": 0.5222530193236714,
+        "hgb": 0.9933949275362319,
+        "rf": 0.9906117149758454,
+        "extra": 0.9920024154589371,
+        "logreg": 0.9624480676328503,
+        "knn": 0.9467995169082126
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047721.4704676
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2876 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2876,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47774687065368565
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047721.4704716
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.012517385257301807,
+              "minority_ratio": 0.47774687065368565,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047721.4705243
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9934 vs runner-up 0.9920",
+            "evidence": {
+              "dummy": 0.5222530193236714,
+              "hgb": 0.9933949275362319,
+              "rf": 0.9906117149758454,
+              "extra": 0.9920024154589371,
+              "logreg": 0.9624480676328503,
+              "knn": 0.9467995169082126
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047735.3898065
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2876, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2876,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047735.3929007
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 15, 'clf__learning_rate': 0.1, 'clf__l2_regularization': 1.0}",
+            "rule": "random search improved inner CV 0.9934 -> 0.9951",
+            "evidence": {
+              "tuned_score": 0.9951322463768115,
+              "default_score": 0.9933949275362319,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047751.38951
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2876,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47774687065368565,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.012517385257301807,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 6,
+      "accuracy": 0.9968652037617555,
+      "n_train": 2877,
+      "n_test": 319,
+      "family": "hgb",
+      "seconds": 34.1,
+      "tournament": {
+        "dummy": 0.522419082125604,
+        "hgb": 0.9940942028985507,
+        "rf": 0.9902711352657004,
+        "extra": 0.9902705314009662,
+        "logreg": 0.9659353864734299,
+        "knn": 0.9475157004830917
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047751.846918
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2877 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2877,
+              "min_class_count": 1374,
+              "minority_ratio": 0.47758081334723673
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047751.846927
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.01251303441084463,
+              "minority_ratio": 0.47758081334723673,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047751.8469908
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9941 vs runner-up 0.9903",
+            "evidence": {
+              "dummy": 0.522419082125604,
+              "hgb": 0.9940942028985507,
+              "rf": 0.9902711352657004,
+              "extra": 0.9902705314009662,
+              "logreg": 0.9659353864734299,
+              "knn": 0.9475157004830917
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047769.3886015
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2877, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2877,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047769.3895566
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 63, 'clf__learning_rate': 0.2, 'clf__l2_regularization': 1.0}",
+            "rule": "random search improved inner CV 0.9941 -> 0.9965",
+            "evidence": {
+              "tuned_score": 0.9965259661835748,
+              "default_score": 0.9940942028985507,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047784.7200818
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2877,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1503,
+          "nowin": 1374
+        },
+        "minority_ratio": 0.47758081334723673,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.01251303441084463,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 7,
+      "accuracy": 0.9968652037617555,
+      "n_train": 2877,
+      "n_test": 319,
+      "family": "hgb",
+      "seconds": 26.98,
+      "tournament": {
+        "dummy": 0.5220712560386473,
+        "hgb": 0.9947892512077294,
+        "rf": 0.9899214975845411,
+        "extra": 0.992006038647343,
+        "logreg": 0.9648925120772948,
+        "knn": 0.9516865942028986
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047785.9510314
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2877 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2877,
+              "min_class_count": 1375,
+              "minority_ratio": 0.47792839763642686
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047785.9510357
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.01251303441084463,
+              "minority_ratio": 0.47792839763642686,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047785.9510899
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9948 vs runner-up 0.9920",
+            "evidence": {
+              "dummy": 0.5220712560386473,
+              "hgb": 0.9947892512077294,
+              "rf": 0.9899214975845411,
+              "extra": 0.992006038647343,
+              "logreg": 0.9648925120772948,
+              "knn": 0.9516865942028986
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047800.695415
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2877, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2877,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047800.6960516
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 15, 'clf__learning_rate': 0.1, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9948 -> 0.9958",
+            "evidence": {
+              "tuned_score": 0.9958309178743961,
+              "default_score": 0.9947892512077294,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047812.4681277
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2877,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1375
+        },
+        "minority_ratio": 0.47792839763642686,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.01251303441084463,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 8,
+      "accuracy": 1.0,
+      "n_train": 2877,
+      "n_test": 319,
+      "family": "hgb",
+      "seconds": 27.37,
+      "tournament": {
+        "dummy": 0.5220712560386473,
+        "hgb": 0.9930507246376811,
+        "rf": 0.989225845410628,
+        "extra": 0.990268115942029,
+        "logreg": 0.9638484299516907,
+        "knn": 0.9502989130434782
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047812.936411
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2877 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2877,
+              "min_class_count": 1375,
+              "minority_ratio": 0.47792839763642686
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047812.9364169
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.01251303441084463,
+              "minority_ratio": 0.47792839763642686,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047812.9364908
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9931 vs runner-up 0.9903",
+            "evidence": {
+              "dummy": 0.5220712560386473,
+              "hgb": 0.9930507246376811,
+              "rf": 0.989225845410628,
+              "extra": 0.990268115942029,
+              "logreg": 0.9638484299516907,
+              "knn": 0.9502989130434782
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047828.0449064
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2877, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2877,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047828.045804
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.2, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9931 -> 0.9955",
+            "evidence": {
+              "tuned_score": 0.9954836956521739,
+              "default_score": 0.9930507246376811,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047839.4221287
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2877,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1375
+        },
+        "minority_ratio": 0.47792839763642686,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.01251303441084463,
+        "numeric_scale_ratio": NaN
+      }
+    },
+    {
+      "repeat": 0,
+      "fold": 9,
+      "accuracy": 1.0,
+      "n_train": 2877,
+      "n_test": 319,
+      "family": "hgb",
+      "seconds": 36.76,
+      "tournament": {
+        "dummy": 0.5220712560386473,
+        "hgb": 0.993397342995169,
+        "rf": 0.9888792270531402,
+        "extra": 0.9899221014492754,
+        "logreg": 0.9652403381642511,
+        "knn": 0.9471660628019324
+      },
+      "decisions": {
+        "n_decisions": 6,
+        "n_interventions": 0,
+        "decisions": [
+          {
+            "stage": "encoding",
+            "choice": "onehot",
+            "rule": "max cardinality 3 <= 20, one-hot stays narrow",
+            "evidence": {
+              "n_categorical": 36,
+              "max_cardinality": 3,
+              "median_cardinality": 2.0
+            },
+            "alternatives": [
+              "onehot",
+              "ordinal",
+              "none"
+            ],
+            "t": 1789047840.306615
+          },
+          {
+            "stage": "inner_cv",
+            "choice": "StratifiedKFold(k=5)",
+            "rule": "n=2877 < 5000, so k=5",
+            "evidence": {
+              "n_samples": 2877,
+              "min_class_count": 1375,
+              "minority_ratio": 0.47792839763642686
+            },
+            "alternatives": [
+              "StratifiedKFold(k=3)",
+              "StratifiedKFold(k=5)"
+            ],
+            "t": 1789047840.3066227
+          },
+          {
+            "stage": "candidate_families",
+            "choice": "dummy,extra,hgb,knn,logreg,rf",
+            "rule": "portfolio selected from profile; nothing dropped",
+            "evidence": {
+              "p_over_n": 0.01251303441084463,
+              "minority_ratio": 0.47792839763642686,
+              "class_weight": "None",
+              "imbalanced": false,
+              "dropped": {}
+            },
+            "alternatives": [
+              "dummy",
+              "hgb",
+              "rf",
+              "extra",
+              "logreg",
+              "knn"
+            ],
+            "t": 1789047840.3066783
+          },
+          {
+            "stage": "model_family",
+            "choice": "hgb",
+            "rule": "highest inner-CV accuracy: 0.9934 vs runner-up 0.9899",
+            "evidence": {
+              "dummy": 0.5220712560386473,
+              "hgb": 0.993397342995169,
+              "rf": 0.9888792270531402,
+              "extra": 0.9899221014492754,
+              "logreg": 0.9652403381642511,
+              "knn": 0.9471660628019324
+            },
+            "alternatives": [
+              "dummy",
+              "extra",
+              "hgb",
+              "knn",
+              "logreg",
+              "rf"
+            ],
+            "t": 1789047855.8330925
+          },
+          {
+            "stage": "search_budget",
+            "choice": "20",
+            "rule": "n=2877, so 20 random-search draws on hgb",
+            "evidence": {
+              "n_samples": 2877,
+              "space_size": 4
+            },
+            "alternatives": [],
+            "t": 1789047855.833845
+          },
+          {
+            "stage": "hyperparameters",
+            "choice": "{'clf__min_samples_leaf': 5, 'clf__max_leaf_nodes': 15, 'clf__learning_rate': 0.1, 'clf__l2_regularization': 0.1}",
+            "rule": "random search improved inner CV 0.9934 -> 0.9958",
+            "evidence": {
+              "tuned_score": 0.9958309178743961,
+              "default_score": 0.993397342995169,
+              "improved": true
+            },
+            "alternatives": [],
+            "t": 1789047876.577145
+          }
+        ],
+        "interventions": []
+      },
+      "profile": {
+        "n_samples": 2877,
+        "n_features": 36,
+        "n_numeric": 0,
+        "n_categorical": 36,
+        "n_classes": 2,
+        "class_counts": {
+          "won": 1502,
+          "nowin": 1375
+        },
+        "minority_ratio": 0.47792839763642686,
+        "frac_missing_cells": 0.0,
+        "cols_with_missing": 0,
+        "max_cardinality": 3,
+        "median_cardinality": 2.0,
+        "p_over_n": 0.01251303441084463,
+        "numeric_scale_ratio": NaN
+      }
+    }
+  ],
+  "env": {
+    "python": "3.11.15",
+    "platform": "Linux-6.8.0-58-generic-x86_64-with-glibc2.39",
+    "numpy": "2.3.5",
+    "pandas": "3.0.2",
+    "sklearn": "1.8.0",
+    "openml": "0.15.1",
+    "cpu_count": 192,
+    "git_commit": "0694bb5e19b0fd48220216ddf3a590e21680cd11",
+    "ads_sha256": "14ac971659faff242877908195d42c5bc0530ed1b5a855daeef31cd3b298b2ac",
+    "ads_files": [
+      "__init__.py",
+      "agent.py",
+      "decisions.py",
+      "evaluate.py",
+      "openml_io.py",
+      "profile.py"
+    ],
+    "ads_dirty_vs_head": false,
+    "ads_dirty_detail": null
+  },
+  "role": "confirmatory",
+  "registry_sha256": "6731b733f4e84696290431ba01ae227bc3168371b6dafa30533c8a035db0ecac",
+  "off_registry": false,
+  "max_folds": null,
+  "complete": true
+}

@@ -1,0 +1,1403 @@
+{
+  "generated": "2026-09-10T18:38:01+0000",
+  "partial": false,
+  "question": "For each candidate task, does 0.95 x median_run clear a frozen incapable procedure? A threshold above the majority-class rate is necessary and not sufficient: on the majority-rate-selected successor five, prior cleared 0/5 and the depth-3 stump cleared 3/5.",
+  "blind_to_our_accuracy": "a frozen procedure's score is a property of the dataset; nothing here reads runs/bench.",
+  "does_not_change_the_registered_task_set": true,
+  "controls": [
+    "prior",
+    "stump"
+  ],
+  "n_tasks_attempted": 51,
+  "n_tasks_failed_to_load": 0,
+  "task_ids_failed_to_load": [],
+  "over_all_candidates": {
+    "prior": {
+      "n_clearing_primary": 15,
+      "n_clearing_strictest": 12
+    },
+    "stump": {
+      "n_clearing_primary": 25,
+      "n_clearing_strictest": 18
+    },
+    "n_falsifiable_vs_all_controls": 25,
+    "n_tasks": 51
+  },
+  "over_the_registered_five": {
+    "prior": {
+      "n_clearing_primary": 4,
+      "n_clearing_strictest": 3
+    },
+    "stump": {
+      "n_clearing_primary": 4,
+      "n_clearing_strictest": 4
+    },
+    "n_falsifiable_vs_all_controls": 1,
+    "n_tasks": 5
+  },
+  "a_stump_falsifiable_five_under_a_blind_rule": [
+    {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "rank_by_n_runs": 4,
+      "threshold_primary": 0.911952,
+      "stump": 0.9042553191489362,
+      "margin_over_stump": 0.007697
+    },
+    {
+      "task_id": 9957,
+      "dataset_name": "qsar-biodeg",
+      "rank_by_n_runs": 6,
+      "threshold_primary": 0.799621,
+      "stump": 0.790521327014218,
+      "margin_over_stump": 0.009099
+    },
+    {
+      "task_id": 49,
+      "dataset_name": "tic-tac-toe",
+      "rank_by_n_runs": 14,
+      "threshold_primary": 0.84786,
+      "stump": 0.6774530271398748,
+      "margin_over_stump": 0.170407
+    },
+    {
+      "task_id": 6,
+      "dataset_name": "letter",
+      "rank_by_n_runs": 18,
+      "threshold_primary": 0.847257,
+      "stump": 0.17805,
+      "margin_over_stump": 0.669207
+    },
+    {
+      "task_id": 53,
+      "dataset_name": "vehicle",
+      "rank_by_n_runs": 19,
+      "threshold_primary": 0.679374,
+      "stump": 0.6453900709219859,
+      "margin_over_stump": 0.033983
+    }
+  ],
+  "a_stump_falsifiable_five_rule": "the five most-published candidates whose threshold clears EVERY frozen control, not merely the class prior. Still blind to our accuracy. Offered as a criterion, NOT substituted for the registered task set.",
+  "tasks": [
+    {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "rank_by_n_runs": 1,
+      "selected": true,
+      "median_run": 0.725,
+      "threshold_primary": 0.68875,
+      "threshold_strictest": 0.6944499999999999,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.1
+        },
+        "stump": {
+          "accuracy_pooled": 0.748,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.7,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "rank_by_n_runs": 2,
+      "selected": true,
+      "median_run": 0.763369,
+      "threshold_primary": 0.7252005499999999,
+      "threshold_strictest": 0.7353609625668449,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7620320855614974,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.01
+        },
+        "stump": {
+          "accuracy_pooled": 0.7901069518716578,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.03
+        }
+      },
+      "majority_class_rate": 0.7620320855614974,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "rank_by_n_runs": 3,
+      "selected": true,
+      "median_run": 0.8275862068965517,
+      "threshold_primary": 0.786206896551724,
+      "threshold_strictest": 0.8025866,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7950191570881227,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.01
+        },
+        "stump": {
+          "accuracy_pooled": 0.8371647509578544,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.7950191570881227,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "rank_by_n_runs": 4,
+      "selected": true,
+      "median_run": 0.95995,
+      "threshold_primary": 0.9119524999999999,
+      "threshold_strictest": 0.94494695,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.522215269086358,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.03
+        },
+        "stump": {
+          "accuracy_pooled": 0.9042553191489362,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.08
+        }
+      },
+      "majority_class_rate": 0.522215269086358,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "rank_by_n_runs": 5,
+      "selected": true,
+      "median_run": 0.851588,
+      "threshold_primary": 0.8090086,
+      "threshold_strictest": 0.8184684684684683,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.8454243717401612,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.02
+        },
+        "stump": {
+          "accuracy_pooled": 0.8511142721669037,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.13
+        }
+      },
+      "majority_class_rate": 0.8454243717401612,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 9957,
+      "dataset_name": "qsar-biodeg",
+      "rank_by_n_runs": 6,
+      "selected": false,
+      "median_run": 0.841706,
+      "threshold_primary": 0.7996207,
+      "threshold_strictest": 0.8275355,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6625592417061611,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.03
+        },
+        "stump": {
+          "accuracy_pooled": 0.790521327014218,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.12
+        }
+      },
+      "majority_class_rate": 0.6625592417061611,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 9946,
+      "dataset_name": "wdbc",
+      "rank_by_n_runs": 7,
+      "selected": false,
+      "median_run": 0.927944,
+      "threshold_primary": 0.8815468,
+      "threshold_strictest": 0.923286467486819,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6274165202108963,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.01
+        },
+        "stump": {
+          "accuracy_pooled": 0.9261862917398945,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.11
+        }
+      },
+      "majority_class_rate": 0.6274165202108963,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3918,
+      "dataset_name": "pc1",
+      "rank_by_n_runs": 8,
+      "selected": false,
+      "median_run": 0.930568,
+      "threshold_primary": 0.8840395999999999,
+      "threshold_strictest": 0.8891792704688909,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.9305680793507665,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 1.91
+        },
+        "stump": {
+          "accuracy_pooled": 0.9269612263300271,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.9305680793507665,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3903,
+      "dataset_name": "pc3",
+      "rank_by_n_runs": 9,
+      "selected": false,
+      "median_run": 0.897633,
+      "threshold_primary": 0.85275135,
+      "threshold_strictest": 0.8576135636596288,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.8976327575175944,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.19
+        },
+        "stump": {
+          "accuracy_pooled": 0.8969929622520794,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.1
+        }
+      },
+      "majority_class_rate": 0.8976327575175944,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 37,
+      "dataset_name": "diabetes",
+      "rank_by_n_runs": 10,
+      "selected": false,
+      "median_run": 0.752604,
+      "threshold_primary": 0.7149738,
+      "threshold_strictest": 0.7298177083333334,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6510416666666666,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.02
+        },
+        "stump": {
+          "accuracy_pooled": 0.7408854166666666,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.06
+        }
+      },
+      "majority_class_rate": 0.6510416666666666,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 9971,
+      "dataset_name": "ilpd",
+      "rank_by_n_runs": 11,
+      "selected": false,
+      "median_run": 0.711835,
+      "threshold_primary": 0.67624325,
+      "threshold_strictest": 0.680317387735849,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7135506003430532,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.03
+        },
+        "stump": {
+          "accuracy_pooled": 0.6723842195540308,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.04
+        }
+      },
+      "majority_class_rate": 0.7135506003430532,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 9952,
+      "dataset_name": "phoneme",
+      "rank_by_n_runs": 12,
+      "selected": false,
+      "median_run": 0.74926,
+      "threshold_primary": 0.711797,
+      "threshold_strictest": 0.86122345,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7065136935603257,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.02
+        },
+        "stump": {
+          "accuracy_pooled": 0.7685048112509253,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.13
+        }
+      },
+      "majority_class_rate": 0.7065136935603257,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3902,
+      "dataset_name": "pc4",
+      "rank_by_n_runs": 13,
+      "selected": false,
+      "median_run": 0.8943758573388203,
+      "threshold_primary": 0.8496570644718793,
+      "threshold_strictest": 0.86822685,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.877914951989026,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.12
+        },
+        "stump": {
+          "accuracy_pooled": 0.8964334705075446,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.11
+        }
+      },
+      "majority_class_rate": 0.877914951989026,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 49,
+      "dataset_name": "tic-tac-toe",
+      "rank_by_n_runs": 14,
+      "selected": false,
+      "median_run": 0.892484,
+      "threshold_primary": 0.8478598,
+      "threshold_strictest": 0.9390918580375782,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6534446764091858,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.9
+        },
+        "stump": {
+          "accuracy_pooled": 0.6774530271398748,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.03
+        }
+      },
+      "majority_class_rate": 0.6534446764091858,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 43,
+      "dataset_name": "spambase",
+      "rank_by_n_runs": 15,
+      "selected": false,
+      "median_run": 0.847424472940665,
+      "threshold_primary": 0.8050532492936318,
+      "threshold_strictest": 0.8965224951097588,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6059552271245382,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.25
+        },
+        "stump": {
+          "accuracy_pooled": 0.877852640730276,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.22
+        }
+      },
+      "majority_class_rate": 0.6059552271245382,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 9978,
+      "dataset_name": "ozone-level-8hr",
+      "rank_by_n_runs": 16,
+      "selected": false,
+      "median_run": 0.938043,
+      "threshold_primary": 0.8911408499999999,
+      "threshold_strictest": 0.89601435,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.9368587213891081,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.22
+        },
+        "stump": {
+          "accuracy_pooled": 0.9297553275453828,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.32
+        }
+      },
+      "majority_class_rate": 0.9368587213891081,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 10093,
+      "dataset_name": "banknote-authentication",
+      "rank_by_n_runs": 17,
+      "selected": false,
+      "median_run": 0.971574,
+      "threshold_primary": 0.9229953,
+      "threshold_strictest": 0.9493074499999999,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.5553935860058309,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.11
+        },
+        "stump": {
+          "accuracy_pooled": 0.9373177842565598,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.5553935860058309,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 6,
+      "dataset_name": "letter",
+      "rank_by_n_runs": 18,
+      "selected": false,
+      "median_run": 0.89185,
+      "threshold_primary": 0.8472575,
+      "threshold_strictest": 0.894805,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.04065,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 3.48
+        },
+        "stump": {
+          "accuracy_pooled": 0.17805,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.41
+        }
+      },
+      "majority_class_rate": 0.04065,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 53,
+      "dataset_name": "vehicle",
+      "rank_by_n_runs": 19,
+      "selected": false,
+      "median_run": 0.7151300236406619,
+      "threshold_primary": 0.6793735224586288,
+      "threshold_strictest": 0.72316755,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.2576832151300236,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.93
+        },
+        "stump": {
+          "accuracy_pooled": 0.6453900709219859,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.2576832151300236,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 11,
+      "dataset_name": "balance-scale",
+      "rank_by_n_runs": 20,
+      "selected": false,
+      "median_run": 0.8592,
+      "threshold_primary": 0.81624,
+      "threshold_strictest": 0.8436,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.4576,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.01
+        },
+        "stump": {
+          "accuracy_pooled": 0.7104,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.04
+        }
+      },
+      "majority_class_rate": 0.4608,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 15,
+      "dataset_name": "breast-w",
+      "rank_by_n_runs": 21,
+      "selected": false,
+      "median_run": 0.9585121602288984,
+      "threshold_primary": 0.9105865522174534,
+      "threshold_strictest": 0.9160228898426324,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.6552217453505007,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.89
+        },
+        "stump": {
+          "accuracy_pooled": 0.9413447782546495,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.6552217453505007,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 16,
+      "dataset_name": "mfeat-karhunen",
+      "rank_by_n_runs": 22,
+      "selected": false,
+      "median_run": 0.9265,
+      "threshold_primary": 0.8801749999999999,
+      "threshold_strictest": 0.902025,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.19
+        },
+        "stump": {
+          "accuracy_pooled": 0.4435,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.46
+        }
+      },
+      "majority_class_rate": 0.1,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 14,
+      "dataset_name": "mfeat-fourier",
+      "rank_by_n_runs": 23,
+      "selected": false,
+      "median_run": 0.7955,
+      "threshold_primary": 0.755725,
+      "threshold_strictest": 0.7794749999999999,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.14
+        },
+        "stump": {
+          "accuracy_pooled": 0.442,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.52
+        }
+      },
+      "majority_class_rate": 0.1,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 32,
+      "dataset_name": "pendigits",
+      "rank_by_n_runs": 24,
+      "selected": false,
+      "median_run": 0.9586516295487627,
+      "threshold_primary": 0.9107190480713245,
+      "threshold_strictest": 0.9156022561863173,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1037117903930131,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.97
+        },
+        "stump": {
+          "accuracy_pooled": 0.57014192139738,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.31
+        }
+      },
+      "majority_class_rate": 0.10407569141193596,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 3549,
+      "dataset_name": "analcatdata_authorship",
+      "rank_by_n_runs": 25,
+      "selected": false,
+      "median_run": 0.961950059453032,
+      "threshold_primary": 0.9138525564803803,
+      "threshold_strictest": 0.9375743162901308,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.3769322235434007,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.87
+        },
+        "stump": {
+          "accuracy_pooled": 0.8977407847800237,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.11
+        }
+      },
+      "majority_class_rate": 0.3769322235434007,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 18,
+      "dataset_name": "mfeat-morphological",
+      "rank_by_n_runs": 26,
+      "selected": false,
+      "median_run": 0.7,
+      "threshold_primary": 0.6649999999999999,
+      "threshold_strictest": 0.66975,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.21
+        },
+        "stump": {
+          "accuracy_pooled": 0.5695,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.06
+        }
+      },
+      "majority_class_rate": 0.1,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 28,
+      "dataset_name": "optdigits",
+      "rank_by_n_runs": 27,
+      "selected": false,
+      "median_run": 0.956049822064057,
+      "threshold_primary": 0.9082473309608541,
+      "threshold_strictest": 0.9197419928825622,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.10142348754448399,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.55
+        },
+        "stump": {
+          "accuracy_pooled": 0.39466192170818504,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.34
+        }
+      },
+      "majority_class_rate": 0.10177935943060498,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 2074,
+      "dataset_name": "satimage",
+      "rank_by_n_runs": 28,
+      "selected": false,
+      "median_run": 0.8583203732503888,
+      "threshold_primary": 0.8154043545878693,
+      "threshold_strictest": 0.8606145,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.23810264385692068,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.56
+        },
+        "stump": {
+          "accuracy_pooled": 0.7710730948678072,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.32
+        }
+      },
+      "majority_class_rate": 0.23810264385692068,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 29,
+      "dataset_name": "credit-approval",
+      "rank_by_n_runs": 29,
+      "selected": false,
+      "median_run": 0.855072,
+      "threshold_primary": 0.8123184,
+      "threshold_strictest": 0.8219565217391304,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.5550724637681159,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.85
+        },
+        "stump": {
+          "accuracy_pooled": 0.836231884057971,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.04
+        }
+      },
+      "majority_class_rate": 0.5550724637681159,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 45,
+      "dataset_name": "splice",
+      "rank_by_n_runs": 30,
+      "selected": false,
+      "median_run": 0.938871473354232,
+      "threshold_primary": 0.8919278996865204,
+      "threshold_strictest": 0.9008620689655173,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.5188087774294671,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.5
+        },
+        "stump": {
+          "accuracy_pooled": 0.8733542319749217,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.16
+        }
+      },
+      "majority_class_rate": 0.5188087774294671,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 125922,
+      "dataset_name": "texture",
+      "rank_by_n_runs": 31,
+      "selected": false,
+      "median_run": 0.9509090909090908,
+      "threshold_primary": 0.9033636363636363,
+      "threshold_strictest": 0.9285818181818183,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.09090909090909091,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.56
+        },
+        "stump": {
+          "accuracy_pooled": 0.43781818181818183,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.65
+        }
+      },
+      "majority_class_rate": 0.09090909090909091,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 9960,
+      "dataset_name": "wall-robot-navigation",
+      "rank_by_n_runs": 32,
+      "selected": false,
+      "median_run": 0.8134164222873901,
+      "threshold_primary": 0.7727456011730205,
+      "threshold_strictest": 0.946691715542522,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.4041422287390029,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.53
+        },
+        "stump": {
+          "accuracy_pooled": 0.8944281524926686,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.42
+        }
+      },
+      "majority_class_rate": 0.4041422287390029,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 22,
+      "dataset_name": "mfeat-zernike",
+      "rank_by_n_runs": 33,
+      "selected": false,
+      "median_run": 0.7365,
+      "threshold_primary": 0.699675,
+      "threshold_strictest": 0.7234249999999999,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.21
+        },
+        "stump": {
+          "accuracy_pooled": 0.3585,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.35
+        }
+      },
+      "majority_class_rate": 0.1,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 2079,
+      "dataset_name": "eucalyptus",
+      "rank_by_n_runs": 34,
+      "selected": false,
+      "median_run": 0.6073369565217391,
+      "threshold_primary": 0.5769701086956521,
+      "threshold_strictest": 0.6195653,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.2907608695652174,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.88
+        },
+        "stump": {
+          "accuracy_pooled": 0.5448369565217391,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.2907608695652174,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 14969,
+      "dataset_name": "GesturePhaseSegmentationProcessed",
+      "rank_by_n_runs": 35,
+      "selected": false,
+      "median_run": 0.4801985212194875,
+      "threshold_primary": 0.45618859515851307,
+      "threshold_strictest": 0.6035043720981464,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.2987946925959688,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.94
+        },
+        "stump": {
+          "accuracy_pooled": 0.4547756507647118,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.28
+        }
+      },
+      "majority_class_rate": 0.2987946925959688,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 14952,
+      "dataset_name": "PhishingWebsites",
+      "rank_by_n_runs": 36,
+      "selected": false,
+      "median_run": 0.941836,
+      "threshold_primary": 0.8947442,
+      "threshold_strictest": 0.9231456354590682,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.5569425599276345,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 3.06
+        },
+        "stump": {
+          "accuracy_pooled": 0.9171415649027589,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.21
+        }
+      },
+      "majority_class_rate": 0.5569425599276345,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3560,
+      "dataset_name": "analcatdata_dmft",
+      "rank_by_n_runs": 37,
+      "selected": false,
+      "median_run": 0.2007528230865746,
+      "threshold_primary": 0.19071518193224588,
+      "threshold_strictest": 0.20799869999999998,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1944792973651192,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 1.85
+        },
+        "stump": {
+          "accuracy_pooled": 0.22208281053952322,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.05
+        }
+      },
+      "majority_class_rate": 0.1944792973651192,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 125920,
+      "dataset_name": "dresses-sales",
+      "rank_by_n_runs": 38,
+      "selected": false,
+      "median_run": 0.584,
+      "threshold_primary": 0.5548,
+      "threshold_strictest": 0.5984999999999999,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.58,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 1.86
+        },
+        "stump": {
+          "accuracy_pooled": 0.61,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.03
+        }
+      },
+      "majority_class_rate": 0.58,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 23,
+      "dataset_name": "cmc",
+      "rank_by_n_runs": 39,
+      "selected": false,
+      "median_run": 0.5044127630685675,
+      "threshold_primary": 0.47919212491513913,
+      "threshold_strictest": 0.5224032586558045,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.4270196877121521,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.13
+        },
+        "stump": {
+          "accuracy_pooled": 0.5139171758316361,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.04
+        }
+      },
+      "majority_class_rate": 0.4270196877121521,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3904,
+      "dataset_name": "jm1",
+      "rank_by_n_runs": 40,
+      "selected": false,
+      "median_run": 0.8087276067983464,
+      "threshold_primary": 0.7682912264584291,
+      "threshold_strictest": 0.7774989155604042,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.8065227377124483,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 3.68
+        },
+        "stump": {
+          "accuracy_pooled": 0.8094625631603124,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.66
+        }
+      },
+      "majority_class_rate": 0.8065227377124483,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 3022,
+      "dataset_name": "vowel",
+      "rank_by_n_runs": 41,
+      "selected": false,
+      "median_run": 0.7464646464646465,
+      "threshold_primary": 0.7091414141414142,
+      "threshold_strictest": 0.8631565656565656,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.09090909090909091,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 1.95
+        },
+        "stump": {
+          "accuracy_pooled": 0.36666666666666664,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.06
+        }
+      },
+      "majority_class_rate": 0.09090909090909091,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 9985,
+      "dataset_name": "first-order-theorem-proving",
+      "rank_by_n_runs": 42,
+      "selected": false,
+      "median_run": 0.5246812683883622,
+      "threshold_primary": 0.498447204968944,
+      "threshold_strictest": 0.5756211085403726,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.41745668519123896,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 3.67
+        },
+        "stump": {
+          "accuracy_pooled": 0.42399476953252696,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.56
+        }
+      },
+      "majority_class_rate": 0.41745668519123896,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 3021,
+      "dataset_name": "sick",
+      "rank_by_n_runs": 43,
+      "selected": false,
+      "median_run": 0.9647400954400849,
+      "threshold_primary": 0.9165030906680806,
+      "threshold_strictest": 0.9371553552492046,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.9387592788971368,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.26
+        },
+        "stump": {
+          "accuracy_pooled": 0.9817073170731707,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.1
+        }
+      },
+      "majority_class_rate": 0.9387592788971368,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 146820,
+      "dataset_name": "wilt",
+      "rank_by_n_runs": 44,
+      "selected": false,
+      "median_run": 0.9698284769580492,
+      "threshold_primary": 0.9213370531101467,
+      "threshold_strictest": 0.934883240338913,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.9460632362058277,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 2.54
+        },
+        "stump": {
+          "accuracy_pooled": 0.9729282909692085,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.12
+        }
+      },
+      "majority_class_rate": 0.9460632362058277,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 146822,
+      "dataset_name": "segment",
+      "rank_by_n_runs": 45,
+      "selected": false,
+      "median_run": 0.9021645021645022,
+      "threshold_primary": 0.8570562770562771,
+      "threshold_strictest": 0.8876948051948051,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.14285714285714285,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.8
+        },
+        "stump": {
+          "accuracy_pooled": 0.5666666666666667,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.3
+        }
+      },
+      "majority_class_rate": 0.14285714285714285,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 146800,
+      "dataset_name": "MiceProtein",
+      "rank_by_n_runs": 46,
+      "selected": false,
+      "median_run": 0.9833333333333332,
+      "threshold_primary": 0.9341666666666665,
+      "threshold_strictest": 0.9341666666666665,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.1388888888888889,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.18
+        },
+        "stump": {
+          "accuracy_pooled": 0.549074074074074,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.47
+        }
+      },
+      "majority_class_rate": 0.1388888888888889,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 146817,
+      "dataset_name": "steel-plates-fault",
+      "rank_by_n_runs": 47,
+      "selected": false,
+      "median_run": 0.7377640391550747,
+      "threshold_primary": 0.7008758371973209,
+      "threshold_strictest": 0.7591190108191653,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.3467284904688305,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.61
+        },
+        "stump": {
+          "accuracy_pooled": 0.5342606903657908,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.39
+        }
+      },
+      "majority_class_rate": 0.3467284904688305,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 146819,
+      "dataset_name": "climate-model-simulation-crashes",
+      "rank_by_n_runs": 48,
+      "selected": false,
+      "median_run": 0.9351851851851852,
+      "threshold_primary": 0.888425925925926,
+      "threshold_strictest": 0.9025,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.9148148148148149,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 1.99
+        },
+        "stump": {
+          "accuracy_pooled": 0.9074074074074074,
+          "clears_primary": true,
+          "clears_strictest": true,
+          "seconds": 0.39
+        }
+      },
+      "majority_class_rate": 0.9148148148148149,
+      "falsifiable_vs_all_controls": false
+    },
+    {
+      "task_id": 146821,
+      "dataset_name": "car",
+      "rank_by_n_runs": 49,
+      "selected": false,
+      "median_run": 0.9380787037037036,
+      "threshold_primary": 0.8911747685185184,
+      "threshold_strictest": 0.9335069444444444,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.7002314814814815,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.86
+        },
+        "stump": {
+          "accuracy_pooled": 0.7916666666666666,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.3
+        }
+      },
+      "majority_class_rate": 0.7002314814814815,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 14954,
+      "dataset_name": "cylinder-bands",
+      "rank_by_n_runs": 50,
+      "selected": false,
+      "median_run": 0.762962962962963,
+      "threshold_primary": 0.7248148148148148,
+      "threshold_strictest": 0.7758333333333333,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.5777777777777777,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.57
+        },
+        "stump": {
+          "accuracy_pooled": 0.6962962962962963,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 0.14
+        }
+      },
+      "majority_class_rate": 0.5777777777777777,
+      "falsifiable_vs_all_controls": true
+    },
+    {
+      "task_id": 167141,
+      "dataset_name": "churn",
+      "rank_by_n_runs": 51,
+      "selected": false,
+      "median_run": 0.9115,
+      "threshold_primary": 0.865925,
+      "threshold_strictest": 0.906395,
+      "controls": {
+        "prior": {
+          "accuracy_pooled": 0.8586,
+          "clears_primary": false,
+          "clears_strictest": false,
+          "seconds": 2.9
+        },
+        "stump": {
+          "accuracy_pooled": 0.9056,
+          "clears_primary": true,
+          "clears_strictest": false,
+          "seconds": 0.23
+        }
+      },
+      "majority_class_rate": 0.8586,
+      "falsifiable_vs_all_controls": false
+    }
+  ],
+  "selection_effect": {
+    "stump": {
+      "floor": "stump",
+      "rule_test": {
+        "what": "Spearman(popularity rank, threshold - floor) over all candidates, one-sided permutation null. Positive rho = the most-published tasks have the least demanding thresholds.",
+        "n": 51,
+        "spearman_rho": 0.2807,
+        "n_permutations": 200000,
+        "p_one_sided_permutation": 0.02364
+      },
+      "draw_test": {
+        "what": "exact hypergeometric over the 5 selected. Underpowered at n=5; see rejectable_draws.",
+        "base_rate": "25/51",
+        "observed": "1/5",
+        "expected": 2.451,
+        "p_lower_tail": 0.18711,
+        "rejectable_draws": [
+          0
+        ],
+        "note": "this test can reject only on the draws listed above, so a non-significant p from it is weak evidence of absence."
+      }
+    },
+    "majority_class_rate": {
+      "floor": "majority_class_rate",
+      "rule_test": {
+        "what": "Spearman(popularity rank, threshold - floor) over all candidates, one-sided permutation null. Positive rho = the most-published tasks have the least demanding thresholds.",
+        "n": 51,
+        "spearman_rho": 0.1959,
+        "n_permutations": 200000,
+        "p_one_sided_permutation": 0.08474
+      },
+      "draw_test": {
+        "what": "exact hypergeometric over the 5 selected. Underpowered at n=5; see rejectable_draws.",
+        "base_rate": "36/51",
+        "observed": "1/5",
+        "expected": 3.529,
+        "p_lower_tail": 0.0222,
+        "rejectable_draws": [
+          0,
+          1
+        ],
+        "note": "this test can reject only on the draws listed above, so a non-significant p from it is weak evidence of absence."
+      }
+    }
+  }
+}

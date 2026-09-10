@@ -36,13 +36,26 @@ pooled statistic and the same pre-registered baselines as the agent:
 
 Only `kr-vs-kp` (majority 0.5222, threshold 0.9120) discriminates on its own.
 
-**And it was not bad luck.** Of the 51 candidates that passed the registered
-size filter, **36** have a threshold above their majority rate. The rule
-selected **1** of them. A random five would be expected to contain 3.53; exact
-lower-tail hypergeometric **p = 0.0222**. Ranking by number of published
-evaluations — chosen because the median of a larger sample is better
-determined, which is true — selects at better than the 5% level for tasks whose
-±5% band sits beneath triviality.
+**And the "±5% clears a dummy" reading understates it.** Requiring the
+threshold to clear an untuned depth-3 tree as well — a *procedure* floor rather
+than a class-prior floor — only **25 of the 51** candidates qualify, and
+**1 of my 5**. On roughly half of CC18's small tasks, "within 5% of the median
+published run" is a bar that three splits of a tree clear. That is a property
+of the target construction, not of this agent.
+
+**A correction to last turn's headline, which was mine.** I wrote "so it is not
+luck ... exact hypergeometric p = 0.0222" and put it in four documents. That
+test asks whether *this draw of five* is unusual, and at n=5 it can reject only
+on the single most extreme draw (`rejectable_draws = [0]` under the procedure
+floor) — a test that can fire in one outcome out of six is not evidence about a
+rule. It is withdrawn as evidence. The properly powered test over all 51
+candidates does support the conclusion: **Spearman(popularity rank, threshold −
+stump) = +0.281, one-sided permutation p = 0.0236** (200k shuffles). So the
+more published a task is, the less its threshold clears a depth-3 tree. All
+four cells (two tests × two floors) are in `RESULTS.md`; the draw test is
+significant only under the weaker floor and the rule test only under the
+stricter one, and the conclusion rests on the appropriate test at the stricter
+floor.
 
 **What survives:** the *joint* five-task criterion. Neither control clears all
 five, because both collapse where the majority class is not a strategy. So a

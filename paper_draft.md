@@ -445,10 +445,25 @@ until an adversary or a cheap diagnostic pointed at it:
   uncomputed in run records already on disk;
 - the *provenance* of our claim was constrained by nine layers of checks, while
   the *difficulty of the target* went unexamined until a dummy classifier
-  cleared four of five thresholds.
+  cleared four of five thresholds;
+- and, a third time, having found that the target was weak, we asked whether our
+  *selection rule* caused it with an exact hypergeometric over the five selected
+  tasks — a test which, at n = 5 against a ~50% base rate, can reject only on
+  the single most extreme draw. It returned p = 0.022 under the class-prior
+  floor and we published that in four documents. Under the procedure floor it
+  returns p = 0.187, and the properly powered test — the same association
+  measured over all 51 candidates, n = 51 rather than 5 — gives
+  ρ = +0.281 with a one-sided permutation p = 0.024. The conclusion survived;
+  **the evidence we had given for it did not**, and the test we had reached for
+  was one whose power we never checked. A p-value from a test that can fire in
+  one outcome out of six is not evidence about a rule, and a criterion that
+  makes one's own control fail by construction will also make one's own
+  significance test look good by construction, because both are downstream of
+  the same too-easy floor.
 
 The corrective is one line and it is not "be more careful": **measure the sizes
-of the things you are choosing between, before choosing which to constrain.**
+of the things you are choosing between, before choosing which to constrain** —
+and that includes the power of the test you are about to quote.
 Both diagnostics were available at the start, both were cheap — one needed no
 runs at all and the other a quarter of an hour — and both would have reordered
 the work. Rigour is not free of opportunity cost, and effort spent proving a
