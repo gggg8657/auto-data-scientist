@@ -1,0 +1,82 @@
+{
+  "generated": "2026-09-10T23:02:07+0000",
+  "purpose": "family-wise false-alarm rate of the leakage probe's max-over-k decision rule",
+  "k_permutations": 10,
+  "pre_registered_sigmas": 2.0,
+  "target_family_wise_alpha": 0.05,
+  "no_new_runs": true,
+  "idealisation": [
+    "the k permutations are treated as independent; they share X_train and X_test and are positively correlated, which LOWERS the true family-wise rate, so these figures are an upper bound",
+    "a shuffled-label fit concentrates on the class prior and its accuracy variance is smaller than Binomial(n, p_maj), which lowers the true rate again"
+  ],
+  "direction": "an inflated false-alarm rate makes LEAKAGE easier to declare and a LEAKAGE verdict sinks clause 2, so the pre-registered rule errs AGAINST the KPI. The corrected rule is easier to pass, which is why the pre-registered one stays primary and this is reported beside it rather than replacing it.",
+  "tasks": {
+    "31": {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "n_test_pooled": 1000,
+      "majority_rate": 0.7,
+      "per_comparison_alpha_pooled": 0.023809492665525952,
+      "family_wise_alpha_pooled": 0.21413888194717046,
+      "per_comparison_alpha_fold0": 0.016462853241869427,
+      "family_wise_alpha_fold0": 0.15295268077568402,
+      "sigmas_for_5pct_family_wise": 2.5532425695667094,
+      "pre_registered_sigmas": 2.0,
+      "pre_registered_rule_is_the_stricter": true
+    },
+    "10101": {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "n_test_pooled": 748,
+      "majority_rate": 0.7620320855614974,
+      "per_comparison_alpha_pooled": 0.020542702337308583,
+      "family_wise_alpha_pooled": 0.18744070261426904,
+      "per_comparison_alpha_fold0": 0.01686692987630126,
+      "family_wise_alpha_fold0": 0.15642626525391057,
+      "sigmas_for_5pct_family_wise": 2.4900115858394685,
+      "pre_registered_sigmas": 2.0,
+      "pre_registered_rule_is_the_stricter": true
+    },
+    "3913": {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "n_test_pooled": 522,
+      "majority_rate": 0.7950191570881227,
+      "per_comparison_alpha_pooled": 0.02060540078778437,
+      "family_wise_alpha_pooled": 0.18796070012613875,
+      "per_comparison_alpha_fold0": 0.02407342834706343,
+      "family_wise_alpha_fold0": 0.2162610559534317,
+      "sigmas_for_5pct_family_wise": 2.493716910321929,
+      "pre_registered_sigmas": 2.0,
+      "pre_registered_rule_is_the_stricter": true
+    },
+    "3": {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "n_test_pooled": 3196,
+      "majority_rate": 0.522215269086358,
+      "per_comparison_alpha_pooled": 0.02265590864668081,
+      "family_wise_alpha_pooled": 0.20480266245595036,
+      "per_comparison_alpha_fold0": 0.024868065955076814,
+      "family_wise_alpha_fold0": 0.22261923351848845,
+      "sigmas_for_5pct_family_wise": 2.5496947803317793,
+      "pre_registered_sigmas": 2.0,
+      "pre_registered_rule_is_the_stricter": true
+    },
+    "3917": {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "n_test_pooled": 2109,
+      "majority_rate": 0.8454243717401612,
+      "per_comparison_alpha_pooled": 0.020654993253624625,
+      "family_wise_alpha_pooled": 0.18837178934700005,
+      "per_comparison_alpha_fold0": 0.01796601761823619,
+      "family_wise_alpha_fold0": 0.1658096451960931,
+      "sigmas_for_5pct_family_wise": 2.5298985646395415,
+      "pre_registered_sigmas": 2.0,
+      "pre_registered_rule_is_the_stricter": true
+    }
+  },
+  "worst_family_wise_alpha_pooled": 0.21413888194717046,
+  "pre_registered_rule_is_stricter_on_all_tasks": true
+}

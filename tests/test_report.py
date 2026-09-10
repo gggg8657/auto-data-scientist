@@ -379,6 +379,53 @@ def test_a_partial_record_is_excluded_from_the_average_and_sinks_clause_3():
           "sinks clause 3")
 
 
+def test_interim_forces_the_interim_path_instead_of_suppressing_the_guard():
+    """`--interim` inverted its own guard, found on 2026-09-10 turn 9.
+
+    The condition read `if not args.interim and not explicit_out and
+    benchmark_processes_alive()`, so the flag documented as "write
+    runs/interim_report.md instead of RESULTS.md" was the only flag that
+    guaranteed RESULTS.md *was* rewritten while a benchmark was in flight --
+    and mid-run clause 3 is a known false negative, so it would have committed
+    a FAIL as the repository's verdict.
+
+    Asserted on the source rather than by running main(), because running it
+    writes documents and the bug was precisely about which document.
+    """
+    src = (REPO / "scripts/report.py").read_text()
+    assert "if not args.interim and not explicit_out" not in src, (
+        "--interim is suppressing the in-flight guard again instead of "
+        "forcing the interim path")
+    i = src.index("interim = REPO / \"runs/interim_report.md\"")
+    cond = src[src.rindex("if ", 0, i):i]
+    assert "args.interim or in_flight" in cond, (
+        f"the redirect no longer fires on --interim: {cond.strip()!r}")
+    assert "not explicit_out" in cond, (
+        "an explicit --out must still win, or a test fixture writing to a temp "
+        "path gets redirected into runs/")
+
+
+def test_the_weekend_headline_is_suppressed_mid_run_but_the_power_block_is_not():
+    """Two generated blocks with different sources, so they get different
+    rules.
+
+    HEADLINE is built from the in-flight `runs/bench` records and must not
+    refresh while a run is alive. LEAKPOWER's only source is
+    `runs/leakage_power.json`, a completed measurement, so holding it stale in
+    the document a reader actually opens buys nothing.
+    """
+    src = (REPO / "scripts/report.py").read_text()
+    i = src.index('"<!-- HEADLINE:BEGIN -->" in wp.read_text()')
+    guard = src[src.rindex("if ", 0, i):i]
+    assert "weekend_leakpower_only" in guard, (
+        "the HEADLINE block is no longer suppressed while a benchmark runs")
+    j = src.index('"<!-- LEAKPOWER:BEGIN -->" in wp.read_text()')
+    lguard = src[src.rindex("if ", 0, j):j]
+    assert "weekend_leakpower_only" not in lguard, (
+        "the LEAKPOWER block got caught by the mid-run suppression; its "
+        "source is not the in-flight records")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -1795,3 +1795,140 @@ headline.
 One flaw of my own found while fixing them: `verdict()` read
 `runs/leakage_power.json` off the filesystem itself, so its behaviour depended
 on a file its caller had not passed and no test could control. Now a parameter.
+
+---
+
+## 2026-09-10, turn 10 — the probe's metric is the wrong one, and its multiple-comparison behaviour is uncalibrated
+
+### State
+
+Committed `6011a8f`. The 8-seed confirmatory run is untouched at **38 of 40**
+(`tmux ads-verdict`, pid 1493119, 4h22m elapsed); the two remaining cells are
+task 3 and task 3917 at seed 7, and box load is 417–460 driven by another
+track. Full suite and the CI-form invocation of the new test file are running.
+
+### Hypothesis, written before the change
+
+codex's proposal 4 last turn is the route to power on the two blind tasks, and
+the reason it works is worth stating precisely rather than borrowed:
+
+> **H:** a rank statistic on the permuted arm's *probabilities* detects leakage
+> on tasks where hard-label accuracy cannot, because the null value of AUROC is
+> **0.5 whatever the class prior is**, while the null value of accuracy is the
+> majority rate — which on kc1 and blood-transfusion is almost exactly what the
+> honest agent scores.
+
+The probe's dynamic range becomes `AUROC_intact - 0.5` instead of
+`accuracy_intact - majority_rate`. On blood-transfusion the accuracy gap is
+**0.0077**; the AUROC gap cannot be measured from disk (no record stores
+probabilities) but has no reason to be small, and if it is even 0.15 that is a
+20x improvement in the quantity `phi_min` divides by.
+
+**Falsifiable prediction, recorded now:** `phi_min` under the AUROC reading
+will be below 1.0 on **all five** tasks, and the two currently-unprobeable
+tasks will become probeable at a fold count of 1 or 2. If instead
+`AUROC_intact` on blood-transfusion comes out near 0.5, the hypothesis is wrong
+and the honest conclusion is that the agent has no rank information on that
+task either — which would be a statement about the benchmark, not about the
+instrument, and would be the more interesting outcome.
+
+**One change:** the statistic, not the folds, not the threshold family, not the
+accuracy metric clause 2 is decided on. The null threshold comes from the
+Mann-Whitney null, `SE = sqrt((n1+n2+1)/(12*n1*n2))`, which is exact for a
+score vector independent of the labels and — unlike the binomial band —
+does not need the prior.
+
+**What it must not touch.** `ads/agent.py` exposes no `predict_proba`, and I am
+**not** adding one. The agent source digest is computed over `ads/*.py` and
+every one of the 38 records carries it; `verdict()` sinks clause 3 when the
+runs disagree on that digest. So a one-line convenience method on the agent
+would make the confirmatory run incomparable to anything after it. The probe
+reaches `agent.pipeline_.predict_proba` instead, which is read-only and changes
+no digest. Recording this because the tempting version of this change is the
+one that quietly costs 38 records.
+
+### And a flaw in the rule I pre-registered last turn, before it has decided anything
+
+The rule is "LEAKAGE if **any** of the k=10 permuted accuracies exceeds the
+2-sigma band". That is a maximum over 10 comparisons each at a one-sided
+nominal 2.3%, and I never calibrated the family. codex named this in general
+terms last turn — "calibrate the complete task-level decision, including any
+maximum over permutations, rather than applying a nominal threshold repeatedly"
+— and I recorded the caveat while leaving the defect in place in the accuracy
+rule that is already wired into clause 2.
+
+**Direction, which is why it is safe but still wrong:** an inflated false-alarm
+rate makes LEAKAGE *easier* to declare, which *sinks* clause 2. So the
+pre-registered rule errs against the KPI, not for it. That is the only reason
+this is a correction and not a withdrawal. It also means the fix must be handled
+carefully: tightening the threshold makes the clause easier to pass, which is
+the direction I may never move a protocol in. So the pre-registered
+per-permutation rule **stays primary**, and the family-wise-corrected reading is
+reported beside it, labelled, with the pre-registered one identified as the
+stricter of the two.
+
+`scripts/leakage_calibration.py` computes the family-wise rate from the
+recorded `n_test` and `majority_rate` alone — no new runs — treating the k
+permuted accuracies as independent `Binomial(n_test, p_maj)/n_test`. Two things
+to say about that idealisation before its numbers appear: permutations share
+`X_train` and `X_test` so they are positively correlated, and positive
+correlation *lowers* the family-wise rate, which makes the independent
+calculation an **upper bound**. And a shuffled-label fit does not actually
+produce binomial accuracies — it concentrates on the prior, and its variance is
+smaller than binomial. So the number is an upper bound on an idealisation, and
+it is reported as one.
+
+### The calibration, measured: 4x the nominal rate, and it is the same defect as turn 6's
+
+`runs/leakage_calibration.json`, from the recorded `n_test` and `majority_rate`
+alone, no new runs. `a1` is the per-comparison rate, `FWER` the task-level rate
+of the max over k=10, and `sig@5%` the band that would make the task-level
+decision hit a nominal 5%.
+
+| task | dataset | n (pooled) | p_maj | a1 | FWER | a1 (fold 0) | FWER (fold 0) | σ for 5% |
+|---|---|---|---|---|---|---|---|---|
+| 31 | credit-g | 1000 | 0.7000 | 0.02381 | **0.2141** | 0.01646 | 0.1530 | 2.55 |
+| 10101 | blood-transfusion | 748 | 0.7620 | 0.02054 | **0.1874** | 0.01687 | 0.1564 | 2.49 |
+| 3913 | kc2 | 522 | 0.7950 | 0.02061 | **0.1880** | 0.02407 | 0.2163 | 2.49 |
+| 3 | kr-vs-kp | 3196 | 0.5222 | 0.02266 | **0.2048** | 0.02487 | 0.2226 | 2.55 |
+| 3917 | kc1 | 2109 | 0.8454 | 0.02065 | **0.1884** | 0.01797 | 0.1658 | 2.53 |
+
+**18.7% to 21.4% at a nominal 5%** — roughly four times over, on every task.
+The pre-registered 2σ rule is the **stricter** of the two on all five (2.49–2.55
+σ would be needed), so it stays primary and the corrected reading is reported
+beside it. No number moves in the flattering direction as a result of this.
+
+The part that is about me rather than about the rule: **this is the third
+appearance of an uncalibrated multiple comparison in this repository, and the
+second I introduced after being taught the lesson.** Turn 6, codex: the exact
+sign test dropped ties, which is the continuous-distribution test, giving a
+**17.37%** Type I error at a nominal 5%. Turn 6 also: optional stopping at
+n=5,6,7. And now turn 9, in a rule I wrote *four turns after* recomputing that
+17.37% myself: a maximum over ten comparisons at a nominal 2.3% each,
+**18.7–21.4%**. The numbers are almost identical, the mechanism is identical,
+and I wrote the second one by hand while the first was on the screen. The
+generalisation I failed to make: *every* decision rule in this repository that
+takes a maximum, a minimum or a first-crossing over repeated draws needs its
+family calibrated, and I have been fixing instances instead of auditing the
+class.
+
+### The rank reading, built and positively controlled but not yet run on real data
+
+`probe_fold` now computes AUROC and Brier on the permuted arm's probabilities
+beside the accuracy, with the Mann-Whitney null threshold. It is marked
+`enters_no_clause: True` in the record: clause 2 is still decided by the
+pre-registered accuracy rule, and this reading is reported beside it so the two
+can be compared on the same runs before either is allowed to decide anything.
+
+`tests/test_no_leakage.py::test_the_rank_reading_fires_on_the_same_leak` is the
+positive control, and it also asserts the property the whole hypothesis rests
+on, measured rather than argued: the Mann-Whitney band is the same width to
+within 0.05 on a 1:1 and a 9:1 prior, while the accuracy rule's *reference*
+moves from 0.500 to 0.900 over the same change. That difference is the entire
+content of `runs/leakage_power.json`. A fold with one class present returns
+`None` rather than a threshold.
+
+11 tests in that file pass. The prediction recorded above — `phi_min < 1` under
+the AUROC reading on all five tasks — is **not yet tested**, because running the
+probe means competing with the confirmatory run that is two cells from done
+after four and a half hours. It runs when that finishes.

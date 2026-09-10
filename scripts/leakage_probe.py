@@ -75,6 +75,53 @@ K_PERMUTATIONS = 10
 NOISE_SIGMAS = 2.0
 
 
+def mannwhitney_auc_threshold(y_true, n_sigmas: float = None) -> float | None:
+    """The line a shuffled-label fit's AUROC must not cross.
+
+    The point of this statistic, and the reason it exists beside the accuracy
+    one: under label-independence the expected AUROC is **0.5 whatever the
+    class prior is**, while the expected accuracy is the majority rate.  On
+    kc1 and blood-transfusion the honest agent scores within one noise band of
+    the majority rate (`runs/leakage_power.json`: phi_min 1.112 and 4.051), so
+    the accuracy reading has no dynamic range there and this one does.
+
+    SE is the exact Mann-Whitney null, `sqrt((n1+n2+1)/(12*n1*n2))`, which needs
+    no prior. Returns None when a class is absent from the fold and the
+    statistic is undefined.
+    """
+    import numpy as np
+    vals, counts = np.unique(np.asarray(y_true), return_counts=True)
+    if len(vals) != 2 or counts.min() == 0:
+        return None
+    n1, n2 = int(counts[0]), int(counts[1])
+    se = math.sqrt((n1 + n2 + 1) / (12.0 * n1 * n2))
+    return 0.5 + (NOISE_SIGMAS if n_sigmas is None else n_sigmas) * se
+
+
+def _auc(y_true, scores) -> float | None:
+    """AUROC of `scores` against binary `y_true`; None if undefined."""
+    import numpy as np
+    y = np.asarray(y_true)
+    vals = np.unique(y)
+    if len(vals) != 2 or scores is None:
+        return None
+    from sklearn.metrics import roc_auc_score
+    try:
+        return float(roc_auc_score((y == vals[1]).astype(int), scores))
+    except ValueError:
+        return None
+
+
+def _brier(y_true, scores) -> float | None:
+    """Brier score of `scores` as P(y == the second class label)."""
+    import numpy as np
+    y = np.asarray(y_true)
+    vals = np.unique(y)
+    if len(vals) != 2 or scores is None:
+        return None
+    return float(np.mean((np.asarray(scores) - (y == vals[1]).astype(int)) ** 2))
+
+
 def detection_threshold(p_maj: float, n_test: int) -> float:
     """The line a shuffled-label fit must not cross.  Pure, so it is testable
     without fitting anything."""
@@ -93,7 +140,25 @@ def _fit_predict(X_tr, y_tr, X_te, random_state: int, make_agent=None):
     and constructing a new one is what makes the permuted arm honest."""
     agent = (make_agent or AutoDataScientist)(random_state=random_state)
     agent.fit(X_tr, y_tr)
-    return np.asarray(agent.predict(X_te)), getattr(agent, "best_name_", "?")
+    pred = np.asarray(agent.predict(X_te))
+    # Probabilities are reached through `pipeline_` on purpose. Adding a
+    # `predict_proba` to `ads/agent.py` would change the agent source digest
+    # that all 38 confirmatory records carry, and `verdict()` sinks clause 3
+    # when the runs disagree on it -- so the convenient version of this change
+    # costs the whole confirmatory run. See critique_log.md turn 10.
+    scores = None
+    pipe = getattr(agent, "pipeline_", None)
+    if pipe is not None and hasattr(pipe, "predict_proba"):
+        try:
+            proba = np.asarray(pipe.predict_proba(X_te))
+            classes = np.asarray(getattr(pipe, "classes_", []))
+            if proba.ndim == 2 and proba.shape[1] == 2 and len(classes) == 2:
+                # column of the LARGER class label, matching `_auc`'s
+                # convention of scoring P(y == vals[1]) under np.unique order
+                scores = proba[:, int(np.argmax(classes))]
+        except Exception:
+            scores = None
+    return pred, getattr(agent, "best_name_", "?"), scores
 
 
 def probe_fold(X, y, tr, te, random_state: int, k: int,
@@ -115,9 +180,12 @@ def probe_fold(X, y, tr, te, random_state: int, k: int,
     band = detection_threshold(p_maj, n_te) - p_maj
 
     t0 = time.time()
-    pred, family = _fit_predict(X.iloc[tr], y_tr_true, X.iloc[te],
-                                random_state, make_agent)
+    pred, family, sc_intact = _fit_predict(X.iloc[tr], y_tr_true, X.iloc[te],
+                                           random_state, make_agent)
     acc_intact = float((pred == y_te_true).mean())
+    auc_intact = _auc(y_te_true, sc_intact)
+    brier_intact = _brier(y_te_true, sc_intact)
+    auc_thr = mannwhitney_auc_threshold(y_te_true)
     intact_seconds = round(time.time() - t0, 2)
     if verbose:
         print(f"    intact: acc={acc_intact:.4f} family={family} "
@@ -131,8 +199,8 @@ def probe_fold(X, y, tr, te, random_state: int, k: int,
         rng = np.random.default_rng(10_000 + j)
         y_tr_perm = y_tr_true[rng.permutation(len(y_tr_true))]
         t1 = time.time()
-        p, fam = _fit_predict(X.iloc[tr], y_tr_perm, X.iloc[te],
-                              random_state, make_agent)
+        p, fam, sc = _fit_predict(X.iloc[tr], y_tr_perm, X.iloc[te],
+                                  random_state, make_agent)
         acc = float((p == y_te_true).mean())
         permuted.append({
             "permutation": j, "accuracy": acc, "family": fam,
@@ -141,6 +209,10 @@ def probe_fold(X, y, tr, te, random_state: int, k: int,
             # the majority rate (no leakage), 1 = at the intact accuracy.
             "position": (None if acc_intact == p_maj
                          else float((acc - p_maj) / (acc_intact - p_maj))),
+            # The rank reading. Its null is 0.5 regardless of the prior, which
+            # is the whole reason it is here.
+            "auc": _auc(y_te_true, sc),
+            "brier": _brier(y_te_true, sc),
         })
         if verbose:
             print(f"    perm {j}: acc={acc:.4f} family={fam} "
@@ -154,8 +226,36 @@ def probe_fold(X, y, tr, te, random_state: int, k: int,
     # shuffled-label fit", with the +1 that keeps it from ever reading 0.
     p_value = float((int((accs >= acc_intact).sum()) + 1) / (k + 1))
 
+    aucs = [d["auc"] for d in permuted if d["auc"] is not None]
+    # SECONDARY READING, and it enters no clause yet. The accuracy rule above
+    # is the pre-registered one; this is registered in critique_log.md turn 10
+    # and reported beside it so that the two can be compared on the same runs
+    # before either is allowed to decide anything.
+    auc_reading = None
+    if auc_thr is not None and aucs and auc_intact is not None:
+        auc_gap = auc_intact - 0.5
+        auc_band = auc_thr - 0.5
+        auc_reading = {
+            "auc_intact": auc_intact,
+            "brier_intact": brier_intact,
+            "null_value": 0.5,
+            "threshold": auc_thr,
+            "noise_band_mannwhitney": auc_band,
+            "permuted_aucs": aucs,
+            "permuted_auc_max": max(aucs),
+            "permuted_auc_mean": sum(aucs) / len(aucs),
+            "gap": auc_gap,
+            "min_resolvable_leak_fraction": (
+                None if auc_gap <= 0 else auc_band / auc_gap),
+            "detects_complete_leakage": bool(auc_gap > auc_band),
+            "verdict_fold": ("LEAKAGE" if max(aucs) > auc_thr
+                             else "NO_LEAKAGE_DETECTED"),
+            "enters_no_clause": True,
+        }
+
     return {
         "n_train": int(len(tr)), "n_test": n_te,
+        "auc_reading": auc_reading,
         "n_classes": int(len(vals)),
         "accuracy_intact": acc_intact,
         "family_intact": family,

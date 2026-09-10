@@ -46,7 +46,8 @@ sys.path.insert(0, str(REPO))
 
 from ads.agent import AutoDataScientist  # noqa: E402
 from scripts.leakage_probe import (detection_threshold,  # noqa: E402
-                                   flags_leakage, probe_fold)
+                                   flags_leakage,
+                                   mannwhitney_auc_threshold, probe_fold)
 
 # The agent's whole job is to reason over arrays it was handed.  Anything that
 # can open a socket, a file or the OpenML cache is out of scope for it, and a
@@ -243,16 +244,29 @@ class _LeakyAgent:
     touch it, so a probe that stays quiet here is measuring nothing.
     """
 
-    def __init__(self, random_state: int = 0, table=None):
+    def __init__(self, random_state: int = 0, table=None, with_proba=False):
         self.random_state = random_state
         self._table = table
         self.best_name_ = "leaky"
+        # The probe reads probabilities off `pipeline_`, so a control for the
+        # AUROC reading has to leak through that attribute too. Without this
+        # the rank rule would never have been seen to fire -- the same
+        # unvalidated-instrument problem one level down.
+        self.pipeline_ = self if with_proba else None
+        self.classes_ = np.array([0, 1])
 
     def fit(self, X, y):
         return self
 
-    def predict(self, X):
+    def _lookup(self, X):
         return np.asarray([self._table[tuple(r)] for r in np.asarray(X)])
+
+    def predict(self, X):
+        return self._lookup(X)
+
+    def predict_proba(self, X):
+        y = self._lookup(X).astype(float)
+        return np.column_stack([1.0 - y, y])
 
 
 def test_the_probe_fires_on_a_leak_it_is_told_about():
@@ -277,6 +291,52 @@ def test_the_probe_fires_on_a_leak_it_is_told_about():
     assert d["n_permutations_exceeding_threshold"] == 3, (
         "a complete leak must be flagged by every permutation, not one: "
         f"{d['n_permutations_exceeding_threshold']}/3")
+
+
+def test_the_rank_reading_fires_on_the_same_leak():
+    """Positive control for the AUROC reading registered in turn 10.
+
+    Its whole justification is that the null AUROC is 0.5 whatever the prior
+    is, so it has dynamic range where the accuracy reading has none. That is
+    worth nothing until the rule has been seen to fire.
+    """
+    X, y = _dataset()
+    tr, te = _split(len(y))
+    table = {tuple(r): int(v) for r, v in zip(X.to_numpy(), y.to_numpy())}
+
+    d = probe_fold(X, y, tr, te, random_state=0, k=3,
+                   make_agent=lambda random_state: _LeakyAgent(
+                       random_state, table, with_proba=True),
+                   verbose=False)
+
+    r = d["auc_reading"]
+    assert r is not None, (
+        "the rank reading was not computed at all, so it cannot have been "
+        "validated; the control agent exposes predict_proba via pipeline_")
+    assert r["auc_intact"] == 1.0, r["auc_intact"]
+    assert r["null_value"] == 0.5
+    assert r["verdict_fold"] == "LEAKAGE", (
+        "the rank rule did not flag an agent whose probabilities ARE the "
+        f"held-out labels: permuted_auc_max={r['permuted_auc_max']}, "
+        f"threshold={r['threshold']}")
+    # And the property that motivates it: the threshold does not move with the
+    # class prior, unlike the accuracy band.
+    balanced = np.r_[np.zeros(200, int), np.ones(200, int)]
+    skewed = np.r_[np.zeros(360, int), np.ones(40, int)]
+    t_bal = mannwhitney_auc_threshold(balanced)
+    t_skew = mannwhitney_auc_threshold(skewed)
+    assert t_bal > 0.5 and t_skew > 0.5
+    assert abs((t_bal - 0.5) - (t_skew - 0.5)) < 0.05, (
+        "the Mann-Whitney band should depend on n and balance only weakly; "
+        f"balanced {t_bal:.4f} vs 9:1 skewed {t_skew:.4f}")
+    # The accuracy band's REFERENCE, by contrast, is the prior itself: 0.5 vs
+    # 0.9. That difference is the entire finding of runs/leakage_power.json.
+    assert abs(detection_threshold(0.5, 400) - detection_threshold(0.9, 400)) > 0.3
+    assert mannwhitney_auc_threshold(np.zeros(50, int)) is None, (
+        "a fold with one class present has no defined AUROC and must not "
+        "silently produce a threshold")
+    print("  rank reading flags the leak; its null stays at 0.5 across a "
+          "1:1 and a 9:1 prior while the accuracy reference moves 0.5 -> 0.9")
 
 
 def test_the_decision_rule_is_one_sided_and_uses_the_majority_rate():
