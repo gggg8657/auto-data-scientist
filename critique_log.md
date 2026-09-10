@@ -1196,3 +1196,156 @@ terminal records than starts.
 Both are the flattering-direction/pessimistic-direction pair of the same
 omission, and both live in the function whose docstring claims the ledger makes
 hiding a result cost "two coordinated edits instead of one".
+
+### The rule test, run rather than suggested — and the cap measurement, confounded
+
+I named the better test in this log before computing it, so both are on the
+record in order. Over all 51 candidates, testing the **rule** rather than the
+**draw**:
+
+| floor | base rate | selected | draw p (n=5) | draws it can reject on | rule ρ (n=51) | rule p (permutation) |
+|---|---|---|---|---|---|---|
+| procedure (clears every control) | 25/51 | 1/5 | 0.1871 | **[0]** | **+0.2807** | **0.0236** |
+| majority-class rate | 36/51 | 1/5 | **0.0222** | [0, 1] | +0.1959 | 0.0847 |
+
+The diagonal is the finding. The **draw** test is significant only under the
+weaker floor; the **rule** test only under the stricter one. The conclusion
+rests on the cell that is both the appropriate test and the stricter floor:
+ρ = +0.281, one-sided permutation p = 0.0236 over 200,000 shuffles. So
+*popularity does select for undemanding thresholds* — the conclusion survives —
+but on evidence I had not gathered when I first asserted it.
+
+And the mechanism I should name for the third time, because it is the same one:
+`rejectable_draws = [0]` means the hypergeometric at n=5 could only ever have
+fired on the single most extreme outcome. **I never checked the power of the
+test whose p-value I put in four documents.** A criterion that makes one of my
+own controls fail by construction will also make my own significance test look
+good by construction, since both are downstream of the same too-easy floor.
+Both are now generated into `RESULTS.md` — all four cells, not the flattering
+one.
+
+### The thread cap: measured, improved, and confounded — reported as confounded
+
+Hypothesis from earlier this turn: the run's 40× tail was thread
+oversubscription from my own `n_jobs=-1` on a saturated box, so capping to
+`ADS_N_JOBS=8` would restore throughput. Same task, same seed, before and
+after (`logs/bench_verdict_uncapped.log`, `logs/bench_verdict_capped.log`):
+
+| regime | task 10101 seed 6 fold times |
+|---|---|
+| uncapped, early folds | 12.15, 12.05, 11.39, 12.96, 12.94, 13.01, 14.33 s |
+| uncapped, folds 7–8 | **495.64, 560.57 s** |
+| capped (`ADS_N_JOBS=8`) | 335.96 (incl. startup), **74.51, 82.39 s** |
+
+So the tail went from ~500 s to ~78 s, a 6.4× improvement — and the run is
+still ~6× slower than its own uncontended 13 s baseline. **I am reporting this
+as confounded rather than as a win**, because box load moved at the same time
+(load average 370 → 324) and four other python processes are holding
+1300–2850% CPU each. n=2 before, n=2 after, with the covariate uncontrolled.
+The cap is *safe* — `test_n_jobs_does_not_change_predictions` passed when I ran
+it this turn, and predictions are identical at n_jobs 1 vs 4 — so keeping it
+costs nothing whatever the cause. But I do not get to claim I diagnosed the
+mechanism.
+
+The likely dominant cause is not a thread setting at all, and it is the next
+entry.
+
+### A concurrent instance of this same loop is running in this repository
+
+`pgrep` shows **two** `claude` processes carrying this brief, and the git log
+shows the other one committing to `main` while I worked:
+`6624f0b` (fold-level non-inferiority), `012b5f0` (withdrawing the successor
+criterion — the same finding I reached independently), `a38e120` (ledger
+role filtering), and `e996bb3`, whose message is *"Snapshot in-progress work
+from the concurrent loop instance"* — it committed **my** uncommitted working
+tree. The workspace lock `.lock_trkC` is held by the harness driver
+`agent_loop72.sh`, so this is one driver with two live agents, not two tracks.
+
+Three concrete harms, two of them already measured above:
+
+1. **Throughput.** Both of us run 40-core benchmark jobs. The box sat at load
+   323–370 on 192 cores. That is the regime that produced the 500 s folds, and
+   no `n_jobs` setting fixes a box that is 1.8× oversubscribed.
+2. **Contamination, nearly.** The twin ran
+   `run_benchmark.py --role dev --tasks 37 --seeds 0 --max-folds 1` into
+   `runs/dev/` while my successor measurement was queued to write there. Since
+   the runner skips existing files, that one-fold debug record would have stood
+   in for the real ten-fold run and been averaged into the successor table.
+   Fixed on my side twice over: `load_bench` now separates partial records from
+   the sample and they sink clause 3, and a `successor` role writes to
+   `runs/successor/` so a second measurement never shares a directory with
+   development runs.
+3. **Duplicated and divergent narrative.** We independently reached the same
+   conclusion about the successor criterion and both edited `paper_draft.md`,
+   `critique_log.md` and `report.py`. No content has been lost that I can find
+   — the twin's §6.1 and §6.6 are good and I added my finding as §6.6's third
+   bullet rather than rewriting it — but two agents appending to one
+   `critique_log.md` is a merge hazard, not a collaboration.
+
+I am **not** killing the other instance: the brief says never touch another
+loop's session, and I cannot establish from inside which of us is the intended
+one. What I have done is reduce my own footprint (`ADS_N_JOBS=8` on both queued
+jobs), stop writing to a directory the twin uses for debug output, and make the
+report structurally immune to partial artifacts from any source. It goes to
+`WEEKEND.md` as a decision for a human, because it is a harness condition and
+not a research question.
+
+### The set/count defect again, one layer down, and the kill finally recordable
+
+Two more `report.py` flaws from this turn, now fixed rather than only recorded,
+because the other instance had been quiet in that file for several minutes.
+
+**`reconcile_ledger` compared sets, so a duplicated `started` was invisible.**
+Two `started` lines for one cell collapsed to one, and the moment any process
+wrote `completed` the evidence that two runners had touched it left the
+reconciliation entirely. **This is codex's duplicated-seed defect — "a set
+cannot see a duplicate" — reappearing one layer down, in code I wrote after
+that lesson and in the function whose docstring claims the ledger makes hiding
+a result cost two coordinated edits.** Now counted: `n_started`, and beside it
+`cells_with_more_starts_than_terminal_records` and
+`cells_started_more_than_once`. On this repository's live ledger the previously
+invisible collision reads `[[10101, 6, 2]]`.
+
+Deciding what should *sink* the clause mattered more than the counting. I did
+**not** make multiplicity sink it. A stop-and-rerun is legitimate — this repo
+has one — and if multiplicity were fatal then a stopped cell could never be
+clean again, which pushes an operator toward hiding the stop instead of
+recording it: the exact opposite of what the ledger is for. What sinks it is
+`n_started > n_terminal`, i.e. an attempt genuinely abandoned. That is the
+truthful generalisation of the old set check, not a relaxation: every state the
+set version caught, the count version still catches, and it catches more.
+
+**The `killed` event, and why counting it as terminal is not forgiveness.**
+`scripts/record_kill.py` appends it and cannot do anything else — it refuses if
+the named pid is still alive (verified: it refused pid 1493119), refuses if the
+cell has no `started` line by that pid, refuses to double-record, and cannot
+edit or delete a line. It records the evidence that the attempt really ended:
+holder pid gone, no `EXIT=` line in the runner's log, run file absent. And the
+cell still has to be re-run — a killed cell with no later `completed` produces
+no result and shows up as a missing registered seed. The reason a kill cannot
+be used to shop for a number is that re-running a fixed `(task, seed)` is
+deterministic: the seed fixes the agent's randomness and the folds are the
+task's own.
+
+First use is the real event: task 10101 seed 6, pid 936115, stopped by the
+other loop instance at ~18:36 and replaced by pid 1493119 with `ADS_N_JOBS=8`.
+That stop had left **no trace anywhere in the repository** and I found it only
+by reading pids. The ledger now says so.
+
+Live state after both fixes: `reconciled=False`,
+`cells_with_more_starts_than_terminal_records=[[10101, 6, 2, 1]]` — two starts,
+one terminal, because the replacement attempt is still running. That is the
+first time this turn the reconciliation has said something both non-trivial and
+true. It becomes `True` when the in-flight cell lands.
+
+### What I would do differently, stated as a rule rather than a regret
+
+Three of the four defects this turn were in code written *after* the lesson that
+should have prevented them: a set that cannot count, a shared ledger read
+without its own role field, and a document generator that could write into the
+repository's own documents. The pattern is that I fixed each lesson **at the
+site where it was found** and never went looking for the same shape elsewhere.
+The cheap discipline: when a defect is found, grep for its *shape* — every other
+`set(` over an identity, every other reader of a multi-writer file, every other
+default output path — before moving on. That is a ten-minute sweep and it would
+have caught all three.

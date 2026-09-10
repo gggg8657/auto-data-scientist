@@ -418,9 +418,28 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
 
     def key(e):
         return (e.get("task_id"), e.get("seed"))
-    started = {key(e) for e in events if e.get("event") == "started"}
-    completed = {key(e) for e in events if e.get("event") == "completed"}
-    failed_ev = {key(e) for e in events if e.get("event") == "failed"}
+    # Counted, not set-ified. A set cannot see a duplicate, which is exactly
+    # the defect codex found in the seed accounting -- and it reappeared here,
+    # one layer down, in code written after that lesson. This repository's own
+    # ledger has TWO `started` lines for task 10101 seed 6 (pids 936115 and
+    # 1493119, twenty minutes apart, the first killed and replaced). Under the
+    # set reading, the moment any process writes `completed` for that cell both
+    # lines collapse into one and the evidence that two runners touched it
+    # leaves the reconciliation entirely.
+    n_started = Counter(key(e) for e in events if e.get("event") == "started")
+    n_completed = Counter(key(e) for e in events
+                          if e.get("event") == "completed")
+    n_failed_ev = Counter(key(e) for e in events if e.get("event") == "failed")
+    # `killed` is a terminal record for an attempt an operator stopped. It
+    # resolves the attempt without hiding anything: the line names the reason,
+    # and re-running the same (task, seed) is deterministic -- the seed fixes
+    # the agent's randomness and the folds are the task's own -- so a kill and
+    # re-run cannot shop for a better number, which is why counting it as
+    # terminal adds information rather than forgiveness.
+    n_killed = Counter(key(e) for e in events if e.get("event") == "killed")
+    started = set(n_started)
+    completed = set(n_completed)
+    failed_ev = set(n_failed_ev) | set(n_killed)
     on_disk = {(int(tid), r.get("random_state"))
                for tid, runs in bench.items() for r in runs}
     failed_files = {(f.get("task_id"), f.get("seed")) for f in (failed or [])}
@@ -433,6 +452,15 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
     # committed document un-reproducible in CI. The live reading belongs to
     # the interim view instead -- see the in-flight guard in main().
     unresolved = sorted(started - completed - failed_ev)
+    # The count-based reading of the same question, which the set reading
+    # cannot express: more starts than terminal records means an attempt was
+    # abandoned even if some other attempt at the same cell finished.
+    terminal = n_completed + n_failed_ev + n_killed
+    starts_without_terminal = sorted(
+        [list(k) + [n_started[k], terminal.get(k, 0)]
+         for k in n_started if n_started[k] > terminal.get(k, 0)])
+    started_more_than_once = sorted(
+        [list(k) + [n_started[k]] for k in n_started if n_started[k] > 1])
     # completed in the ledger but absent from runs/bench: a deleted result
     missing_from_disk = sorted(completed - on_disk)
     # present on disk with no ledger entry: a run that bypassed the runner
@@ -446,10 +474,20 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
         "n_completed": len(completed),
         "n_failed": len(failed_ev),
         "attempts_started_but_unresolved": [list(k) for k in unresolved],
+        # [task, seed, n_started, n_terminal]
+        "cells_with_more_starts_than_terminal_records": starts_without_terminal,
+        # [task, seed, n_started] -- two runners touched this cell
+        "cells_started_more_than_once": started_more_than_once,
+        "n_killed_events": sum(n_killed.values()),
         "completed_but_missing_from_disk": [list(k) for k in missing_from_disk],
         "on_disk_but_not_in_ledger": [list(k) for k in unledgered],
         "failed_attempts_with_records": len(failed_files & failed_ev),
-        "reconciled": not (unresolved or missing_from_disk or unledgered),
+        # Multiplicity alone does not sink it: a kill and re-run is legitimate
+        # and this repo has one. What sinks it is an abandoned attempt -- more
+        # starts than terminal records -- which is the truthful generalisation
+        # of the old set-based check, not a relaxation of it.
+        "reconciled": not (starts_without_terminal or missing_from_disk
+                           or unledgered),
     }
 
 
