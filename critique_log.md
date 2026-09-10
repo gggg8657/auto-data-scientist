@@ -2191,3 +2191,65 @@ the pooled 8-seed values — credit-g 0.8500 vs 0.7582, kc2 0.7736 vs 0.8374 —
 which is the fold-to-fold spread turn 7 measured as exceeding the seed-to-seed
 range by 1.5x to 6.4x, showing up again. It is the reason this table is labelled
 a screen and the reason `min_folds_for_detection` exists at all.
+
+### The concurrent instance found a real defect in my script, and its claim had no test
+
+Commit `42ca05e`, from the other loop instance, is right: `leakage_probe.py`
+writes one shared path and takes tens of minutes, and it had **no output lock**
+— written after `run_benchmark.py` acquired one for exactly this reason. Two
+probes would both write `runs/leakage_probe.json` and the survivor would be
+whichever finished last, with the other's verdict silently gone. Its code fix
+was swept into *my* commit `6902dc0` by `git add -A` before it wrote the prose,
+which is the second time this turn my staging picked up its work.
+
+But its commit message claims a measurement — *"Measured, not assumed: first
+holder acquires, second raises RunnerBusy, and the lock is re-acquirable after
+release"* — and **no test for any of that existed in the repository.** A claim
+whose evidence is not in the repo is the thing this brief exists to prevent,
+and it does not matter which instance wrote it. So I wrote the three tests, and
+they pass:
+
+- `test_the_probe_refuses_to_start_against_a_locked_output` — exit **3**, and
+  the refusal names the holding pid so an operator can tell what to wait for.
+- `test_the_probe_releases_its_lock_on_the_no_work_path` — returns 2 twice in a
+  row, leaving no lock. Both use `--task 3917`, which the power file says is
+  unresolvable, so the probe empties its task list and returns without fitting:
+  the lock path becomes testable in a second instead of in tens of minutes.
+- `test_a_probe_killed_mid_run_leaves_a_breakable_lock_not_a_wedge` — the gap I
+  found reading the code, which the prose did not mention. `main()` releases on
+  both `return` paths but has **no `try/finally`**, so an exception or a kill
+  leaves the file. Measured: a lock owned by an impossible pid is broken and the
+  break is appended to the ledger, so the probe still starts. **Recorded as
+  survivable rather than fixed** — the cost is one `lock_broken` ledger line,
+  and a logged break is strictly better evidence than a silent release.
+
+### And one of the tests that was already passing was printing something false
+
+`test_the_live_confirmatory_directory_is_locked_while_a_run_is_going` read: if
+`runs/bench/.runner.lock` is absent, print *"no run in flight; runs/bench is
+unlocked (expected when idle)"* and return. At 23:15 it printed exactly that
+**while the 4h39m confirmatory run was writing `runs/bench`**, 38 of 40 records
+down. The cause is benign — that run started before `acquire_output_lock`
+existed, so it holds no lock — but the inference is not. *Absence of a lock does
+not imply absence of a run*, and the test asserted the converse in the single
+situation it exists to document. It was green, and it was reporting an idle box.
+
+**Fifth appearance of absence-coerced-to-a-value in this repository**, after
+`etch-operator-twin`'s partial checkpoints, the joint-event table, `load_bench`
+averaging partial records into the sample, and the provenance gate defaulting a
+missing `n_interventions` to 0. Same shape every time: a missing artefact read
+as a statement about the world.
+
+Fixed by detecting the run from `/proc` and reporting the lock *against* it. An
+unlocked live run is now named as one rather than reported as idle, and it is
+not an assertion failure, because a run predating the lock is exactly that and
+failing would turn a historical fact into a red suite.
+
+**And my first version of that detector over-reported by 2 of 3.** It matched
+any cmdline containing `run_benchmark.py`, which caught the runner, its
+`zsh -c` wrapper, and a chained `until grep -q '^EXIT=' ...; do sleep` waiter
+that only *names* the script in the command it will eventually run. That waiter
+is the `ads-successor` chain and I did not know it was there until the test
+printed its pid. Now the first argv token must be a python interpreter, and
+shells that mention the script are reported separately as non-runners:
+in flight `[1493119]`, waiters `[1493117, 1623867]`. 9 tests pass.

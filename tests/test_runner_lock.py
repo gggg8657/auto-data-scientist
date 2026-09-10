@@ -139,16 +139,177 @@ def test_the_runner_refuses_to_start_against_a_locked_directory():
     print("  RunnerBusy is a SystemExit, so the CLI exits non-zero")
 
 
+def _live_benchmark_pids() -> list[int]:
+    """Pids actually running `run_benchmark.py`, and shells that merely name it.
+
+    Read from /proc rather than inferred from the lock, for the reason in the
+    test below.
+
+    First cut of this helper matched any cmdline containing the script name,
+    which reported three pids: the actual runner, its `zsh -c` wrapper, and a
+    chained `until grep -q '^EXIT=' ...; do sleep` waiter that only *mentions*
+    the script in the command it will eventually run. Two false positives out
+    of three. So the first argv token must itself be a python interpreter.
+    """
+    pids, waiters = [], []
+    for d in Path("/proc").iterdir():
+        if not d.name.isdigit():
+            continue
+        try:
+            raw = (d / "cmdline").read_bytes().decode(errors="replace")
+        except OSError:
+            continue
+        argv = [a for a in raw.split("\0") if a]
+        if not argv or "run_benchmark.py" not in raw or "leakage" in raw:
+            continue
+        exe = Path(argv[0]).name
+        if exe.startswith("python"):
+            pids.append(int(d.name))
+        else:
+            waiters.append(int(d.name))
+    return sorted(pids), sorted(waiters)
+
+
 def test_the_live_confirmatory_directory_is_locked_while_a_run_is_going():
-    """Documents the actual state, and skips cleanly when nothing is running."""
+    """Documents the actual state -- and does not infer the state from the lock.
+
+    This test used to read: if `runs/bench/.runner.lock` is absent, print "no
+    run in flight; expected when idle" and return. On 2026-09-10 at 23:15 it
+    printed exactly that **while a 4h39m confirmatory run was writing
+    `runs/bench`** (pid 1493119, 38 of 40 records down). The cause is benign --
+    that run started before `acquire_output_lock` existed, so it holds no lock
+    -- but the inference is not: *absence of a lock does not imply absence of a
+    run*, and the test asserted the converse in the one situation it exists to
+    document.
+
+    That is the fifth appearance of absence-coerced-to-a-value in this
+    repository: etch-operator-twin's partial checkpoints, the joint-event
+    table, `load_bench` averaging partial records, the provenance gate
+    defaulting a missing `n_interventions` to 0, and now this.
+
+    So the run is detected from `/proc` and the lock is reported *against* it.
+    An unlocked live run is a real state and gets named as one rather than
+    reported as an idle box.
+    """
     lock = REPO / "runs/bench/.runner.lock"
-    if not lock.exists():
-        print("  no run in flight; runs/bench is unlocked (expected when idle)")
+    pids, waiters = _live_benchmark_pids()
+    held = json.loads(lock.read_text()) if lock.exists() else None
+
+    if not pids and not held:
+        print(f"  runs/bench: no python runner in flight and no lock -- "
+              f"genuinely idle (shells naming the script: {waiters})")
         return
-    held = json.loads(lock.read_text())
+    if pids and not held:
+        # Not an assertion failure: a run predating the lock is exactly this,
+        # and failing here would turn a historical fact into a red suite.
+        print(f"  runs/bench: run(s) {pids} IN FLIGHT WITH NO LOCK. Legitimate "
+              f"only for a run started before acquire_output_lock existed; a "
+              f"newly launched runner must hold one. Shells naming the "
+              f"script, which are NOT runners: {waiters}")
+        return
     alive = Path(f"/proc/{held.get('pid')}").exists()
-    print(f"  runs/bench held by pid {held.get('pid')} "
-          f"(alive={alive}) since {held.get('started_utc')}")
+    assert held.get("pid") in pids or not alive, (
+        f"runs/bench is locked by live pid {held.get('pid')}, which is not "
+        f"running run_benchmark.py (in flight: {pids}). Either the lock "
+        f"outlived its run or something else took it.")
+    print(f"  runs/bench held by pid {held.get('pid')} (alive={alive}) since "
+          f"{held.get('started_utc')}; in flight: {pids}; waiters: {waiters}")
+
+
+PROBE = REPO / "scripts/leakage_probe.py"
+PROBE_LOCK_DIR = REPO / "runs" / ".leakage_probe.lock.d"
+
+
+def _run_probe(*args, timeout=120):
+    """`scripts/leakage_probe.py` as a subprocess, on a task it will refuse.
+
+    `--task 3917` is one of the two the power file says this instrument cannot
+    resolve at any fold count, so with no `--folds` override the probe empties
+    its task list and returns 2 *without fitting anything*. That makes the lock
+    path testable in a second rather than in the tens of minutes a real probe
+    takes.
+    """
+    return subprocess.run(
+        [sys.executable, str(PROBE), "--task", "3917", *args],
+        cwd=REPO, capture_output=True, text=True, timeout=timeout)
+
+
+def test_the_probe_refuses_to_start_against_a_locked_output():
+    """The claim in commit 42ca05e, which arrived as prose with no test.
+
+    A second instance of this loop wrote that the probe's lock was "measured,
+    not assumed: first holder acquires, second raises RunnerBusy". The code was
+    real; the measurement was not in the repository. This is it.
+    """
+    PROBE_LOCK_DIR.mkdir(parents=True, exist_ok=True)
+    held = acquire(PROBE_LOCK_DIR, ["--test-holder"])
+    try:
+        r = _run_probe()
+        assert r.returncode == 3, (
+            f"a probe started against a locked output and exited "
+            f"{r.returncode}; two probes would both write "
+            f"runs/leakage_probe.json and the survivor would be whichever "
+            f"finished last\n{r.stdout}\n{r.stderr}")
+        assert "another leakage probe owns the output" in r.stdout, r.stdout
+        assert str(os.getpid()) in r.stdout, (
+            "the refusal does not name the holder, so an operator cannot tell "
+            f"what to wait for: {r.stdout}")
+    finally:
+        held.unlink(missing_ok=True)
+    print(f"  probe refused with exit 3, naming holder pid {os.getpid()}")
+
+
+def test_the_probe_releases_its_lock_on_the_no_work_path():
+    """A lock that outlives a run that did nothing would wedge every later
+    probe, and the no-work path is the one most likely to be taken twice."""
+    lock = PROBE_LOCK_DIR / ".runner.lock"
+    lock.unlink(missing_ok=True)
+    first = _run_probe()
+    assert first.returncode == 2, (first.returncode, first.stdout, first.stderr)
+    assert not lock.exists(), (
+        "the probe returned without releasing its lock, so the next probe "
+        "would have to break it")
+    second = _run_probe()
+    assert second.returncode == 2, (
+        f"the second probe exited {second.returncode}, so the first left the "
+        f"output locked\n{second.stdout}")
+    print("  no-work path returns 2 twice in a row and leaves no lock behind")
+
+
+def test_a_probe_killed_mid_run_leaves_a_breakable_lock_not_a_wedge():
+    """The gap I found reading the lock code, tested rather than assumed.
+
+    `main()` releases the lock on its two `return` paths but has no
+    `try/finally`, so an exception inside `probe_fold` -- or a kill -- leaves
+    the file behind. That is survivable only if stale-breaking covers it, and
+    the honest way to know is to leave a lock owned by a pid that cannot be
+    alive and check the probe still starts.
+
+    It does, so the missing `try/finally` costs an extra `lock_broken` ledger
+    entry rather than blocking the weekend. Recorded as survivable rather than
+    fixed, because the break is *logged* and a silent release is not.
+    """
+    PROBE_LOCK_DIR.mkdir(parents=True, exist_ok=True)
+    lock = PROBE_LOCK_DIR / ".runner.lock"
+    lock.write_text(json.dumps({
+        "pid": 2 ** 31 - 1, "host": "nowhere", "argv": ["--killed"],
+        "started_utc": "2000-01-01T00:00:00"}))
+    ledger = Path(R["LEDGER"])
+    before = ledger.read_text().count("\n") if ledger.exists() else 0
+    try:
+        r = _run_probe()
+        assert r.returncode == 2, (
+            f"a lock left by a dead process wedged the probe (exit "
+            f"{r.returncode}); stale-breaking does not cover this path and "
+            f"the missing try/finally is a real bug, not a cosmetic one"
+            f"\n{r.stdout}\n{r.stderr}")
+        after = ledger.read_text().count("\n")
+        assert after > before, (
+            "the stale lock was broken without a ledger entry")
+    finally:
+        lock.unlink(missing_ok=True)
+    print("  a dead holder's lock is broken and logged, so a killed probe "
+          "costs a ledger line rather than the weekend")
 
 
 if __name__ == "__main__":
