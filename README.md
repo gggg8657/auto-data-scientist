@@ -79,6 +79,16 @@ not as *"beat a human five times"*. A successor task set chosen by a rule still
 blind to our accuracy is recorded, and **offered rather than substituted**: the
 registered five remain the measurement.
 
+And the obvious successor rule is not good enough either, which was measured
+rather than assumed. "Threshold above the majority-class rate" makes the
+`prior` control fail **by construction** — that control's accuracy *is* the
+majority rate — so it is circular as evidence. Run on the five it selects
+(`runs/negative_control_successor.json`): `prior` clears 0 of 5, as guaranteed,
+and the untuned depth-3 tree still clears **3 of 5**. Clearing the class-prior
+floor does not make a threshold demanding; the floor that matters is a
+*procedure* floor, and `scripts/falsifiability_floor.py` measures it over the
+whole candidate pool.
+
 `q75`, `q90` and `max_published` appear in the tables as **context, never as the
 target**: they say how far the published frontier is above the median, which is
 what a reader needs to judge how demanding the median is.
