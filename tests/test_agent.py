@@ -99,6 +99,34 @@ def test_seeds_actually_change_the_agent():
     print(f"  seed 0 vs 7 rf inner-CV: {ta:.4f} vs {tb:.4f}")
 
 
+def test_n_jobs_does_not_change_predictions():
+    """ADS_N_JOBS is orchestration: it may change wall-clock, never a
+    prediction. If it did, the core cap used to share this box with two other
+    tracks would be a silent protocol change."""
+    import importlib
+    import os
+
+    import ads.agent as A
+    X, y = synthetic(n=400)
+    tr, te = np.arange(300), np.arange(300, 400)
+
+    preds = {}
+    for nj in ("1", "4"):
+        os.environ["ADS_N_JOBS"] = nj
+        importlib.reload(A)
+        assert A.N_JOBS == int(nj)
+        ag = A.AutoDataScientist(random_state=0).fit(X.iloc[tr], y[tr])
+        preds[nj] = (ag.best_name_, tuple(ag.predict(X.iloc[te])),
+                     round(ag.tournament_[ag.best_name_]["mean"], 12))
+    os.environ.pop("ADS_N_JOBS", None)
+    importlib.reload(A)
+
+    assert preds["1"] == preds["4"], (
+        "ADS_N_JOBS changed the agent's predictions, so it is not a pure "
+        "orchestration knob")
+    print(f"  n_jobs 1 vs 4: identical predictions, family={preds['1'][0]}")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

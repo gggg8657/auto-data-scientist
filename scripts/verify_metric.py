@@ -40,6 +40,36 @@ REPO = Path(__file__).resolve().parents[1]
 RUNS = REPO / "runs"
 TOL = 1e-6
 MAX_FLOW_RUNS = 400          # stay well under the server's 1000-record ceiling
+INT_TOL = 1e-9
+
+
+def infer_denominators(vals, sizes):
+    """Match each fold score to the test-fold size it must have come from.
+
+    An earlier version zipped the server's `values` array against fold sizes in
+    *our* (repeat, fold) order and checked only that the lengths agreed — an
+    assumption about the server's ordering that `codex` correctly flagged, and
+    one that silently mis-weights the pooled figure whenever the orders differ.
+
+    No ordering is needed.  A fold accuracy is `c / n` for integer `c`, so the
+    admissible `n` for a given score are exactly those distinct fold sizes that
+    make `v * n` an integer.  Where that is unique the denominator is
+    identified; the assignment is then order-free.  Returns None if any fold is
+    ambiguous or unmatchable, and the caller reports that rather than guessing.
+    """
+    distinct = sorted(set(sizes))
+    if len(distinct) == 1:
+        return [distinct[0]] * len(vals)
+    out = []
+    for v in vals:
+        cands = [n for n in distinct if abs(v * n - round(v * n)) < INT_TOL]
+        if len(cands) != 1:
+            return None
+        out.append(cands[0])
+    # the inferred multiset must be the task's own multiset of fold sizes
+    if sorted(out) != sorted(sizes):
+        return None
+    return out
 
 
 def fold_sizes(task_id: int):
@@ -112,18 +142,32 @@ def check_task(task_id: int, path: Path, n_target: int, seed: int) -> dict:
         rec["aggregation"] = None
         return rec
 
-    w = np.asarray(sizes, dtype=float)
-    d_mean = [abs(float(np.mean(v)) - s) for s, v in pairs]
-    d_pool = [abs(float(np.average(v, weights=w)) - s) for s, v in pairs]
+    d_mean, d_pool, sep, n_ambiguous = [], [], [], 0
+    for scalar, v in pairs:
+        w = infer_denominators(v, sizes)
+        if w is None:
+            n_ambiguous += 1
+            continue
+        w = np.asarray(w, dtype=float)
+        pooled = float(np.average(v, weights=w))
+        mean = float(np.mean(v))
+        d_mean.append(abs(mean - scalar))
+        d_pool.append(abs(pooled - scalar))
+        # How far apart are the two aggregations on this task at all?  If they
+        # never differ by more than TOL the task cannot discriminate, and saying
+        # so is not the same as saying they agree everywhere.
+        sep.append(abs(mean - pooled))
+    rec["n_runs_with_ambiguous_denominators"] = int(n_ambiguous)
+    rec["n_runs_used"] = int(len(d_mean))
+    if not d_mean:
+        rec["verdict"] = ("[not measured] — every joined run had an ambiguous "
+                          "fold denominator, so no aggregation could be checked")
+        rec["aggregation"] = None
+        return rec
     rec["max_abs_err_unweighted_mean"] = float(np.max(d_mean))
     rec["median_abs_err_unweighted_mean"] = float(np.median(d_mean))
     rec["max_abs_err_size_weighted"] = float(np.max(d_pool))
     rec["median_abs_err_size_weighted"] = float(np.median(d_pool))
-    # How far apart are the two aggregations on this task at all?  If they never
-    # differ by more than TOL the task simply cannot discriminate, and saying so
-    # is not the same as saying they agree everywhere.
-    sep = [abs(float(np.mean(v)) - float(np.average(v, weights=w)))
-           for _, v in pairs]
     rec["max_separation_between_aggregations"] = float(np.max(sep))
     rec["discriminating"] = bool(np.max(sep) > TOL)
 

@@ -14,14 +14,25 @@ task's own estimation procedure.  The median of that distribution is a
 run ids we record, so it is checkable.  "What I remember the SOTA being" is not,
 and choosing a target after seeing our own score is the way this KPI gets faked.
 
-Two readings of "human baseline", both fixed here, neither chosen later
-----------------------------------------------------------------------
-`median_run`   median over all published runs.  One prolific uploader running a
-               5000-point hyperparameter sweep therefore counts 5000 times.
-`median_flow`  median over per-flow medians — one number per *method* published.
-               De-weights sweeps; closer to "the typical published approach".
-`median_run` is the primary because the brief named it; `median_flow` is
-reported in the same table, never instead of it.
+Four readings of "human baseline", all fixed here, none chosen later
+--------------------------------------------------------------------
+`median_run`           median over all published runs.  One prolific uploader
+                       running a 5000-point sweep counts 5000 times.
+`median_flow`          median over per-flow medians — one number per *method*
+                       published.  De-weights sweeps.
+`median_flow_best`     for each flow, its **best** run; median over flows.
+`median_uploader_best` for each uploader, their **best** run; median over
+                       uploaders — "the median person's submitted solution".
+
+The last two exist because `codex`, reviewing this file before any result
+existed, named an asymmetry that is real and would have flattered us: a human
+searches many configurations and *submits the one they chose*, while our agent
+also selects a winner but is scored against the distribution of **all** their
+trials, failures included.  Comparing our selected model to their selected model
+is the symmetric comparison, and it is strictly harder.  `median_run` stays the
+primary because the brief named it; every table reports all four, and
+`strictest_baseline` records which is highest so no row can hide behind the
+easiest one.
 
 Task selection rule, fixed before any evaluation was fetched
 ------------------------------------------------------------
@@ -61,7 +72,11 @@ MAX_INSTANCES = 20_000
 MAX_FEATURES = 100
 TOP_K = 5
 PAGE = 1000
-HARD_CAP = 300_000
+HARD_CAP = 2_000_000        # raised from 300_000 on 2026-09-10: tasks 31 and 10101
+                           # hit the old cap, so their medians were over a
+                           # run_id-ordered prefix (~55% and ~70% of the
+                           # population) and biased toward the 2014 Weka era.
+                           # Probed: task 31 has 500k-600k evals, 10101 400k-500k.
 WORKERS = 6                # network-bound; 51 tasks serially is hours
 
 _print_lock = threading.Lock()
@@ -128,6 +143,8 @@ def summarise(df: pd.DataFrame, task_id: int, meta: dict, path: Path) -> dict:
     d = df[ok].copy()
     d["value"] = v[ok]
     per_flow = d.groupby("flow_id")["value"].median()
+    per_flow_best = d.groupby("flow_id")["value"].max()
+    per_uploader_best = d.groupby("uploader")["value"].max()
     q = d["value"].quantile([0.25, 0.5, 0.75, 0.9]).to_dict()
     return {
         "task_id": int(task_id),
@@ -145,6 +162,9 @@ def summarise(df: pd.DataFrame, task_id: int, meta: dict, path: Path) -> dict:
         # --- the two pre-registered readings of "human baseline" -------------
         "median_run": float(d["value"].median()),
         "median_flow": float(per_flow.median()),
+        # symmetric readings: their *selected* solution vs our selected model
+        "median_flow_best": float(per_flow_best.median()),
+        "median_uploader_best": float(per_uploader_best.median()),
         # --- context columns, never the target -------------------------------
         "q25": float(q[0.25]), "q75": float(q[0.75]), "q90": float(q[0.9]),
         "max_published": float(d["value"].max()),
@@ -158,6 +178,10 @@ def summarise(df: pd.DataFrame, task_id: int, meta: dict, path: Path) -> dict:
         "evals_sha256": sha256(path),
         "truncated_at_hard_cap": bool(len(df) >= HARD_CAP),
     }
+
+
+BASELINE_KEYS = ("median_run", "median_flow", "median_flow_best",
+                 "median_uploader_best")
 
 
 def main() -> int:
@@ -220,11 +244,43 @@ def main() -> int:
         },
         "baseline_definitions": {
             "median_run": "median predictive_accuracy over all published runs "
-                          "on the task (primary)",
+                          "on the task (primary; the reading the brief named)",
             "median_flow": "median over per-flow medians; one number per "
-                           "published method (second reading)",
+                           "published method",
+            "median_flow_best": "median over per-flow *best* runs; each method "
+                                "at its best published configuration",
+            "median_uploader_best": "median over per-uploader *best* runs; the "
+                                    "median person's submitted solution. The "
+                                    "symmetric comparison: our selected model "
+                                    "against their selected model.",
             "context_only": ["q25", "q75", "q90", "max_published",
                              "min_published"],
+            "asymmetry_note": "median_run scores our *selected* model against "
+                              "the distribution of *all* human trials, "
+                              "failures included, which flatters us. Raised by "
+                              "codex before any result existed; the two 'best' "
+                              "readings are the answer and are strictly "
+                              "harder. Every table reports all four.",
+        },
+        "run_protocol": {
+            "development_tasks": "ranks 6..15 by n_published_runs",
+            "confirmatory_tasks": f"ranks 1..{TOP_K} (= selected_task_ids)",
+            "why": "codex, asked what was wrong before any result existed, "
+                   "made the point that matters most here: if a benchmark "
+                   "number motivates a code change, that benchmark has become "
+                   "development evidence and re-running it does not restore a "
+                   "clean confirmatory measurement. So the agent is developed "
+                   "against ranks 6-15 and the five registered tasks are run "
+                   "to report, not to iterate on.",
+            "seeds_screen": [0, 1, 2],
+            "seeds_verdict": [0, 1, 2, 3, 4, 5, 6, 7],
+            "escalation_rule": "a task whose |gap to the 5% line| is within the "
+                               "measured seed range gets the 8-seed set and an "
+                               "exact test before it is called either way",
+            "every_attempt_recorded": "a run that crashes leaves a .FAILED.json "
+                                      "and the report counts it; a task with any "
+                                      "failed or truncated run cannot pass "
+                                      "clause 3",
         },
         "tolerance_readings": {
             "primary_rel_one_sided": "ours >= 0.95 * baseline",
@@ -238,15 +294,31 @@ def main() -> int:
         "selected_task_ids": [s["task_id"] for s in selected],
         "tasks": summaries,
     }
-    Path(args.out).write_text(json.dumps(out, indent=2))
-    print(f"\nwrote {args.out}")
+    # rank the four readings so no table can quietly use the easiest one
+    for s_ in summaries:
+        vals = {k: s_[k] for k in BASELINE_KEYS}
+        s_["strictest_baseline"] = max(vals, key=vals.get)
+        s_["strictest_baseline_value"] = float(max(vals.values()))
+
+    text = json.dumps(out, indent=2)
+    Path(args.out).write_text(text)
+    # Bind runs to this exact registry: run_benchmark.py stamps this digest into
+    # every run record, so editing a baseline invalidates the runs measured
+    # against it instead of silently moving the target under them.
+    digest = hashlib.sha256(text.encode()).hexdigest()
+    Path(args.out).with_suffix(".sha256").write_text(digest + "\n")
+    print(f"\nwrote {args.out}\nregistry sha256 {digest}")
     print(f"{'tid':>7} {'dataset':<28} {'runs':>7} {'flows':>6} "
-          f"{'median_run':>11} {'median_flow':>12} {'sel':>4}")
-    for s in summaries:
-        print(f"{s['task_id']:>7} {s['dataset_name']:<28} "
-              f"{s['n_published_runs']:>7} {s['n_distinct_flows']:>6} "
-              f"{s['median_run']:>11.4f} {s['median_flow']:>12.4f} "
-              f"{'*' if s['selected'] else '':>4}")
+          f"{'med_run':>8} {'med_flow':>9} {'flow_best':>10} "
+          f"{'uplr_best':>10} {'strictest':>20} {'sel':>4}")
+    for s_ in summaries:
+        print(f"{s_['task_id']:>7} {s_['dataset_name']:<28} "
+              f"{s_['n_published_runs']:>7} {s_['n_distinct_flows']:>6} "
+              f"{s_['median_run']:>8.4f} {s_['median_flow']:>9.4f} "
+              f"{s_['median_flow_best']:>10.4f} "
+              f"{s_['median_uploader_best']:>10.4f} "
+              f"{s_['strictest_baseline']:>20} "
+              f"{'*' if s_['selected'] else '':>4}")
     return 0
 
 

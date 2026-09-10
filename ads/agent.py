@@ -15,6 +15,8 @@ gets faked.
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -41,6 +43,13 @@ SMALL_N = 5_000
 IMBALANCED_BELOW = 0.10          # minority class share
 KNN_MAX_P_OVER_N = 0.10          # KNN is hopeless in high relative dimension
 SEARCH_ITERS_SMALL, SEARCH_ITERS_LARGE = 20, 8
+
+# Orchestration, not a decision the agent makes: how many cores one agent may
+# use.  Five task processes each taking n_jobs=-1 on a 192-core box shared with
+# two other tracks oversubscribes it badly.  This changes wall-clock only --
+# every estimator here is deterministic given its random_state, and
+# `test_n_jobs_does_not_change_predictions` fails if that ever stops being true.
+N_JOBS = int(os.environ.get("ADS_N_JOBS", "-1"))
 
 
 def _preprocessor(X: pd.DataFrame, prof: Profile, log: DecisionLog,
@@ -114,10 +123,10 @@ def candidate_families(prof: Profile, log: DecisionLog, seed: int = 0) -> dict:
                     "scale": False,
                     "reason": "handles mixed types and NaN natively; strongest default on tabular"}
     cands["rf"] = {"est": RandomForestClassifier(n_estimators=300, random_state=seed,
-                                                 class_weight=cw, n_jobs=-1),
+                                                 class_weight=cw, n_jobs=N_JOBS),
                    "scale": False, "reason": "variance-reduction baseline, insensitive to scaling"}
     cands["extra"] = {"est": ExtraTreesClassifier(n_estimators=300, random_state=seed,
-                                                  class_weight=cw, n_jobs=-1),
+                                                  class_weight=cw, n_jobs=N_JOBS),
                       "scale": False, "reason": "higher-variance trees; wins when signal is axis-aligned and noisy"}
     cands["logreg"] = {"est": LogisticRegression(max_iter=2000, class_weight=cw),
                        "scale": True,
@@ -128,7 +137,7 @@ def candidate_families(prof: Profile, log: DecisionLog, seed: int = 0) -> dict:
         dropped["knn"] = (f"p/n = {prof.p_over_n:.3f} > {KNN_MAX_P_OVER_N}; "
                           "distances concentrate")
     else:
-        cands["knn"] = {"est": KNeighborsClassifier(n_jobs=-1), "scale": True,
+        cands["knn"] = {"est": KNeighborsClassifier(n_jobs=N_JOBS), "scale": True,
                         "reason": f"p/n = {prof.p_over_n:.3f} is low enough for distances to mean something"}
 
     log.record("candidate_families", ",".join(sorted(cands)),
@@ -226,7 +235,7 @@ class AutoDataScientist:
                 f"n={prof.n_samples}, so {n_iter} random-search draws on {best}",
                 {"n_samples": prof.n_samples, "space_size": len(space)})
             search = RandomizedSearchCV(pipe, space, n_iter=n_iter, cv=cv,
-                                        scoring="accuracy", n_jobs=-1,
+                                        scoring="accuracy", n_jobs=N_JOBS,
                                         random_state=self.random_state,
                                         error_score=float("-inf"))
             search.fit(Xs, ys)
