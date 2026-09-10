@@ -375,8 +375,11 @@ ls runs/successor/*.json  | wc -l                # 15 when the successor is done
 cat runs/interim_report.md                       # the live view meanwhile
 ```
 
-**`ads-verdict` — primary 8-seed confirmatory run.** Seeds 0–5 complete (30
-records); it is producing seeds 6–7. Restarted once this turn with
+**`ads-verdict` — primary 8-seed confirmatory run.** Still alive after 4h30m.
+Do not hand-type its progress into this file; the commands above print it
+(`ls runs/bench/*.json | wc -l`, 40 when done, and the per-cell matrix with
+`for t in 31 3 3913 3917 10101; do ...`). As of the last commit two cells
+remained: tasks 3 and 3917 at seed 7. Restarted once with
 `ADS_N_JOBS=8` after fold times went 12–14 s → 495–560 s mid-task; existing
 records are skipped, so it resumed exactly where it stopped and no measurement
 was lost. Under the cap the same folds run 74–82 s. **Reported as confounded,
@@ -393,14 +396,27 @@ above): the untuned depth-3 tree clears 3 of those 5, so only `kr-vs-kp` and
 `qsar-biodeg` discriminate, and the report carries the stump's verdict per row
 so a reader can discount the other three.
 
-**When the primary finishes:**
+**When the primary finishes**, and the leakage gate added in turn 9 means the
+probe is now part of this sequence rather than optional — clause 2 reads
+`RUNNING` until it has run:
 
 ```bash
+.venv/bin/python scripts/leakage_power.py        # what a leak would have to be
+.venv/bin/python scripts/leakage_calibration.py  # the rule's false-alarm rate
+.venv/bin/python scripts/leakage_probe.py        # THE GATE: tasks 3, 31, 3913
+.venv/bin/python scripts/auc_power.py            # the rank reading's power
 .venv/bin/python scripts/report.py               # RESULTS.md + this headline
 .venv/bin/python scripts/negative_control.py     # controls, if folds changed
 for f in tests/test_*.py; do python "$f"; done
 git add -A && git commit && git push origin main # only if green
 ```
+
+`leakage_probe.py` takes its task list and fold count from
+`runs/leakage_power.json` rather than from a flag, and **refuses** the two tasks
+it cannot resolve rather than producing a reassuring record for them. It needs
+tasks 3 and 31 at one fold and 3913 at six, so budget roughly 8 fold-probes at
+11 fits each. `verdict()` will not clear clause 2 until every task in that map
+appears in the probe's `tasks_cleared`, with a matching `env.ads_sha256`.
 
 ## Where the numbers come from
 
