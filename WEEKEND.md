@@ -18,44 +18,43 @@ Read the next section before the numbers.
 
 ---
 
-## Read this first: 4 of the 5 thresholds are below the majority-class rate
+## Read this first: on half of this benchmark, ±5% is a bar a stump clears
 
-Everything this repository has built over nine turns asks whether *our* number
-is honest. None of it asked whether the *target* is demanding. It mostly is
-not.
+Everything this repository built over nine turns asks whether *our* number is
+honest. None of it asked whether the **target** is demanding. It mostly is not.
 
-A frozen `DummyClassifier(strategy="prior")` — predicts the commonest label,
-ignores the features entirely — run through the **same** outer folds, the same
-pooled statistic and the same pre-registered baselines as the agent:
+Frozen, deliberately incapable procedures run through the **same** outer folds,
+the same pooled statistic and the same pre-registered baselines as the agent:
 
-- clears the primary `±5%` clause on **4 of the 5 tasks**;
-- an untuned depth-3 decision tree clears **4 of 5** on the primary reading and
-  **4 of 5** on each task's *strictest* baseline;
-- **4 of the 5 thresholds sit at or below the task's own majority-class rate**,
-  which needs no run at all to check — it is arithmetic on the registry.
+| pool | `prior` (majority class) clears | `stump` (untuned depth-3) clears | clears **neither** |
+|---|---|---|---|
+| the 5 registered tasks | **4/5** | **4/5** | **1/5** |
+| all 51 candidates | 15/51 | 25/51 | **25/51 (49%)** |
 
-Only `kr-vs-kp` (majority 0.5222, threshold 0.9120) discriminates on its own.
+So on the registered five only `kr-vs-kp` discriminates on its own, and across
+the whole candidate pool **about half** the tasks have a "within 5% of the
+median published run" bar that three splits of a decision tree clear. That is a
+property of the target construction — median-of-published-runs on CC18 — and it
+would apply to anyone who built the same benchmark.
 
-**And the "±5% clears a dummy" reading understates it.** Requiring the
-threshold to clear an untuned depth-3 tree as well — a *procedure* floor rather
-than a class-prior floor — only **25 of the 51** candidates qualify, and
-**1 of my 5**. On roughly half of CC18's small tasks, "within 5% of the median
-published run" is a bar that three splits of a tree clear. That is a property
-of the target construction, not of this agent.
+**And the "±5% clears a dummy" reading understates it.** A threshold above the
+majority-class rate is *necessary and not sufficient*, measured rather than
+conceded: on the five tasks chosen by exactly that criterion, `prior` clears
+0/5 — as it must, since the criterion makes it fail by construction — while the
+depth-3 stump still clears 3/5.
 
 **A correction to last turn's headline, which was mine.** I wrote "so it is not
 luck ... exact hypergeometric p = 0.0222" and put it in four documents. That
-test asks whether *this draw of five* is unusual, and at n=5 it can reject only
-on the single most extreme draw (`rejectable_draws = [0]` under the procedure
-floor) — a test that can fire in one outcome out of six is not evidence about a
-rule. It is withdrawn as evidence. The properly powered test over all 51
-candidates does support the conclusion: **Spearman(popularity rank, threshold −
-stump) = +0.281, one-sided permutation p = 0.0236** (200k shuffles). So the
-more published a task is, the less its threshold clears a depth-3 tree. All
-four cells (two tests × two floors) are in `RESULTS.md`; the draw test is
-significant only under the weaker floor and the rule test only under the
-stricter one, and the conclusion rests on the appropriate test at the stricter
-floor.
+test asks whether *this draw of five* is unusual and, at n=5 against the pool's
+base rate, can reject only on the single most extreme draw
+(`rejectable_draws = [0]`) — one outcome in six. **I never checked its power.**
+Withdrawn as evidence. The properly powered test, over all 51 candidates
+instead of 5, does support the conclusion: **Spearman(popularity rank,
+threshold − stump) = +0.281, one-sided permutation p = 0.0236** (200k
+shuffles). The more published a task, the less its threshold clears a stump.
+All four cells — two tests × two floors — are in `RESULTS.md`, because the
+diagonal is the point: the draw test is significant only under the weaker floor
+and the rule test only under the stricter one.
 
 **What survives:** the *joint* five-task criterion. Neither control clears all
 five, because both collapse where the majority class is not a strategy. So a
@@ -157,6 +156,20 @@ and what a document may say while a job is running.
   than as no result (the first was `etch-operator-twin`'s partial checkpoints,
   another track). Worth naming as a recurring class: **absence must route to
   `None`, never to a value.**
+- **Quoting a p-value without checking what it could ever detect.** The n=5
+  hypergeometric I put in four documents can reject only on the most extreme
+  of six possible draws. Ruled out: **a small p from an underpowered test is
+  not weak evidence, it is a coin that came up heads.** Check
+  `rejectable_draws` — the set of outcomes a test can fire on — before quoting
+  it. The properly powered version (n=51, permutation) was one line away on
+  data already on disk.
+- **Diagnosing a slow job from a load average and one slow line.** I projected
+  12 hours from one 495 s fold plus `uptime`, and was about to kill a run and
+  lose 8 completed folds. Reading `seconds_total` out of the run records took
+  thirty seconds and showed seeds 3–5 had each run *faster* than the screen's.
+  Ruled out: **a shared box's load average says nothing about your job's
+  throughput.** (The tail did later turn real — folds 7–8 at 495/560 s — which
+  is why the cap went in, and that measurement is reported as confounded.)
 - **Provenance machinery as a defence against a vacuous target.** Nine turns
   of hash pinning, ledgers, digests, amendment records and external re-fetches,
   and none of it could see that most of the thresholds were beneath the
@@ -213,7 +226,38 @@ exist until now), so they are genuinely uninspected.
   meaningful. **I do not recommend this**: the clause is meetable and, read
   jointly, is not vacuous.
 
-**2. Is the amended protocol acceptable, or does it need a fresh seed set?**
+**2. A second instance of this same loop is running in this repository, and it
+is the single biggest drag on the work.** Needs a human, because I cannot
+safely resolve it from inside.
+`pgrep` shows two `claude` processes carrying this brief; the git log shows the
+other one committing to `main` while I worked (`6624f0b`, `012b5f0`, `a38e120`,
+and `e996bb3` whose message is "Snapshot in-progress work from the concurrent
+loop instance" — it committed my uncommitted tree). `.lock_trkC` is held by one
+harness driver, so this is one driver with two live agents.
+
+Measured harm: the box sat at load 323–370 on 192 cores and the primary run's
+fold times went from 12–14 s to 495–560 s mid-task. Near-miss: the twin ran
+`--max-folds 1` into `runs/dev/` while my successor measurement was queued to
+write there, and since the runner skips existing files that one-fold record
+would have been averaged in as a ten-fold measurement.
+
+- *(a)* **Stop one of the two instances.** Recommended. Throughput roughly
+  doubles and the merge hazard on `critique_log.md` / `paper_draft.md` /
+  `report.py` goes away. Which one to keep is a harness question — both are
+  producing real work, and the twin's fold-level non-inferiority section
+  (§6.1) is good.
+- *(b)* Leave both and accept ~2× slower runs plus the merge risk. Mitigated
+  but not removed on my side: partial records are now excluded from every
+  average and sink clause 3, a `successor` role writes to `runs/successor/`
+  so it cannot share a directory with debug runs, and both my queued jobs run
+  at `ADS_N_JOBS=8`.
+- *(c)* Give each instance its own git worktree. Removes the clobber risk,
+  keeps both, does nothing about CPU.
+
+I did **not** kill the other instance: the brief forbids touching another
+loop's session, and I cannot establish from inside which of us is intended.
+
+**3. Is the amended protocol acceptable, or does it need a fresh seed set?**
 Five rule changes were made *after* the 3-seed screen was read, all recorded in
 `runs/protocol_amendments.json`, all strictly stricter, and #1 took the status
 from `PASS` to `RUNNING` on identical data. But **3 of the 8 verdict seeds
@@ -230,7 +274,7 @@ from `PASS` to `RUNNING` on identical data. But **3 of the 8 verdict seeds
   magnitude below the effect and do nothing about the uncertainty that binds —
   each task is **one** fixed dataset with **one** fixed set of folds.
 
-**3. Same as last turn, still unresolved and still blocking all tracks: disk.**
+**4. Same as last turn, still unresolved and still blocking all tracks: disk.**
 `/home/dongjukim` (7.0T) hit 100% / 0 bytes; I reclaimed 40G from `~/.cache/pip`
 only. **~5.1T of the 6.6T used is outside this container's view.** Options
 unchanged: *(a)* reclaim `~/.cache/huggingface` (267G, but F4 needs Qwen3
@@ -239,7 +283,7 @@ weights), *(b)* reclaim `~/.ollama` (278G, no track in my brief uses it),
 **Recommendation: (b) then (c).** Not done unattended: hard to reverse, and not
 mine.
 
-**4. Should the agent be isolated from the evaluator's memory?**
+**5. Should the agent be isolated from the evaluator's memory?**
 `ads/evaluate.py` holds the full labelled frame in the process that calls the
 agent. Nothing in `ads/` touches it and the code is short enough to review, but
 the architecture permits leakage and no in-process test can rule it out.
@@ -249,52 +293,53 @@ than trusted.
 
 ---
 
-## Still running, and how to check it
+## Still running, and how to check it — plus why nothing is pushed
 
-Two tmux sessions, the second chained to start when the first exits so they do
-not contend (this box was at load ~360 on 192 cores with other tracks running):
+**Nothing has been pushed and that is deliberate.** `RESULTS.md` in git was
+last written before any accuracy existed, so it reads `[not measured]` while 31
+real run records sit tracked in `runs/bench/`. It cannot be regenerated while a
+benchmark is alive — `report.py` deliberately redirects to
+`runs/interim_report.md` so a mid-run document, whose ledger cannot reconcile,
+is never committed as the verdict. So: **finish the run, regenerate, run the
+suite, then push.** CI would catch the stale document anyway
+(`ADS_REQUIRE_FRESH_RESULTS=1`).
 
 ```bash
 cd ~/Documents/workspace/auto-data-scientist
-tmux ls | grep ads-                          # ads-verdict, ads-successor
-tail -3 logs/bench_verdict.log               # primary; ends with EXIT=0
-tail -3 logs/bench_successor.log             # successor; starts after primary
-ls runs/bench/*.json | wc -l                 # 40 when the primary is done
-ls runs/dev/*.json   | wc -l                 # 15 when the successor is done
+tmux ls | grep ads-                              # ads-verdict, ads-successor
+tail -3 logs/bench_verdict_capped.log            # primary; ends with EXIT=0
+tail -3 logs/bench_successor.log                 # successor; chained after it
+ls runs/bench/*.json      | wc -l                # 40 when the primary is done
+ls runs/successor/*.json  | wc -l                # 15 when the successor is done
+cat runs/interim_report.md                       # the live view meanwhile
 ```
 
-**`ads-verdict` — the primary 8-seed confirmatory run.** Seeds 0–2 were already
-on disk and skipped, so it produces seeds 3–7 of the five registered tasks.
-This is the run clause 2 waits on. Slow because of CPU contention, not because
-anything is wrong: it holds ~46 cores and each fold is 3–25× its uncontended
-time.
+**`ads-verdict` — primary 8-seed confirmatory run.** Seeds 0–5 complete (30
+records); it is producing seeds 6–7. Restarted once this turn with
+`ADS_N_JOBS=8` after fold times went 12–14 s → 495–560 s mid-task; existing
+records are skipped, so it resumed exactly where it stopped and no measurement
+was lost. Under the cap the same folds run 74–82 s. **Reported as confounded,
+not as a fix:** box load moved at the same time and four other python processes
+hold 1300–2850% CPU each.
 
-**`ads-successor` — the second, clearly labelled measurement.** A 3-seed screen
-(so: screen, not verdict) of the *unmodified* agent on the successor five —
-`kr-vs-kp`, `qsar-biodeg`, `wdbc`, `diabetes`, `phoneme` — chosen by a rule
-still blind to our accuracy: the most-published candidates whose threshold
-exceeds their majority-class rate. It writes to `runs/dev/`, **not**
-`runs/bench/`, so it cannot touch the KPI's own accounting, and its targets need
-no new fetch: all 51 candidates were frozen in `runs/baselines.json` before any
-run existed, so the successor five's baselines are as pre-registered as the
-original five. Four of those five tasks were reserved by the protocol for
-development and the agent was **never run on any of them** — `runs/dev` did not
-exist — so they are genuinely uninspected. `ADS_N_JOBS=16` to be a good citizen
-on a shared box; predictions are invariant to that knob and a test asserts it.
+**`ads-successor` — the labelled second measurement.** A 3-seed screen (screen,
+not verdict) of the *unmodified* agent on the successor five — `kr-vs-kp`,
+`qsar-biodeg`, `wdbc`, `diabetes`, `phoneme` — whose baselines were frozen with
+the original five before any run existed. Writes to `runs/successor/`, a
+directory added this turn specifically so it cannot share space with debug
+runs. **Its selection criterion is known to be weak** (see the correction
+above): the untuned depth-3 tree clears 3 of those 5, so only `kr-vs-kp` and
+`qsar-biodeg` discriminate, and the report carries the stump's verdict per row
+so a reader can discount the other three.
 
 **When the primary finishes:**
 
 ```bash
-.venv/bin/python scripts/report.py            # RESULTS.md + this headline
-.venv/bin/python scripts/negative_control.py  # controls, if folds changed
+.venv/bin/python scripts/report.py               # RESULTS.md + this headline
+.venv/bin/python scripts/negative_control.py     # controls, if folds changed
 for f in tests/test_*.py; do python "$f"; done
-git add -A && git commit                      # then push, only if green
+git add -A && git commit && git push origin main # only if green
 ```
-
-`scripts/report.py` **refuses** to write `RESULTS.md` while a benchmark is
-alive — it writes `runs/interim_report.md` instead — so a mid-run document,
-whose ledger cannot reconcile because an attempt in flight has no record yet,
-can never be committed as the verdict.
 
 ## Where the numbers come from
 
