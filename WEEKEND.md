@@ -8,63 +8,116 @@
 <!-- HEADLINE:END -->
 
 **Friday:** the repository did not exist.
-**As of the last turn before this one:** the pipeline and the pre-registered
-target existed, and there was still **no accuracy number at all** — clauses 2
-and 3 read `[not measured]`, which was the honest state and was reported as
-such.
-**Now:** the numbers above are the first this repository has produced, and the
-project's own gate withdrew the first `PASS` it computed. Read the next section
-for why that is the point rather than a setback.
+**Before this turn:** the pipeline and the pre-registered target existed and
+there was **no accuracy number at all** — clauses 2 and 3 read
+`[not measured]`, which was the honest state and was reported as such.
+**Now:** the first accuracy numbers exist, the project's own gate withdrew the
+first `PASS` it computed, and a cheap check nobody had run showed that **most
+of the KPI's own thresholds cannot distinguish competence from triviality.**
+Read the next section before the numbers.
 
 ---
 
-## The one thing that happened this turn
+## Read this first: 4 of the 5 thresholds are below the majority-class rate
+
+Everything this repository has built over nine turns asks whether *our* number
+is honest. None of it asked whether the *target* is demanding. It mostly is
+not.
+
+A frozen `DummyClassifier(strategy="prior")` — predicts the commonest label,
+ignores the features entirely — run through the **same** outer folds, the same
+pooled statistic and the same pre-registered baselines as the agent:
+
+- clears the primary `±5%` clause on **4 of the 5 tasks**;
+- an untuned depth-3 decision tree clears **4 of 5** on the primary reading and
+  **4 of 5** on each task's *strictest* baseline;
+- **4 of the 5 thresholds sit at or below the task's own majority-class rate**,
+  which needs no run at all to check — it is arithmetic on the registry.
+
+Only `kr-vs-kp` (majority 0.5222, threshold 0.9120) discriminates on its own.
+
+**And it was not bad luck.** Of the 51 candidates that passed the registered
+size filter, **36** have a threshold above their majority rate. The rule
+selected **1** of them. A random five would be expected to contain 3.53; exact
+lower-tail hypergeometric **p = 0.0222**. Ranking by number of published
+evaluations — chosen because the median of a larger sample is better
+determined, which is true — selects at better than the 5% level for tasks whose
+±5% band sits beneath triviality.
+
+**What survives:** the *joint* five-task criterion. Neither control clears all
+five, because both collapse where the majority class is not a strategy. So a
+`PASS` here means **"clears five tasks including one where triviality fails"**,
+not "beat a human five times". That sentence is in `RESULTS.md` beside the
+result, and a test asserts that if a control ever does clear all five, the
+reassuring paragraph is false and must be rewritten rather than the test
+relaxed.
+
+**The agent comes out of it worse than expected too.** Margins over the untuned
+depth-3 tree: credit-g +0.0093, blood-transfusion **−0.0209**, kc2 +0.0010,
+kr-vs-kp +0.0921, kc1 +0.0094. One is inside that task's own seed range; on one
+the stump *wins*. Six model families plus a random search buys a lot on the
+balanced task and almost nothing over three splits of a tree on the imbalanced
+ones — invisible against the human baseline, because that baseline is *also*
+below the majority rate there. **A weak baseline hides a weak method as
+efficiently as it flatters a strong one.**
+
+The transferable lesson: I pre-registered a selection rule that was blind to my
+accuracy and treated that as the whole requirement. A rule has to be blind to
+your result **and** blind to the difficulty of the target. Only the first was
+designed for.
+
+---
+
+## The other thing that happened: the first PASS was withdrawn
 
 The 3-seed screen finished and `scripts/report.py` printed **`Status: PASS`**.
-That claim was withdrawn within the same turn, before it was pushed anywhere.
-Not because any number was wrong — all five tasks land *above* their median
-published run, by +0.58% to +4.32%, with a seed spread of 0.0013–0.0077 — but
-because the gate that granted the clause was the wrong test.
+Withdrawn in the same turn, before it went anywhere. Not because a number was
+wrong — all five tasks land above their median published run — but because the
+gate that granted the clause was the wrong test.
 
 The gate short-circuited: a task whose margin to the 5% line exceeded its own
-observed seed range was called *without running the test*, and only borderline
-tasks got the pre-registered exact sign test. Every one of the five cleared its
-line by 4.5×–68× its seed range, so **the test ran on none of them** and the
-clause passed on point estimates.
+observed seed range was called *without running the test*. All five cleared by
+4.5×–68× their seed range, so **the pre-registered exact test ran on none of
+them** and the clause passed on point estimates.
 
-Why that condition is wrong, and wrong in the flattering direction: the
-expected range of *n* i.i.d. draws is 1.69σ at *n* = 3 against 2.85σ at *n* = 8,
-and the range sits in the **denominator**. Fewer seeds ⇒ smaller range ⇒ easier
-to enter the "no test needed" branch. **A gate that is easier to clear on less
-evidence is not a gate.**
+Why that is wrong in the flattering direction: the expected range of *n* i.i.d.
+draws is 1.69σ at *n* = 3 against 2.85σ at *n* = 8, and the range sits in the
+**denominator**. Fewer seeds ⇒ smaller range ⇒ easier to enter the "no test
+needed" branch. **A gate that is easier to clear on less evidence is not a
+gate.** (Measured on our own runs, as seeds landed: the observed range grew
+1.00×–2.25× per task going from 3 seeds to 6.)
 
-The exact test is now unconditional and required at the full 8-seed set. Since
-*p* ≥ 1/2ⁿ, a 3-seed screen cannot reach α = 0.05 at any margin, so "with three
-seeds, screen not verdict" is now arithmetic rather than a promise. Same runs,
-`PASS` → `RUNNING`. Nothing was loosened and no number moved.
+The exact test is now unconditional at the full 8-seed set. Since *p* ≥ 1/2ⁿ, a
+3-seed screen cannot reach α = 0.05 at any margin, so "with three seeds, screen
+not verdict" is arithmetic rather than a promise. Same runs, `PASS` →
+`RUNNING`.
 
-### The adversary earned its keep this time
+### What the two adversaries found
 
-Asked the *right* question — "how would you make this clause pass legitimately"
-rather than "what is wrong" — `codex` found a defect I would not have found:
-
-**the exact test itself was anti-conservative.** It dropped ties and ran a fair
-binomial on the survivors, which is the textbook sign test *for a continuous
-distribution*. Accuracy is *k* correct of a fixed *n*. With
+`codex`, asked *how to make the clause pass legitimately* rather than what was
+wrong, found that **the exact test itself was anti-conservative**: it dropped
+ties and ran a fair binomial on the survivors, which is the sign test for a
+*continuous* distribution. Accuracy is *k* correct of a fixed *n*. With
 P(A = T) = 0.6, P(A > T) = 0.4 the median is exactly *T* — H₀ true — and the
-8-seed gate rejected it **17.37%** of the time at a nominal 5%. I recomputed it
-rather than trusting the figure: 17.367% before, **0.852%** after counting ties
-as non-wins in the denominator. No number here moves (no seed of ours sits on a
-threshold) but the guarantee the *p*-value advertised was not the one it had.
+8-seed gate rejected it **17.37%** of the time at a nominal 5%. Recomputed
+rather than trusted: 17.367% before, **0.852%** after. It also found the
+provenance gate failing open in three places, where a run that *omitted* a
+field read as one that *reported it clean*.
 
-It also found the provenance gate **failing open** in three places — a missing
-`n_interventions` defaulted to 0, an absent agent digest was *discarded* before
-the distinct-digest count, an absent ledger was accepted — so a run that
-*omitted* a field read as a run that *reported it clean*. All three now sink
-clause 3.
+`agy` found that **`runs/bench/` and `runs/attempts.jsonl` were never tracked
+by git** — so deleting a bad seed's record together with its three ledger lines
+left `reconciled: True`, every test green and no diff at all. That invalidates
+the stated purpose of the ledger, which existed to make deletion cost two
+coordinated edits; the argument silently assumed the file was in the history.
+It also found that the OpenML re-fetch probe re-checked the *same* 25 rows every
+time (fixed seed), leaving the other 415,087 rows of task 31 editable with
+impunity — the sample seed is now derived from the file's own sha256, so editing
+any row re-draws the sample.
 
-And it was right about chronology: all of this was decided **after** the screen
-was read. See below.
+Every hole either adversary found was **in the flattering direction, and none
+was in the arithmetic**. They were in what gets loaded, what gets counted when
+a field is absent, which rows get checked, which seed set the bar refers to,
+and what a document may say while a job is running.
 
 ---
 
@@ -91,33 +144,80 @@ was read. See below.
   than as no result (the first was `etch-operator-twin`'s partial checkpoints,
   another track). Worth naming as a recurring class: **absence must route to
   `None`, never to a value.**
-- **`agy` as a second adversary.** Two invocation failures (it reads prompts
-  only from `-p`/stdin, and headless mode auto-denies file reads without
-  `--dangerously-skip-permissions`). Noted so the next turn does not re-derive
-  it.
+- **Provenance machinery as a defence against a vacuous target.** Nine turns
+  of hash pinning, ledgers, digests, amendment records and external re-fetches,
+  and none of it could see that most of the thresholds were beneath the
+  majority-class rate. Ruled out: **auditing the link between claim and
+  evidence says nothing about the link between target and difficulty.** The
+  negative control that found it took a quarter of an hour and should have been
+  the *first* thing built, before any of the rest.
+- **A hand-typed number surviving in generated prose.** The clean-subset
+  paragraph carried "0.0013–0.0077" as literal text; those were the 3-seed
+  spreads and were stale by the 6th seed (0.0022–0.0090). Ruled out: a
+  generator is not a guarantee — prose inside it needs the same discipline as
+  a table cell. Now computed, along with the count in "N of the five sits
+  inside seed noise", which said *two* and is *one*.
+- **A test writing into the repository's own documents.** `--weekend` was added
+  with a default of the real `WEEKEND.md`, so a fixture run over five made-up
+  tasks wrote `d0`–`d4` rows with `[not measured]` accuracies into the handover
+  file. Ruled out: a script that writes documents must treat an explicit
+  `--out` as "the caller is writing elsewhere" and not touch siblings.
+  `README.md` had the identical exposure and was safe only by accident.
+- **Adversary tooling.** `codex` works. `agy` needs `-p` *and*
+  `--dangerously-skip-permissions` and returned nothing twice before that;
+  it is worth the trouble — it found the untracked-ledger hole and the
+  falsifiability question. `cursor-agent` is unauthenticated on this box and
+  needs `agent login` or `CURSOR_API_KEY`. Also: ask **"how would you make
+  this pass"**, not "what is wrong" — the single most valuable finding of the
+  turn came from the constructive phrasing, and the destructive phrasing had
+  been asked twice before without producing it.
 
 ---
 
 ## Needs a human decision
 
-**1. Is the amended protocol acceptable as a confirmatory reading, or does it
-need a fresh seed set?**
-Three rule changes were made *after* the 3-seed screen was read, all recorded
-in `runs/protocol_amendments.json` with what was registered, what replaced it,
-and what each did to the claim. All three are strictly stricter, and amendment 1
-took the status from `PASS` to `RUNNING` on identical data — an amendment that
-*withdraws* a claim needs no chronological alibi. But **3 of the 8 verdict
-seeds (0, 1, 2) were inspected before the amendment.**
+**1. The KPI's task set cannot separate competence from triviality on 4 of 5
+tasks. Which measurement do you want reported?**
+This is the decision that matters and it is not really about statistics.
+A successor rule that is still blind to our accuracy exists and is recorded in
+`runs/target_difficulty.json`: the five most-published candidates whose
+threshold exceeds their majority-class rate — `kr-vs-kp`, `qsar-biodeg`,
+`wdbc`, `diabetes`, `phoneme`. Ranks 6–15 were reserved by the protocol for
+development and **the agent was never run on any of them** (`runs/dev` did not
+exist until now), so they are genuinely uninspected.
 
-- *(a)* **Accept the 8-seed set as it stands**, with the disclosure in
-  `RESULTS.md` that seeds 0–2 were pre-inspected and 3–7 were not. *This is
-  what is built.* The per-seed table lets a reader drop seeds 0–2 and check the
-  conclusion on 3–7 alone.
-- *(b)* Run seeds 8–15 as a clean confirmatory set under the frozen amended
-  rule and report the current 8 as supporting evidence. Costs ~2 h of CPU and
-  nothing else. **My recommendation if anyone external will read the claim.**
+- *(a)* **Report the registered five as the KPI, with the falsifiability
+  section attached.** *This is what is built and what the rules require* — the
+  five were pre-registered and swapping in a set chosen after seeing which one
+  made the point is exactly the error this repo exists to prevent.
+- *(b)* Additionally run the successor five as a clearly-labelled **second
+  measurement** and report both. ~2 h of CPU, no code changes, and it answers
+  the objection instead of documenting it. **My recommendation** — and it also
+  tests the alternative explanation (if the agent's margin over a depth-3 stump
+  stays ≈0.01 on balanced tasks rather than widening to ≈0.09, the finding is
+  about the agent, not the task set).
+- *(c)* Treat B5 as `UNREACHABLE` on the grounds that the clause is not
+  meaningful. **I do not recommend this**: the clause is meetable and, read
+  jointly, is not vacuous.
 
-**2. Same as last turn, still unresolved and still blocking all tracks: disk.**
+**2. Is the amended protocol acceptable, or does it need a fresh seed set?**
+Five rule changes were made *after* the 3-seed screen was read, all recorded in
+`runs/protocol_amendments.json`, all strictly stricter, and #1 took the status
+from `PASS` to `RUNNING` on identical data. But **3 of the 8 verdict seeds
+(0, 1, 2) were inspected pre-amendment.**
+
+- *(a)* **Accept the 8-seed set with the disclosure**, plus the section that
+  re-runs the exact test on seeds 3–7 alone — a fixed subset named *in* the
+  amendment before those seeds were run, so it owes nothing to the inspected
+  ones, and n=5 all-clearing reaches p = 0.03125 on its own. *This is what is
+  built.*
+- *(b)* Run seeds 8–15 as well. ~2 h of CPU. I did **not** do this and the
+  reason is measured, not stylistic: seed noise is 0.0022–0.0090 against
+  margins of 0.0440–0.0844, so more seeds shrink a quantity already an order of
+  magnitude below the effect and do nothing about the uncertainty that binds —
+  each task is **one** fixed dataset with **one** fixed set of folds.
+
+**3. Same as last turn, still unresolved and still blocking all tracks: disk.**
 `/home/dongjukim` (7.0T) hit 100% / 0 bytes; I reclaimed 40G from `~/.cache/pip`
 only. **~5.1T of the 6.6T used is outside this container's view.** Options
 unchanged: *(a)* reclaim `~/.cache/huggingface` (267G, but F4 needs Qwen3
@@ -126,7 +226,7 @@ weights), *(b)* reclaim `~/.ollama` (278G, no track in my brief uses it),
 **Recommendation: (b) then (c).** Not done unattended: hard to reverse, and not
 mine.
 
-**3. Should the agent be isolated from the evaluator's memory?**
+**4. Should the agent be isolated from the evaluator's memory?**
 `ads/evaluate.py` holds the full labelled frame in the process that calls the
 agent. Nothing in `ads/` touches it and the code is short enough to review, but
 the architecture permits leakage and no in-process test can rule it out.
