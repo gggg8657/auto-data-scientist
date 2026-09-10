@@ -484,3 +484,128 @@ interesting outcome.
 
 Identity-as-property (#6), evaluation-cache provenance (#7), in-process label
 leakage (#8). None of them is closed and none is claimed to be.
+
+### The adversary, asked the rung-4 question ("how would you make this pass?")
+
+`codex exec`, given `escalation_state` / `exact_sign_test_above` / `verdict`
+and the state above, and asked (1) how to make the clause pass legitimately and
+(2) where the new gate is still wrong. Four findings, in the order they matter.
+
+**1. The tie handling inflated Type I error to 17.37% at a nominal 5%. Real,
+fixed.** Quote:
+
+> "Dropping ties invalidates the stated general median null. [...] With
+> discrete accuracy, the median null does not imply that non-ties split equally
+> above and below. A concrete counterexample: suppose P(A=T)=0.6, P(A>T)=0.4,
+> and nothing lies below. The unique median is T, so the null is true. Five
+> wins and three ties produce your p=1/32, and the full eight-seed gate rejects
+> with probability **17.37%**, not at most 5%. Direction: flattering,
+> anti-conservative."
+
+I recomputed it rather than taking the number: dropping ties rejects a true
+null **17.367%** of the time; keeping n=8 and counting only strict wins rejects
+**0.852%**. The exact figure it quoted is exactly right. `k` is now strict wins
+out of all `n` seeds, ties included in the denominator as non-wins. This costs
+nothing on this repository's data — no seed lands on a `0.95×` threshold, so
+every `k` and `n` here is unchanged — and it changes the test from
+anti-conservative to conservative wherever ties do occur. The counterexample
+is a test now (`test_dropping_ties_would_inflate_type_i_error_to_17_percent`).
+
+This is the single best thing any adversary has found in this repo. I wrote the
+old version *citing* the textbook sign test and did not notice that the
+textbook version assumes a continuous distribution, which accuracy is not.
+
+**2. The provenance gate fails open. Real, fixed.** Quote:
+
+> "Missing intervention counts become zero [...]; missing agent digests are
+> discarded [...]; an absent ledger is explicitly accepted. Direction:
+> flattering. [...] Agreement among available self-reports is weaker than
+> evidence of no intervention."
+
+All three were `.get(field, default)` written in the accommodating direction, so
+a run that *omitted* a field read as a run that *reported it clean*. Now: a run
+missing any of `n_interventions` / `complete` / `off_registry` /
+`registry_sha256` / `random_state` sinks clause 3; an absent agent digest counts
+as its own distinct digest instead of being dropped from the set (so 39 runs
+agreeing can no longer outvote the one that said nothing); an absent or
+unreconciled ledger sinks clause 3, because without it "no attempt was started
+and abandoned" has no record behind it. One test per route.
+
+**3. The chronology: this is an amendment, not a pre-registration. Real,
+recorded.** Quote:
+
+> "The code says the particular test was chosen after seeing the screen [...]
+> and the registry still contains the old conditional escalation rule. If no
+> earlier timestamped record specifies this test, call this a protocol
+> amendment."
+
+Correct, and I had been sloppy about it: the registry's `escalation_rule` says
+"a task whose |gap| is within the measured seed range gets the 8-seed set and an
+exact test", which is *conditional*; the amended rule tests every task
+unconditionally. The exact sign test was specified on 2026-09-10 in response to
+an adversary, not on 2026-09-09 when the protocol was frozen, and the 3-seed
+screen had been read. `runs/protocol_amendments.json` now records all three of
+this turn's rule changes with what was registered, what replaced it, whether
+results had been seen, and what the amendment did to the claim as it stood.
+`tests/test_protocol_amendments.py` asserts that **no amendment is recorded as
+making a clause easier**, and fingerprints the three functions that decide the
+verdict so an undeclared gate change goes red.
+
+The defence of amendment #1 is not that it was planned. It is that it took the
+claim from `PASS` to `RUNNING` on identical data. An amendment that withdraws a
+claim needs no chronological alibi; one that grants a claim cannot have one.
+What is still owed, and is now written into the file and the report: **3 of the
+8 verdict seeds (0, 1, 2) were inspected before the amendment.** Seeds 3-7 are
+disjoint from anything I had seen.
+
+**4. The unit of analysis. Half real, and it produced a new reported row.**
+Quote:
+
+> "Eight seeds reuse the same examples. They can estimate algorithmic
+> randomness conditional on those data; they do not create eight independent
+> datasets. [...] taskwise median success does not establish that one autonomous
+> execution clears all five tasks reliably. [...] For that claim, additionally
+> report the per-seed event 'all five tasks completed and cleared their
+> thresholds'." And: "Do not 'fix' this by treating the 80 fold scores as
+> independent observations."
+
+The caveat is right and is now prose in `RESULTS.md` rather than something a
+reader has to know. The joint-event suggestion is better than a caveat, because
+it is the reading a person actually wants from an *autonomous* data scientist:
+`joint_seed_event()` reports, per seed, whether one unattended run cleared all
+five, and runs the same exact test on that indicator. It is reported *beside*
+the per-task gate, not instead of it — five tasks each failing on a different
+seed would pass every per-task test and never produce a clean sweep.
+
+Interim, seeds 0-3 (seeds 4-7 still running): **4 of 4 complete seeds cleared
+all five**, against the strictest per-task reading as well as `median_run`;
+k=4/4, p=0.0625 — not yet significant, which is the p-floor doing its job at
+n=4.
+
+Writing that function immediately caught a bug in itself, in the pessimistic
+direction: it counted a task that had *not yet run* for a seed as a task that
+seed had missed, so the mid-flight seed read "no — missed tasks 3 and 3917"
+when those two had not started. Unrun tasks now take the seed out of the test
+entirely rather than scoring it a failure, and the table has separate columns
+for "below the line" and "not yet run". Regression test added. That is the
+second time this weekend a partial artefact scored as a bad result rather than
+as no result — the same mechanism as `etch-operator-twin`'s partial checkpoints,
+and worth naming as a recurring class rather than two coincidences.
+
+**Where codex was wrong, or at least not actionable:** it flagged that
+`RESULTS.md` "shows zero measured seeds and no new gate table", which was an
+artefact of reading the file at the moment I had reverted it to HEAD pending
+the 8-seed run. It also proposed a matched human comparator (freeze a
+human-selected pipeline per task on training data only, evaluate both on
+identical untouched data, test non-inferiority of the pairing). That is the
+right experiment for the question "is this agent as good as a person", but it
+is **not this KPI** — the KPI names a public-baseline comparison and the
+baselines are pre-registered from OpenML's run history. Building a human arm
+would be replacing the registered target with a better one after the fact.
+Noted in `paper_draft.md` as the experiment this design cannot do, not adopted.
+
+Its argument that no multiplicity correction is needed is correct and I am
+recording it as an argument I do *not* have to fix: the claim requires all five
+tasks to reject, which is an intersection-union test, so a false global PASS
+needs at least one true task null rejected and Bonferroni would only make the
+global claim gratuitously harder.

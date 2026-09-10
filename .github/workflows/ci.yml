@@ -4,34 +4,53 @@ on: [push, pull_request]
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+      # Both of these turn a *local* deferral into a CI failure.
+      #
+      # ADS_REQUIRE_FRESH_RESULTS: the RESULTS.md freshness check defers while
+      # a benchmark is in flight, because run files land continuously and any
+      # snapshot is stale a fold later. A clean checkout has nothing running,
+      # so a deferral here means the deferral logic itself is broken.
+      #
+      # ADS_REQUIRE_EXTERNAL_PROBE: the evaluation cache must have been
+      # spot-checked against OpenML itself, not merely committed with a
+      # --offline provenance run.
+      ADS_REQUIRE_FRESH_RESULTS: "1"
+      ADS_REQUIRE_EXTERNAL_PROBE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install -r requirements.txt
 
-      # The agent itself: fit/predict, decision logging, no test-fold leak,
-      # and that a seed change actually changes the agent.  No network.
-      - name: agent
-        run: PYTHONPATH=. python tests/test_agent.py
-
-      # Clause 3 is faked by branching on dataset identity; this searches the
-      # package for the registered task ids and dataset names.
-      - name: no dataset-specific logic
-        run: PYTHONPATH=. python tests/test_no_dataset_specific_logic.py
-
-      # The verdict must be derived, and an unmeasured task must read
-      # [not measured] rather than vanish from the table.
-      - name: report and verdict
-        run: PYTHONPATH=. python tests/test_report.py
-
-      # The committed registry must still match the rule that produced it, and
-      # RESULTS.md must still match what report.py generates from runs/*.json --
-      # so a stale document cannot go green.
-      # ADS_REQUIRE_FRESH_RESULTS makes the RESULTS.md freshness assertion
-      # non-deferrable. Locally the test defers while a benchmark is in flight,
-      # because run files land continuously and any snapshot is stale a fold
-      # later; on a clean checkout nothing is running, so a deferral here means
-      # the deferral logic itself is broken and CI must go red.
-      - name: registry and report are not stale
-        run: ADS_REQUIRE_FRESH_RESULTS=1 PYTHONPATH=. python tests/test_registry_frozen.py
+      # Every tests/test_*.py, discovered rather than listed.
+      #
+      # This used to be one step per file, and on 2026-09-10 that turned out to
+      # be running 5 of 9: `test_escalation_gate.py` -- the file that asserts
+      # the gate deciding clause 2 -- was never in CI at all, along with the
+      # seed-accounting, atomic-write and registry-committed tests. A list of
+      # steps is a list someone has to remember to extend, and the same shape
+      # of omission (CI green on a document no CI step regenerated) is already
+      # in this repo's history. So: discovery, with an explicit floor on the
+      # count so that a glob that silently matches nothing cannot pass either.
+      - name: every test in tests/
+        run: |
+          set -uo pipefail
+          shopt -s nullglob
+          files=(tests/test_*.py)
+          echo "discovered ${#files[@]} test files"
+          if [ "${#files[@]}" -lt 9 ]; then
+            echo "expected at least 9 test files, found ${#files[@]}" >&2
+            exit 1
+          fi
+          rc=0
+          for f in "${files[@]}"; do
+            echo "::group::$f"
+            if ! python "$f"; then
+              echo "FAILED: $f" >&2
+              rc=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $rc

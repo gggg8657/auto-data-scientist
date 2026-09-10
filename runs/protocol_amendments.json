@@ -1,0 +1,50 @@
+{
+  "what_this_file_is": "Append-only record of every change to the measurement protocol made AFTER runs/baselines.json was frozen. The registry itself is sha256-pinned into every run record, so it cannot be edited without orphaning the runs measured against it; amendments therefore live here instead. Each entry states what the registered rule was, what it is now, which direction the change moves the difficulty, and whether results had already been seen when it was made. tests/test_protocol_amendments.py asserts that no amendment is recorded as making a clause easier.",
+  "why_it_exists": "codex, 2026-09-10, asked how to make the KPI's clause 2 pass legitimately, answered first with a chronology objection: 'The code says the particular test was chosen after seeing the screen, and the registry still contains the old conditional escalation rule. If no earlier timestamped record specifies this test, call this a protocol amendment.' That is correct. The exact sign test was named in this repository on 2026-09-10 in response to an adversary, not on 2026-09-09 when the protocol was registered, and the 3-seed screen had already been read when the gate was rewritten. Calling that 'pre-registered' would be false. It is an amendment, and the defence is not that it was planned but that it is strictly stricter.",
+  "gate_code_sha256": "3cbd78318bd756de0fb607916abbe3037c1ec8eca95ddecdd69ff49a746152ce",
+  "gate_code_covers": "scripts/report.py functions exact_sign_test_above, escalation_state, verdict, with comments and docstrings stripped so documenting a decision does not read as changing it",
+  "amendments": [
+    {
+      "id": 1,
+      "date": "2026-09-10",
+      "clause": "2_within_5pct_of_human_baseline",
+      "registered_rule": "run_protocol.escalation_rule in runs/baselines.json: 'a task whose |gap to the 5% line| is within the measured seed range gets the 8-seed set and an exact test before it is called either way'",
+      "amended_rule": "EVERY task gets the exact test at the full registered 8-seed verdict set, whether or not it is near the line. A task is called only when the one-sided exact sign test of H0: median over seeds <= 0.95 x baseline rejects at alpha = 0.05 AND all 8 registered seeds are present.",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "the 3-seed screen: all five tasks above their median_run baseline by +0.58% to +4.32%, every task clear of its 0.95x threshold by 4.5x-67.8x its own seed range, and report.py printing 'Status: PASS'.",
+      "effect_on_the_claim_as_it_stood": "PASS -> RUNNING on identical run data. The amendment withdrew a claim rather than granting one, which is why it is defensible despite the chronology.",
+      "why": "The registered rule made the exact test conditional on 'margin < observed seed range'. That condition is biased at small n and biased the flattering way: E[range] is 1.69 sigma at n=3 against 2.85 sigma at n=8, and the range sits in the denominator, so fewer seeds make the no-test-needed branch easier to enter. Under the registered rule the pre-registered exact test ran on none of the five tasks and the clause was granted on point estimates.",
+      "what_would_have_been_the_looser_alternative": "keeping the registered rule, which passes the clause today. Not taken.",
+      "still_owed": "A clean confirmatory reading, in codex's sense, would freeze this amendment and then run a fresh disjoint seed set that has not been inspected. The 8-seed set now running includes seeds 0-2, whose values were read before the amendment. Seeds 3-7 are disjoint from what was seen; the honest statement is that 3 of the 8 seeds in the verdict set were inspected pre-amendment, and RESULTS.md says so."
+    },
+    {
+      "id": 2,
+      "date": "2026-09-10",
+      "clause": "2_within_5pct_of_human_baseline",
+      "registered_rule": "the exact sign test as first implemented: ties at the threshold dropped from n, fair binomial over the survivors (the continuous-distribution sign test)",
+      "amended_rule": "ties count as non-wins and stay in the denominator: k = #{seeds strictly above T} out of all n seeds",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "the same 3-seed screen. No seed in it lands exactly on a 0.95x threshold, so k and n are unchanged for every task this repository has measured and no number moved.",
+      "effect_on_the_claim_as_it_stood": "none on this data; it changes the arithmetic only where ties exist.",
+      "why": "Accuracy is discrete (k correct of a fixed n), so ties at the threshold have real probability, and for a discrete distribution 'the median is T' does not imply the non-ties split evenly. codex's counterexample, recomputed in tests/test_escalation_gate.py: with P(A=T)=0.6 and P(A>T)=0.4 the median is exactly T so H0 is true, yet the old rule rejected 17.37% of the time at a nominal 5%. The amended rule rejects 0.85% on the same distribution.",
+      "credit": "codex exec, 2026-09-10, in answer to 'how would you make this clause pass legitimately'.",
+      "still_owed": "nothing; the fix is conservative and its Type I error is computed in the test."
+    },
+    {
+      "id": 3,
+      "date": "2026-09-10",
+      "clause": "3_end_to_end_no_intervention",
+      "registered_rule": "clause 3 read n_interventions with a default of 0, discarded absent agent digests before counting distinct digests, and accepted an absent attempt ledger",
+      "amended_rule": "a run missing any of n_interventions / complete / off_registry / registry_sha256 / random_state sinks clause 3; an absent agent digest counts as its own distinct digest rather than being dropped; an absent or unreconciled ledger sinks clause 3",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "clause 3 reading True on the 3-seed screen, whose 15 runs all carry every field, so this amendment does not change the reading for them either.",
+      "effect_on_the_claim_as_it_stood": "none on this data; every existing run carries the fields.",
+      "why": "codex: 'The provenance gate fails open. Missing intervention counts become zero; missing agent digests are discarded; an absent ledger is explicitly accepted. Direction: flattering. Agreement among available self-reports is weaker than evidence of no intervention.' A run that omits a field was being read as a run that reported the field clean.",
+      "credit": "codex exec, 2026-09-10.",
+      "still_owed": "nothing for the routes named; open items #6 and #8 (identity-as-property, in-process label leakage) are separate and remain open."
+    }
+  ]
+}

@@ -24,6 +24,7 @@ matters independently of any attack, because paging to exhaustion at
 `offset += 1000` over a table that is being written to can genuinely double-count
 a row, which would bias a median with nobody having done anything wrong.
 """
+import os
 import gzip
 import json
 from pathlib import Path
@@ -115,6 +116,122 @@ def test_no_selected_baseline_was_truncated_at_the_paging_cap():
         "Tasks 31 and 10101 hit a 300k cap on 2026-09-10 and their medians "
         "covered ~55% and ~70% of the population, oldest-first.")
     print("  none of the five targets is a median over a truncated prefix")
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-10 turn 6: the half of #7 that could only be answered from outside.
+# `scripts/verify_evals.py` re-fetches a seeded random sample of rows from
+# OpenML and compares them value for value, and also checks the contamination
+# routes that are answerable from the file but were not covered above: a row
+# from another task, from another dataset, or carrying another metric (the same
+# layout carries AUC and f-measure rows on the server, and one blended into an
+# accuracy median moves it). The tests below assert its output rather than
+# re-deriving it, and assert that it publishes the weakness of a spot check.
+# ---------------------------------------------------------------------------
+PROV = REPO / "runs/evals_provenance.json"
+
+
+def test_provenance_file_exists_once_the_registry_does():
+    if not BASE.exists():
+        print("  stage 1 has not run; skipped")
+        return
+    assert PROV.exists(), (
+        "runs/baselines.json exists but runs/evals_provenance.json does not: "
+        "every human baseline in this repo is read from runs/evals/*.csv.gz "
+        "and nothing has checked those rows against OpenML. Run "
+        "scripts/verify_evals.py")
+    print("  runs/evals_provenance.json present")
+
+
+def test_every_selected_task_is_covered():
+    if not PROV.exists():
+        print("  skipped")
+        return
+    p = json.loads(PROV.read_text())
+    b = json.loads(BASE.read_text())
+    want = {str(t) for t in b["selected_task_ids"]}
+    assert set(p["tasks"]) == want, (
+        f"provenance covers {sorted(p['tasks'])} but the registry selected "
+        f"{sorted(want)}")
+    assert p["metric"] == b["metric"]
+    print(f"  all {len(want)} selected tasks covered")
+
+
+def test_no_internal_contamination_of_the_evaluation_cache():
+    if not PROV.exists():
+        print("  skipped")
+        return
+    p = json.loads(PROV.read_text())
+    for tid, rec in p["tasks"].items():
+        i = rec["internal"]
+        assert i["n_duplicate_run_ids"] == 0, (
+            f"task {tid}: {i['n_duplicate_run_ids']} duplicated run_ids, each "
+            "counting one human submission more than once in the median")
+        assert i["n_rows_from_another_task"] == 0, tid
+        assert i["n_rows_from_another_dataset"] == 0, tid
+        assert i["n_rows_with_another_metric"] == 0, (
+            f"task {tid}: {i['n_rows_with_another_metric']} rows carry a "
+            "different metric, which would blend it into an accuracy median")
+        assert i["matches_registry_run_id_range"], (
+            f"task {tid}: the cache's run_id range no longer matches the one "
+            "the registry recorded at fetch time, so rows were added or "
+            "dropped at an end")
+        assert i["matches_registry_upload_window"], tid
+    assert p["all_internal_clean"] is True
+    print(f"  {len(p['tasks'])} caches clean: no duplicate run_ids, no foreign "
+          "task/dataset/metric rows, ranges match the registry")
+
+
+def test_the_external_probe_found_no_mismatch():
+    """The only check in this repo whose evidence comes from outside it."""
+    if not PROV.exists():
+        print("  skipped")
+        return
+    p = json.loads(PROV.read_text())
+    if p.get("offline"):
+        assert not os.environ.get("ADS_REQUIRE_EXTERNAL_PROBE"), (
+            "the committed provenance run was --offline, so authenticity is "
+            "[not measured]; re-run scripts/verify_evals.py with network")
+        print("  DEFERRED: committed provenance run was offline")
+        return
+    for tid, rec in p["tasks"].items():
+        pr = rec["probe"]
+        assert pr is not None and "error" not in pr, (tid, pr)
+        assert pr["n_mismatched"] == 0, (
+            f"task {tid}: {pr['n_mismatched']} re-fetched rows disagree with "
+            f"the committed cache: {pr['mismatches']}")
+        assert pr["n_returned_by_server"] > 0, (
+            f"task {tid}: the server returned nothing, so nothing was verified")
+        # a spot check must publish its own weakness
+        assert 0 < pr["undetected_probability_if_1pct_tampered"] < 1, pr
+        assert pr["k_sampled"] >= 10, (
+            f"task {tid}: only {pr['k_sampled']} rows re-fetched")
+    assert p["all_probes_verified"] is True
+    assert p["n_mismatches_total"] == 0
+    print(f"  {p['n_rows_refetched_total']} rows re-fetched from OpenML across "
+          f"{len(p['tasks'])} tasks, {p['n_mismatches_total']} mismatched")
+
+
+def test_the_probe_sample_was_drawn_before_the_fetch():
+    """A sample that can be redrawn until it agrees is not a check."""
+    if not PROV.exists() or json.loads(PROV.read_text()).get("offline"):
+        print("  skipped")
+        return
+    p = json.loads(PROV.read_text())
+    for tid, rec in p["tasks"].items():
+        pr = rec["probe"]
+        assert "sample_seed" in pr and "sample_rule" in pr, tid
+        assert "before the fetch" in pr["sample_rule"], tid
+    print("  every probe records its seed and its sampling rule")
+
+
+def test_the_file_says_what_it_does_not_prove():
+    if not PROV.exists():
+        print("  skipped")
+        return
+    p = json.loads(PROV.read_text())
+    assert "what_this_does_not_prove" in p and p["what_this_does_not_prove"]
+    print("  the output states the limit of a spot check")
 
 
 if __name__ == "__main__":

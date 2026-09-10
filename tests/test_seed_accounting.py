@@ -40,10 +40,20 @@ def _base(n_tasks=1):
             "tasks": [{"task_id": t, "selected": True} for t in range(n_tasks)]}
 
 
+# A reconciled ledger and an agent digest, both passed by every fixture that
+# expects clause 3 to hold. Neither was here before 2026-09-10, and the clause
+# passed anyway -- which was codex's "the provenance gate fails open": an
+# absent digest was discarded before the distinct-digest count and an absent
+# ledger was accepted outright. Both now sink the clause, so the fixtures have
+# to supply what a real run supplies.
+LEDGER_OK = {"ledger_present": True, "reconciled": True}
+
+
 def _run(tid, seed, acc, fname=None):
     return {"task_id": tid, "random_state": seed, "accuracy_pooled": acc,
             "complete": True, "off_registry": False, "n_interventions": 0,
             "registry_sha256": "same", "families_chosen": ["hgb"],
+            "env": {"ads_sha256": "same", "ads_dirty_vs_head": False},
             "_file": fname or f"task_{tid}_seed{seed}.json"}
 
 
@@ -54,7 +64,7 @@ def _rows(n_tasks=1, ours=0.8):
 
 def test_the_registered_screen_passes():
     bench = {0: [_run(0, s, a) for s, a in zip((0, 1, 2), (0.74, 0.75, 0.78))]}
-    v = verdict(_rows(), _base(), bench)
+    v = verdict(_rows(), _base(), bench, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is True, v
     assert not v["seeds_duplicated"] and not v["seeds_not_in_registered_protocol"]
     print("  the exact registered screen [0,1,2] passes clause 3")
@@ -66,7 +76,7 @@ def test_a_duplicated_seed_sinks_clause_3():
     runs.append(_run(0, 2, 0.78, "task_0_seed2_rerun.json"))
     inflated = statistics.mean([r["accuracy_pooled"] for r in runs])
     assert inflated > honest, "the duplicate did not move the mean; bad fixture"
-    v = verdict(_rows(), _base(), {0: runs})
+    v = verdict(_rows(), _base(), {0: runs}, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False, (
         f"a duplicated seed still passed clause 3; the mean moved "
         f"{honest:.4f} -> {inflated:.4f} unchallenged")
@@ -77,7 +87,7 @@ def test_a_duplicated_seed_sinks_clause_3():
 
 def test_a_seed_outside_the_registered_protocol_sinks_clause_3():
     runs = [_run(0, s, 0.80) for s in (0, 1, 2)] + [_run(0, 99, 0.95)]
-    v = verdict(_rows(), _base(), {0: runs})
+    v = verdict(_rows(), _base(), {0: runs}, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["seeds_not_in_registered_protocol"] == {"0": [99]}
     print("  a seed outside seeds_screen/seeds_verdict is caught")
@@ -86,14 +96,14 @@ def test_a_seed_outside_the_registered_protocol_sinks_clause_3():
 def test_escalating_to_the_registered_eight_seeds_is_allowed():
     """Escalation is in the protocol, so it must not be treated as cheating."""
     runs = [_run(0, s, 0.80) for s in range(8)]
-    v = verdict(_rows(), _base(), {0: runs})
+    v = verdict(_rows(), _base(), {0: runs}, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is True, v
     print("  the registered 8-seed verdict set passes")
 
 
 def test_a_missing_registered_seed_still_sinks_clause_3():
     runs = [_run(0, s, 0.80) for s in (0, 1)]
-    v = verdict(_rows(), _base(), {0: runs})
+    v = verdict(_rows(), _base(), {0: runs}, None, LEDGER_OK)
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["seeds_registered_but_missing"] == {"0": [2]}
     print("  a missing registered seed is still caught")

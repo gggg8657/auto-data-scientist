@@ -9,11 +9,21 @@ seeds, and if their mean lands just above the line, generate the report. It
 also pointed out that "an exact test" named no test.
 
 Both are closed now. The test is an exact one-sided sign test of
-H0: median over seeds <= 0.95 x baseline, with k = #{seeds above} out of the
-non-tied seeds and p = P(Binomial(n, 1/2) >= k). At the registered 8 seeds:
+H0: median over seeds <= 0.95 x baseline, with k = #{seeds strictly above} out
+of **all** n seeds and p = P(Binomial(n, 1/2) >= k). At the registered 8 seeds:
 8/8 gives p = 0.0039, 7/8 gives 0.0352, 6/8 gives 0.1445 -- so a task that
 clears the line on a bare majority does not get called.
+
+Two of the assertions in this file are the *reverse* of what they were, and
+both reversals are recorded where they live rather than quietly rewritten:
+
+- ties used to be dropped from n, which is the continuous-distribution sign
+  test and is anti-conservative on a discrete metric (Type I error 17.37% at
+  a nominal 5%, computed below);
+- a wide-margin 3-seed screen used to be "called", which let the pre-registered
+  exact test run on none of the five tasks.
 """
+import math
 import runpy
 from pathlib import Path
 
@@ -37,10 +47,47 @@ def test_sign_test_p_values_are_the_exact_binomial_tail():
     print("  exact tail: 8/8 p=0.0039, 7/8 p=0.0352, 6/8 p=0.1445 (not called)")
 
 
-def test_ties_are_excluded_rather_than_counted_as_successes():
+def test_ties_count_as_non_wins_and_stay_in_the_denominator():
+    """Reversed on 2026-09-10; the old behaviour inflated Type I error.
+
+    This asserted that ties drop out of n. That is the sign test for a
+    *continuous* distribution, and accuracy is discrete, so ties at the
+    threshold have real probability and dropping them is anti-conservative.
+    codex supplied the counterexample when asked how to make the clause pass;
+    `test_dropping_ties_would_inflate_type_i_error_to_17_percent` computes it.
+    """
     t = sign_test([0.5, 0.5, 1.0, 1.0], 0.5)
-    assert t["n"] == 2 and t["k"] == 2, t
-    print("  seeds exactly on the threshold drop out of n, not into k")
+    assert t["n"] == 4 and t["k"] == 2 and t["n_ties"] == 2, t
+    assert abs(t["p"] - 11 / 16) < 1e-12, t     # P(Binom(4,1/2) >= 2)
+    print("  2 wins, 2 ties of 4 -> k=2, n=4, p=0.6875 (was k=2, n=2, p=0.25)")
+
+
+def test_dropping_ties_would_inflate_type_i_error_to_17_percent():
+    """The counterexample, computed rather than quoted.
+
+    P(A = T) = 0.6, P(A > T) = 0.4, nothing below T. The median IS T, so
+    H0: median <= T is true. A gate at alpha = 0.05 must reject at most 5% of
+    the time.
+    """
+    def p_dropping_ties(k, n_nonties):
+        if n_nonties == 0:
+            return 1.0
+        return sum(math.comb(n_nonties, i)
+                   for i in range(k, n_nonties + 1)) / 2 ** n_nonties
+
+    p_tie, p_above, n = 0.6, 0.4, 8
+    old = new = 0.0
+    for w in range(n + 1):                    # w strict wins, n-w ties
+        prob = math.comb(n, w) * p_above ** w * p_tie ** (n - w)
+        if p_dropping_ties(w, w) <= 0.05:
+            old += prob
+        # the shipped test: ties in the denominator, counted as non-wins
+        if sign_test([1.0] * w + [0.5] * (n - w), 0.5)["reject_h0"]:
+            new += prob
+    assert old > 0.17, old
+    assert new <= 0.05, new
+    print(f"  H0 true: dropping ties rejects {old:.2%} of the time at a "
+          f"nominal 5%; the shipped rule rejects {new:.2%}")
 
 
 def test_no_three_seed_screen_can_be_called_however_wide_the_margin():

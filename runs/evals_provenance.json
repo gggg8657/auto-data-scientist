@@ -1,0 +1,183 @@
+{
+  "generated": "2026-09-10T17:46:42+0000",
+  "baselines_file": "runs/baselines.json",
+  "metric": "predictive_accuracy",
+  "offline": false,
+  "tasks": {
+    "31": {
+      "dataset_name": "credit-g",
+      "internal": {
+        "n_rows": 415112,
+        "n_duplicate_run_ids": 0,
+        "n_rows_from_another_task": 0,
+        "n_rows_from_another_dataset": 0,
+        "n_rows_with_another_metric": 0,
+        "n_values_out_of_unit_range": 0,
+        "n_values_unparseable": 0,
+        "run_id_min": 51,
+        "run_id_max": 10596232,
+        "upload_time_min": "2014-04-06 23:54:54",
+        "upload_time_max": "2026-05-06 01:04:12",
+        "matches_registry_run_id_range": true,
+        "matches_registry_upload_window": true,
+        "clean": true
+      },
+      "probe": {
+        "k_requested": 25,
+        "k_sampled": 25,
+        "sample_seed": 0,
+        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "n_returned_by_server": 25,
+        "n_mismatched": 0,
+        "mismatches": [],
+        "n_not_returned_by_server": 0,
+        "run_ids_not_returned": [],
+        "undetected_probability_if_1pct_tampered": 0.777821,
+        "undetected_probability_if_10pct_tampered": 0.07179,
+        "seconds": 1.77,
+        "verified": true
+      }
+    },
+    "10101": {
+      "dataset_name": "blood-transfusion-service-center",
+      "internal": {
+        "n_rows": 385696,
+        "n_duplicate_run_ids": 0,
+        "n_rows_from_another_task": 0,
+        "n_rows_from_another_dataset": 0,
+        "n_rows_with_another_metric": 0,
+        "n_values_out_of_unit_range": 0,
+        "n_values_unparseable": 0,
+        "run_id_min": 483994,
+        "run_id_max": 10596146,
+        "upload_time_min": "2015-12-01 18:27:27",
+        "upload_time_max": "2026-02-20 10:17:43",
+        "matches_registry_run_id_range": true,
+        "matches_registry_upload_window": true,
+        "clean": true
+      },
+      "probe": {
+        "k_requested": 25,
+        "k_sampled": 25,
+        "sample_seed": 0,
+        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "n_returned_by_server": 25,
+        "n_mismatched": 0,
+        "mismatches": [],
+        "n_not_returned_by_server": 0,
+        "run_ids_not_returned": [],
+        "undetected_probability_if_1pct_tampered": 0.777821,
+        "undetected_probability_if_10pct_tampered": 0.07179,
+        "seconds": 1.79,
+        "verified": true
+      }
+    },
+    "3913": {
+      "dataset_name": "kc2",
+      "internal": {
+        "n_rows": 173611,
+        "n_duplicate_run_ids": 0,
+        "n_rows_from_another_task": 0,
+        "n_rows_from_another_dataset": 0,
+        "n_rows_with_another_metric": 0,
+        "n_values_out_of_unit_range": 0,
+        "n_values_unparseable": 0,
+        "run_id_min": 27368,
+        "run_id_max": 10596139,
+        "upload_time_min": "2014-10-08 14:21:53",
+        "upload_time_max": "2026-02-20 10:17:20",
+        "matches_registry_run_id_range": true,
+        "matches_registry_upload_window": true,
+        "clean": true
+      },
+      "probe": {
+        "k_requested": 25,
+        "k_sampled": 25,
+        "sample_seed": 0,
+        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "n_returned_by_server": 25,
+        "n_mismatched": 0,
+        "mismatches": [],
+        "n_not_returned_by_server": 0,
+        "run_ids_not_returned": [],
+        "undetected_probability_if_1pct_tampered": 0.777821,
+        "undetected_probability_if_10pct_tampered": 0.07179,
+        "seconds": 1.82,
+        "verified": true
+      }
+    },
+    "3": {
+      "dataset_name": "kr-vs-kp",
+      "internal": {
+        "n_rows": 173303,
+        "n_duplicate_run_ids": 0,
+        "n_rows_from_another_task": 0,
+        "n_rows_from_another_dataset": 0,
+        "n_rows_with_another_metric": 0,
+        "n_values_out_of_unit_range": 0,
+        "n_values_unparseable": 0,
+        "run_id_min": 28,
+        "run_id_max": 10596243,
+        "upload_time_min": "2014-04-06 23:47:04",
+        "upload_time_max": "2026-05-27 07:20:48",
+        "matches_registry_run_id_range": true,
+        "matches_registry_upload_window": true,
+        "clean": true
+      },
+      "probe": {
+        "k_requested": 25,
+        "k_sampled": 25,
+        "sample_seed": 0,
+        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "n_returned_by_server": 25,
+        "n_mismatched": 0,
+        "mismatches": [],
+        "n_not_returned_by_server": 0,
+        "run_ids_not_returned": [],
+        "undetected_probability_if_1pct_tampered": 0.777821,
+        "undetected_probability_if_10pct_tampered": 0.07179,
+        "seconds": 1.76,
+        "verified": true
+      }
+    },
+    "3917": {
+      "dataset_name": "kc1",
+      "internal": {
+        "n_rows": 158237,
+        "n_duplicate_run_ids": 0,
+        "n_rows_from_another_task": 0,
+        "n_rows_from_another_dataset": 0,
+        "n_rows_with_another_metric": 0,
+        "n_values_out_of_unit_range": 0,
+        "n_values_unparseable": 0,
+        "run_id_min": 27394,
+        "run_id_max": 10559449,
+        "upload_time_min": "2014-10-08 14:40:00",
+        "upload_time_max": "2020-08-13 01:24:19",
+        "matches_registry_run_id_range": true,
+        "matches_registry_upload_window": true,
+        "clean": true
+      },
+      "probe": {
+        "k_requested": 25,
+        "k_sampled": 25,
+        "sample_seed": 0,
+        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "n_returned_by_server": 25,
+        "n_mismatched": 0,
+        "mismatches": [],
+        "n_not_returned_by_server": 0,
+        "run_ids_not_returned": [],
+        "undetected_probability_if_1pct_tampered": 0.777821,
+        "undetected_probability_if_10pct_tampered": 0.07179,
+        "seconds": 1.79,
+        "verified": true
+      }
+    }
+  },
+  "all_internal_clean": true,
+  "all_probes_verified": true,
+  "n_rows_refetched_total": 125,
+  "n_mismatches_total": 0,
+  "what_this_does_not_prove": "the unsampled rows. Per task this re-fetches k of ~10^5 rows, so it detects wholesale tampering and would very likely miss a single edited row; the per-task undetected probabilities are recorded above."
+}

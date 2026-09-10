@@ -95,14 +95,38 @@ ALPHA = 0.05
 
 
 def exact_sign_test_above(accs: list[float], threshold: float) -> dict:
-    """One-sided exact sign test of H0: median(accs) <= threshold."""
-    nonties = [a for a in accs if a != threshold]
-    n = len(nonties)
-    k = sum(1 for a in nonties if a > threshold)
+    """One-sided exact sign test of H0: median(accs) <= threshold.
+
+    Ties count as non-wins and stay in the denominator. This is the fix to a
+    real Type I inflation, found by codex on 2026-09-10 when asked how to make
+    the clause pass; it gave the counterexample and the arithmetic checks out
+    (`tests/test_escalation_gate.py::test_ties_are_conservative_...`).
+
+    The earlier version dropped ties and ran a fair binomial on the survivors,
+    which is the textbook sign test for a *continuous* distribution. Accuracy
+    is discrete -- k correct out of a fixed n -- so ties at the threshold have
+    real probability, and for a discrete distribution "the median is T" does
+    NOT imply the non-ties split evenly above and below. Take
+    P(A = T) = 0.6, P(A > T) = 0.4, nothing below: the median is exactly T so
+    H0 is true, yet 5 wins and 3 ties gave p = 1/32 under the old rule and the
+    8-seed gate rejected a true null **17.37% of the time** at a nominal 5%.
+    Keeping n = 8 and counting only strict wins puts that at 0.85%, i.e.
+    conservative, which is the direction an honest gate errs in.
+
+    It costs nothing on this repository's data -- no seed lands exactly on a
+    0.95x threshold, so k and n are unchanged for every task measured here.
+    It changes the arithmetic only where ties exist, and there it changes it
+    from anti-conservative to conservative.
+    """
+    n = len(accs)
+    k = sum(1 for a in accs if a > threshold)
+    n_ties = sum(1 for a in accs if a == threshold)
     if n == 0:
-        return {"n": 0, "k": 0, "p": 1.0, "reject_h0": False}
+        return {"n": 0, "k": 0, "n_ties": 0, "p": 1.0, "reject_h0": False}
     p = sum(math.comb(n, i) for i in range(k, n + 1)) / 2 ** n
-    return {"n": n, "k": k, "p": float(p), "reject_h0": bool(p <= ALPHA)}
+    return {"n": n, "k": k, "n_ties": n_ties,
+            "ties_counted_as": "non-wins, kept in the denominator",
+            "p": float(p), "reject_h0": bool(p <= ALPHA)}
 
 
 def escalation_state(accs: list[float], baseline: float, protocol: dict) -> dict:
@@ -169,6 +193,68 @@ def escalation_state(accs: list[float], baseline: float, protocol: dict) -> dict
         "exact_test": test,
         "called": called,
         "screen_only": bool(len(accs) <= 3),
+    }
+
+
+def joint_seed_event(bench: dict, sel: dict, baseline_key: str) -> dict:
+    """Per seed: did ONE run of the agent clear the line on all five tasks?
+
+    An additional reading, not the gate. codex, 2026-09-10: "signs discard
+    deficit magnitude, and taskwise median success does not establish that one
+    autonomous execution clears all five tasks reliably. Flattering if PASS is
+    read as dependable end-to-end success. For that claim, additionally report
+    the per-seed event 'all five tasks completed and cleared their
+    thresholds'."
+
+    That is right, and it is the reading a person actually cares about for an
+    *autonomous* data scientist: not "each task passes on a majority of runs"
+    but "a single unattended run gets all five". The clause-2 gate stays the
+    per-task test -- it is what the protocol registered, and requiring all five
+    to reject is an intersection-union test, so testing five tasks at 0.05
+    needs no multiplicity correction (also codex, correctly). This row sits
+    beside it because the two can disagree: five tasks each failing on a
+    *different* seed would pass every per-task test and never once produce a
+    clean sweep.
+    """
+    seeds = sorted({r.get("random_state") for runs in bench.values()
+                    for r in runs if r.get("random_state") is not None})
+    per_seed = []
+    for s in seeds:
+        rows, cleared_all, incomplete = [], True, False
+        for tid, t in sel.items():
+            runs = [r for r in bench.get(tid, []) if r.get("random_state") == s]
+            if len(runs) != 1:
+                # A task that has not run yet for this seed is NOT a task this
+                # seed failed. The first version of this function conflated the
+                # two and the interim table immediately showed it: the seed
+                # then mid-flight read "no, missed tasks 3 and 3917" when those
+                # two simply had not started. Missing => the seed's joint event
+                # is undetermined and it leaves the test entirely.
+                incomplete = True
+                rows.append({"task_id": tid, "cleared": None,
+                             "reason": "no run for this seed"
+                                       if not runs else "duplicated run"})
+                continue
+            acc = runs[0]["accuracy_pooled"]
+            cleared = bool(acc >= 0.95 * t[baseline_key] - EPS)
+            cleared_all = cleared_all and cleared
+            rows.append({"task_id": tid, "accuracy": acc, "cleared": cleared})
+        per_seed.append({"seed": s,
+                         "all_five_cleared": None if incomplete else cleared_all,
+                         "complete": not incomplete, "tasks": rows})
+    done = [e for e in per_seed if e["all_five_cleared"] is not None]
+    swept = sum(1 for e in done if e["all_five_cleared"])
+    test = exact_sign_test_above(
+        [1.0 if e["all_five_cleared"] else 0.0 for e in done], 0.5) if done else None
+    return {
+        "baseline_key": baseline_key,
+        "n_seeds_seen": len(seeds),
+        "n_seeds_complete": len(done),
+        "n_seeds_incomplete": len(seeds) - len(done),
+        "n_seeds_sweeping_all_five": swept,
+        "per_seed": per_seed,
+        "exact_test_on_the_joint_event": test,
+        "reading": "additional; the clause-2 gate is the per-task test",
     }
 
 
@@ -308,8 +394,26 @@ def verdict(rows: list[dict], base: dict, bench: dict,
            for r in measured):
         clause2_strict = None          # unfinished, not failed
     failed = failed or []
+    # ---------------------------------------------------- fail closed, not open
+    # codex, 2026-09-10, asked how to make this clause pass legitimately, found
+    # that the provenance gate "fails open" in three places and it is right:
+    # `n_interventions` defaulted to 0 when the field was absent, a `None`
+    # agent digest was *discarded* from the set before counting distinct
+    # digests, and an absent ledger was explicitly accepted. Every one of those
+    # turns missing evidence into passing evidence, which is the flattering
+    # direction. A run that does not carry the field cannot testify that the
+    # field is zero.
+    required = ("n_interventions", "complete", "off_registry",
+                "registry_sha256", "random_state")
+    runs_missing_fields = sorted(
+        f"{run['_file']}:{f}"
+        for runs in bench.values() for run in runs
+        for f in required if run.get(f) is None)
+    runs_missing_agent_digest = sorted(
+        run["_file"] for runs in bench.values() for run in runs
+        if not (run.get("env") or {}).get("ads_sha256"))
     interventions = sum(
-        run.get("n_interventions", 0) for runs in bench.values() for run in runs)
+        run.get("n_interventions") or 0 for runs in bench.values() for run in runs)
     off_registry = any(run.get("off_registry") for runs in bench.values()
                        for run in runs)
     incomplete = [run["_file"] for runs in bench.values() for run in runs
@@ -347,18 +451,24 @@ def verdict(rows: list[dict], base: dict, bench: dict,
                     for r in runs}
     # Two runs produced by different versions of `ads/`, or by a dirty tree,
     # are not one measurement of one agent (codex, attack #5).
-    agent_sha = {(r.get("env") or {}).get("ads_sha256")
+    # NOT discarded: a run with no digest is counted as its own distinct
+    # digest, so "all runs agree" cannot be satisfied by runs that said nothing.
+    agent_sha = {(r.get("env") or {}).get("ads_sha256") or f"[absent:{r['_file']}]"
                  for runs in bench.values() for r in runs}
-    agent_sha.discard(None)
     dirty_runs = [r["_file"] for runs in bench.values() for r in runs
                   if (r.get("env") or {}).get("ads_dirty_vs_head")]
+    # An absent ledger is now a hole, not a pass: the ledger is the only record
+    # of an attempt that was started and never produced a file, so without it
+    # "no failed attempts" is an unfalsifiable claim.
+    ledger_ok = bool(ledger and ledger.get("ledger_present")
+                     and ledger.get("reconciled"))
     clause3 = (bool(measured) and interventions == 0 and not off_registry
                and not incomplete and not failed and not seeds_missing
                and not seeds_duplicated and not seeds_unregistered
+               and not runs_missing_fields and not runs_missing_agent_digest
                and len(registry_sha) <= 1
                and len(agent_sha) <= 1 and not dirty_runs
-               and (ledger is None or not ledger.get("ledger_present")
-                    or ledger.get("reconciled")))
+               and ledger_ok)
     clauses = {
         "1_five_public_datasets": clause1,
         "2_within_5pct_of_human_baseline": clause2 if measured else None,
@@ -375,6 +485,9 @@ def verdict(rows: list[dict], base: dict, bench: dict,
             "escalation_pending_tasks": escalation_pending,
             "near_line_not_called_tasks": not_called,
             "n_interventions_total": interventions,
+            "runs_missing_a_required_field": runs_missing_fields,
+            "runs_missing_an_agent_digest": runs_missing_agent_digest,
+            "ledger_present_and_reconciled": ledger_ok,
             "off_registry_runs": off_registry,
             "incomplete_runs": incomplete,
             "n_failed_attempts": len(failed),
@@ -547,6 +660,10 @@ def main() -> int:
                     f"off-registry runs: {v['off_registry_runs']}; "
                     f"incomplete: {len(v['incomplete_runs'])}; "
                     f"failed attempts: {v['n_failed_attempts']}; "
+                    f"runs missing a required field: "
+                    f"{len(v['runs_missing_a_required_field'])}; "
+                    f"runs missing an agent digest: "
+                    f"{len(v['runs_missing_an_agent_digest'])}; "
                     f"registered seeds missing: "
                     f"{len(v['seeds_registered_but_missing'])}; "
                     f"duplicated seeds: {len(v['seeds_duplicated'])}; "
@@ -606,6 +723,66 @@ def main() -> int:
                           "k/n above", "p", "verdict (primary)",
                           "k/n above (strictest)", "p (strictest)",
                           "verdict (strictest)"]), ""]
+
+    # ------------------------------- the joint event, one row per seed
+    joint = joint_seed_event(bench, sel, "median_run")
+    joint_strict = joint_seed_event(bench, sel, "strictest_baseline_value")
+    if joint["n_seeds_seen"]:
+        jrows = []
+        for e, es in zip(joint["per_seed"], joint_strict["per_seed"]):
+            missed = [str(t["task_id"]) for t in e["tasks"]
+                      if t["cleared"] is False]
+            unrun = [str(t["task_id"]) for t in e["tasks"]
+                     if t["cleared"] is None]
+            def verdict_cell(ev):
+                return (NM if ev["all_five_cleared"] is None
+                        else ("yes" if ev["all_five_cleared"] else "no"))
+            jrows.append([e["seed"], verdict_cell(e), verdict_cell(es),
+                          ",".join(missed) or "-",
+                          ",".join(unrun) or "-"])
+        jt = joint["exact_test_on_the_joint_event"]
+        doc += [
+            "## Additional reading: does one unattended run clear all five?",
+            "",
+            "The clause-2 gate above is per task, which is what the protocol "
+            "registered and is the right test for it (requiring all five to "
+            "reject is an intersection-union test, so five tasks at "
+            "alpha = 0.05 need no multiplicity correction). But a per-task "
+            "verdict does not say that a *single* autonomous run gets all "
+            "five: five tasks each failing on a different seed would pass "
+            "every per-task test and never once produce a clean sweep. So "
+            "this table asks the question a reader of "
+            "\"end-to-end 무개입\" actually has, and it is reported "
+            "beside the gate rather than instead of it.", "",
+            table(jrows, ["seed", "cleared all five (median_run)",
+                          "cleared all five (strictest)",
+                          "tasks below the line", "tasks not yet run"]), "",
+            f"**{joint['n_seeds_sweeping_all_five']} of "
+            f"{joint['n_seeds_complete']} complete seeds** cleared all five "
+            f"against `median_run` "
+            f"({joint_strict['n_seeds_sweeping_all_five']} of "
+            f"{joint_strict['n_seeds_complete']} against each task's "
+            f"strictest reading)"
+            + (f"; {joint['n_seeds_incomplete']} seed(s) have tasks still "
+               "unrun and are excluded rather than counted as failures"
+               if joint["n_seeds_incomplete"] else "")
+            + ". Exact sign test on the joint event: "
+            + (f"k={jt['k']}/{jt['n']}, p={jt['p']:.4f}." if jt else NM), "",
+            "**What eight seeds do and do not measure.** They re-draw the "
+            "agent's own randomness — inner-CV shuffle, selection subsample, "
+            "random search — on the *same* examples and the same outer folds. "
+            "So they estimate algorithmic variance conditional on this data, "
+            "not uncertainty about new data, and the p-values above should be "
+            "read that way (codex, 2026-09-10). The 80 fold scores are **not** "
+            "treated as 80 independent observations: overlapping CV training "
+            "sets are dependent and pooling them as independent would "
+            "understate the variance (Bengio & Grandvalet, JMLR 2004).", "",
+            "`primary_pass` in the table above is computed from the seed "
+            "*mean* while the gate tests the *median*. Both are required. "
+            "That is an extra empirical guardrail rather than a second "
+            "hypothesis test, and it can only make the clause harder: seven "
+            "slightly-clearing seeds and one disastrous one can reject the "
+            "median null and still fail the mean check.", ""]
 
     if spread_rows:
         doc += ["## Our own run-to-run spread", "",
