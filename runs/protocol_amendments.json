@@ -1,8 +1,8 @@
 {
   "what_this_file_is": "Append-only record of every change to the measurement protocol made AFTER runs/baselines.json was frozen. The registry itself is sha256-pinned into every run record, so it cannot be edited without orphaning the runs measured against it; amendments therefore live here instead. Each entry states what the registered rule was, what it is now, which direction the change moves the difficulty, and whether results had already been seen when it was made. tests/test_protocol_amendments.py asserts that no amendment is recorded as making a clause easier.",
   "why_it_exists": "codex, 2026-09-10, asked how to make the KPI's clause 2 pass legitimately, answered first with a chronology objection: 'The code says the particular test was chosen after seeing the screen, and the registry still contains the old conditional escalation rule. If no earlier timestamped record specifies this test, call this a protocol amendment.' That is correct. The exact sign test was named in this repository on 2026-09-10 in response to an adversary, not on 2026-09-09 when the protocol was registered, and the 3-seed screen had already been read when the gate was rewritten. Calling that 'pre-registered' would be false. It is an amendment, and the defence is not that it was planned but that it is strictly stricter.",
-  "gate_code_sha256": "3cbd78318bd756de0fb607916abbe3037c1ec8eca95ddecdd69ff49a746152ce",
-  "gate_code_covers": "scripts/report.py functions exact_sign_test_above, escalation_state, verdict, with comments and docstrings stripped so documenting a decision does not read as changing it",
+  "gate_code_sha256": "6cf3408119c9338d97e230963237543ca9e22851e01dfd350d1b57249a79b0ef",
+  "gate_code_covers": "scripts/report.py functions exact_sign_test_above, escalation_state, verdict, load_bench, reconcile_ledger, tolerance_readings, joint_seed_event, clean_seed_subset, with comments and docstrings stripped so documenting a decision does not read as changing it",
   "amendments": [
     {
       "id": 1,
@@ -58,6 +58,34 @@
       "why": "codex: 'The provenance gate fails open. Missing intervention counts become zero; missing agent digests are discarded; an absent ledger is explicitly accepted. Direction: flattering. Agreement among available self-reports is weaker than evidence of no intervention.' A run that omits a field was being read as a run that reported the field clean.",
       "credit": "codex exec, 2026-09-10.",
       "still_owed": "nothing for the routes named; open items #6 and #8 (identity-as-property, in-process label leakage) are separate and remain open."
+    },
+    {
+      "id": 4,
+      "date": "2026-09-10",
+      "clause": "3_end_to_end_no_intervention",
+      "registered_rule": "seeds_registered_but_missing was always computed against run_protocol.seeds_screen ([0,1,2]), so clause 3 was satisfied by the three screen seeds however many verdict seeds were missing",
+      "amended_rule": "the required seed set is the screen until a seed outside the screen appears; once a run has embarked on the verdict set it owes all of run_protocol.seeds_verdict, and a missing verdict seed sinks clause 3",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "seeds 0-3 of the 8-seed run, all five tasks clearing their thresholds on every complete seed.",
+      "effect_on_the_claim_as_it_stood": "none on a completed 8-seed run; it changes the reading only for an escalation abandoned partway, which previously left clause 3 clean.",
+      "why": "agy, asked what could still be faked without editing a number or failing a test, found it (its #7): an escalation started and abandoned halfway passed clause 3 because the bar never moved off the screen. Direction: flattering. Nothing in the amended rule can lower the bar -- the escalated requirement is a superset of the screen.",
+      "credit": "agy, 2026-09-10.",
+      "still_owed": "nothing for this route."
+    },
+    {
+      "id": 5,
+      "date": "2026-09-10",
+      "clause": "both",
+      "registered_rule": "gate_code_sha256 covered exact_sign_test_above, escalation_state and verdict",
+      "amended_rule": "it also covers load_bench, reconcile_ledger, tolerance_readings, joint_seed_event and clean_seed_subset; and tests/test_protocol_amendments.py additionally pins alpha=0.05, the full-verdict-seed requirement, tie handling, the one-sided 0.95x tolerance and EPS<=1e-9",
+      "direction": "stricter",
+      "results_already_seen_when_amended": true,
+      "what_had_been_seen": "the same seeds 0-3.",
+      "effect_on_the_claim_as_it_stood": "none; it widens what a future undeclared change would have to survive.",
+      "why": "agy #4: the fingerprint covered the three functions that compute the test but not the ones that choose its inputs, so load_bench could skip .FAILED.json files and reconcile_ledger could return a hard-coded reconciled:True with the fingerprint still matching. agy #5: 'direction: stricter' is a JSON string and no test can verify mathematical strictness -- so the concrete knobs a loosening would have to turn are pinned individually instead. Both flattering.",
+      "credit": "agy, 2026-09-10.",
+      "still_owed": "a test cannot prove strictness in general; the pins make a loosening a visible diff in a test file rather than a one-character edit in a script."
     }
   ]
 }

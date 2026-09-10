@@ -474,8 +474,22 @@ def verdict(rows: list[dict], base: dict, bench: dict,
     # sink clause 3 and both are printed, because a report that silently
     # averages whichever files happen to be on disk is choosing its own sample.
     protocol = base.get("run_protocol") or {}
-    planned = list(protocol.get("seeds_screen") or [])
-    registered = set(planned) | set(protocol.get("seeds_verdict") or [])
+    screen = list(protocol.get("seeds_screen") or [])
+    verdict_seeds = list(protocol.get("seeds_verdict") or [])
+    registered = set(screen) | set(verdict_seeds)
+    # Which seed set is this run *claiming* to be? `agy`, asked what could
+    # still be faked, found (its #7) that `planned` was always the screen, so
+    # clause 3 was satisfied by seeds 0-2 alone and never checked that verdict
+    # seeds 3-7 arrived: an escalation abandoned halfway left clause 3 clean.
+    # Direction: flattering. So the bar is the screen until a seed outside the
+    # screen appears -- at which point the run has embarked on the verdict set
+    # and owes all of it. Nothing here can *lower* the bar: the escalated
+    # requirement is a superset of the screen.
+    embarked_on_verdict = any(
+        s_ not in set(screen)
+        for runs in bench.values() for r in runs
+        for s_ in [r.get("random_state")] if s_ is not None)
+    planned = verdict_seeds if embarked_on_verdict else screen
     seed_counts = {tid: Counter(r.get("random_state") for r in runs)
                    for tid, runs in bench.items()}
     seeds_present = {tid: sorted(c) for tid, c in seed_counts.items()}
@@ -534,6 +548,8 @@ def verdict(rows: list[dict], base: dict, bench: dict,
             "n_failed_attempts": len(failed),
             "failed_attempts": [f["_file"] for f in failed],
             "seeds_present": {str(k): v for k, v in seeds_present.items()},
+            "seed_set_required_of_this_run": planned,
+            "embarked_on_the_verdict_seed_set": embarked_on_verdict,
             "seeds_registered_but_missing": {str(k): v for k, v
                                              in seeds_missing.items()},
             "seeds_duplicated": {str(k): v for k, v in seeds_duplicated.items()},
@@ -555,7 +571,10 @@ def main() -> int:
                          "redirected by the in-flight guard, so "
                          "tests/test_registry_frozen.py can regenerate into a "
                          "temp file and get a deterministic document.")
-    ap.add_argument("--readme", default=str(REPO / "README.md"))
+    ap.add_argument("--readme", default=None,
+                    help="default README.md, but only when --out is also "
+                         "left at its default; see the sibling-document note "
+                         "below.")
     ap.add_argument("--weekend", default=None,
                     help="default WEEKEND.md. Its HEADLINE block is generated "
                          "from the same run JSONs as RESULTS.md, so the file "
@@ -575,7 +594,19 @@ def main() -> int:
     # measurement. Regenerate after the job exits.
     explicit_out = args.out is not None
     args.out = args.out or str(REPO / "RESULTS.md")
-    args.weekend = args.weekend or str(REPO / "WEEKEND.md")
+    # An explicit --out means the caller is writing a document somewhere else
+    # -- a test fixture, a probe, a temp dir -- and must not also rewrite the
+    # repository's own sibling documents. This is not hypothetical: on
+    # 2026-09-10 `tests/test_report.py` ran main() over a temp registry of
+    # five fixture tasks with an explicit --out and no --weekend, and wrote
+    # rows for datasets "d0".."d4" with [not measured] accuracies into the
+    # real WEEKEND.md headline. Fixture numbers in a shipped document is the
+    # exact failure this repository exists to prevent, arriving through the
+    # generator meant to prevent it.
+    if args.weekend is None:
+        args.weekend = "" if explicit_out else str(REPO / "WEEKEND.md")
+    if args.readme is None:
+        args.readme = "" if explicit_out else str(REPO / "README.md")
     if not args.interim and not explicit_out and benchmark_processes_alive():
         interim = REPO / "runs/interim_report.md"
         print(f"a benchmark is running: writing {interim} and leaving "

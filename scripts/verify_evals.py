@@ -101,10 +101,28 @@ def probe(d: pd.DataFrame, task: dict, metric: str, k: int, seed: int) -> dict:
 
     The sample is drawn before the fetch and its seed is recorded, so it cannot
     be redrawn until it agrees.
+
+    **The seed is derived from the file's own sha256**, not from the `--seed`
+    flag alone. `agy`, asked what could still be faked here, found the hole
+    this closes (its #6): with a fixed default seed the probe re-checks the
+    *same* 25 rows of task 31's 415,112 every time it runs, so the other
+    415,087 can be edited freely -- downward, to lower the human baseline --
+    and the probe will never look at them. Direction: flattering.
+
+    Mixing the file digest into the seed means an editor cannot know which rows
+    will be checked, because changing any row changes the digest and therefore
+    re-draws the whole sample. It does not raise the *coverage* of one run --
+    still k of ~10^5 -- but it removes the attacker's ability to choose which
+    rows are safe, which was the part that made a small k exploitable rather
+    than merely weak. `--seed` still shifts the draw, so repeated runs
+    accumulate coverage.
     """
     import openml
 
-    rng = random.Random(seed)
+    digest = task["evals_sha256"]
+    # the digest is hex; take 64 bits of it and mix in the caller's seed
+    derived = (int(digest[:16], 16) ^ (seed * 0x9E3779B97F4A7C15)) & ((1 << 64) - 1)
+    rng = random.Random(derived)
     idx = sorted(rng.sample(range(len(d)), min(k, len(d))))
     sample = d.iloc[idx]
     ids = [int(r) for r in sample["run_id"].tolist()]
@@ -130,8 +148,11 @@ def probe(d: pd.DataFrame, task: dict, metric: str, k: int, seed: int) -> dict:
     n = len(sample)
     return {
         "k_requested": k, "k_sampled": n, "sample_seed": seed,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn "
-                       "before the fetch",
+        "sample_seed_derived": derived,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR "
+                       "--seed).sample over row positions, drawn before the "
+                       "fetch. Editing any row re-draws the sample, so an "
+                       "editor cannot know which rows are checked.",
         "n_returned_by_server": len(server),
         "n_mismatched": len(mism),
         "mismatches": mism[:20],

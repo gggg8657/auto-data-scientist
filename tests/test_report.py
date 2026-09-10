@@ -266,6 +266,46 @@ def test_a_seed_with_unrun_tasks_is_excluded_not_counted_as_a_failure():
     print("  unrun task -> seed excluded (None); run-and-missed -> seed fails")
 
 
+def test_a_fixture_run_cannot_write_into_the_repositorys_own_documents():
+    """Found by this file poisoning WEEKEND.md, on 2026-09-10.
+
+    `test_report_writes_not_measured_rather_than_omitting_a_task` runs main()
+    over a temp registry of five fixture tasks named d0..d4. It passes an
+    explicit --out and --readme into the temp dir, but --weekend had just been
+    added with a default of the REAL WEEKEND.md -- so the fixture's five rows,
+    with `[not measured]` accuracies for datasets that do not exist, were
+    written into the headline block of the repository's handover document.
+
+    Fixture numbers in a shipped document is the precise failure this
+    repository exists to prevent, and it arrived through the generator built to
+    prevent it. The rule now: an explicit --out means the caller is writing
+    somewhere else and must not touch sibling documents unless it names them.
+    """
+    real_weekend = REPO / "WEEKEND.md"
+    real_readme = REPO / "README.md"
+    before = (real_weekend.read_text() if real_weekend.exists() else None,
+              real_readme.read_text() if real_readme.exists() else None)
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "baselines.json").write_text(json.dumps(_base()))
+        (d / "bench").mkdir()
+        sys.argv = ["report.py", "--baselines", str(d / "baselines.json"),
+                    "--bench", str(d / "bench"),
+                    "--out", str(d / "RESULTS.md")]
+        R.main()
+        assert (d / "RESULTS.md").exists()
+    after = (real_weekend.read_text() if real_weekend.exists() else None,
+             real_readme.read_text() if real_readme.exists() else None)
+    assert before == after, (
+        "a fixture run modified the repository's own WEEKEND.md or README.md")
+    for doc, name in ((after[0], "WEEKEND.md"), (after[1], "README.md")):
+        if doc:
+            assert "d0" not in doc and "d4" not in doc, (
+                f"fixture task names leaked into {name}")
+    print("  a fixture run with an explicit --out leaves WEEKEND.md and "
+          "README.md untouched")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

@@ -609,3 +609,75 @@ recording it as an argument I do *not* have to fix: the claim requires all five
 tasks to reject, which is an intersection-union test, so a false global PASS
 needs at least one true task null rejected and Bonferroni would only make the
 global claim gratuitously harder.
+
+### A second adversary, and it found the sharper set
+
+`agy` (after two failed invocations — it reads prompts only from `-p`/stdin,
+and headless mode auto-denies file reads without
+`--dangerously-skip-permissions`; recorded so the next turn does not re-derive
+it) was asked the same two questions against the *amended* state. It returned
+seven holes. Five were real. They are, in order of how much they mattered:
+
+**#3, and the best finding of the weekend so far: `runs/bench/` and
+`runs/attempts.jsonl` were never tracked by git.** Quote:
+
+> "If a seed produces low accuracy or crashes, deleting both the JSON file in
+> `runs/bench/` and the corresponding `started`/`completed`/`failed` lines from
+> `attempts.jsonl` leaves zero git diff. [...] If matching pairs are purged
+> simultaneously, `reconciled` evaluates to `True`."
+
+This is exactly right and it invalidates the *stated purpose* of the ledger.
+The ledger was introduced last turn to convert "delete the bad run" from one
+edit into two coordinated edits, and `paper_draft.md` says so in as many words.
+That argument silently assumed the ledger was in the history — a removed line
+is only a visible `-` in a diff if the file is tracked. On an untracked file,
+"append-only by convention" is not a claim about anything. Nine turns of
+provenance machinery sat on top of an artifact directory that git had never
+seen. `test_registry_is_committed.py` now asserts every `runs/bench/task_*.json`
+and the ledger are tracked; it is red as I write this and goes green when the
+8-seed run lands and the records are committed.
+
+**#7: clause 3 never checked that the verdict seeds arrived.**
+`seeds_registered_but_missing` was always computed against `seeds_screen`
+`[0,1,2]`, so an escalation started and abandoned halfway left clause 3 clean
+— flattering. The required set is now the screen until a seed outside the
+screen appears, at which point the run has embarked on the verdict set and owes
+all of it. This cannot lower the bar: the escalated requirement is a superset.
+Amendment 4.
+
+**#6: the external probe re-checked the same 25 rows every time.** The sample
+seed defaulted to 0, so of task 31's 415,112 rows the probe looked at the same
+25 on every run and the other 415,087 could be edited downward — lowering the
+human baseline — with the probe never looking. Flattering, and it is the flaw
+that made a small *k* *exploitable* rather than merely weak. The sample seed is
+now derived from the evaluation file's own sha256 XOR `--seed`: edit any row and
+the digest changes and the whole sample re-draws, so an editor cannot know
+which rows are safe. Coverage per run is unchanged (25 of ~10⁵, and the JSON
+still records the undetected-tampering probabilities); what changes is that the
+choice of checked rows is no longer predictable. Re-ran: 125 rows, 0 mismatches
+under the new draw as well.
+
+**#4: the gate fingerprint covered the test but not its inputs.** It hashed
+`exact_sign_test_above`, `escalation_state` and `verdict` — so `load_bench`
+could start skipping `.FAILED.json` files, or `reconcile_ledger` could return a
+hard-coded `reconciled: True`, with the fingerprint still matching. Now covers
+`load_bench`, `reconcile_ledger`, `tolerance_readings`, `joint_seed_event` and
+`clean_seed_subset` as well. Amendment 5.
+
+**#5: `"direction": "stricter"` is a JSON string.** Correct: loosen α to 0.10,
+update the fingerprint, write "stricter", and every test passes. No test can
+verify mathematical strictness in general. What a test *can* do is pin the
+specific knobs a loosening would have to turn, so that turning one is a visible
+diff in a test file rather than a one-character edit in a script. Pinned: α =
+0.05, the full-verdict-seed requirement (n = 5, 6, 7 reject and are still not
+called), ties as non-wins in the denominator, the one-sided 0.95× tolerance,
+and EPS ≤ 1e-9 — plus the reverse direction, that a strict 8/8 still gives
+p = 1/256 and is called, so the pins have not quietly made the gate
+unreachable. Amendment 5.
+
+The pattern across both adversaries is worth stating plainly, because it is the
+paper's thesis arriving as a lived result: **every hole either of them found was
+in the flattering direction, and not one was in the arithmetic.** They were in
+what gets loaded, what gets counted when a field is absent, which rows get
+checked, which seed set the bar refers to, and what a document is allowed to
+say while a job is running. The numbers were never the attack surface.

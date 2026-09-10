@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-10T17:46:42+0000",
+  "generated": "2026-09-10T18:06:17+0000",
   "baselines_file": "runs/baselines.json",
   "metric": "predictive_accuracy",
   "offline": false,
@@ -26,7 +26,8 @@
         "k_requested": 25,
         "k_sampled": 25,
         "sample_seed": 0,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "sample_seed_derived": 1892277325849183434,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR --seed).sample over row positions, drawn before the fetch. Editing any row re-draws the sample, so an editor cannot know which rows are checked.",
         "n_returned_by_server": 25,
         "n_mismatched": 0,
         "mismatches": [],
@@ -34,7 +35,7 @@
         "run_ids_not_returned": [],
         "undetected_probability_if_1pct_tampered": 0.777821,
         "undetected_probability_if_10pct_tampered": 0.07179,
-        "seconds": 1.77,
+        "seconds": 2.79,
         "verified": true
       }
     },
@@ -60,7 +61,8 @@
         "k_requested": 25,
         "k_sampled": 25,
         "sample_seed": 0,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "sample_seed_derived": 11222206817773729203,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR --seed).sample over row positions, drawn before the fetch. Editing any row re-draws the sample, so an editor cannot know which rows are checked.",
         "n_returned_by_server": 25,
         "n_mismatched": 0,
         "mismatches": [],
@@ -68,7 +70,7 @@
         "run_ids_not_returned": [],
         "undetected_probability_if_1pct_tampered": 0.777821,
         "undetected_probability_if_10pct_tampered": 0.07179,
-        "seconds": 1.79,
+        "seconds": 1.74,
         "verified": true
       }
     },
@@ -94,7 +96,8 @@
         "k_requested": 25,
         "k_sampled": 25,
         "sample_seed": 0,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "sample_seed_derived": 5648763515385202483,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR --seed).sample over row positions, drawn before the fetch. Editing any row re-draws the sample, so an editor cannot know which rows are checked.",
         "n_returned_by_server": 25,
         "n_mismatched": 0,
         "mismatches": [],
@@ -102,7 +105,7 @@
         "run_ids_not_returned": [],
         "undetected_probability_if_1pct_tampered": 0.777821,
         "undetected_probability_if_10pct_tampered": 0.07179,
-        "seconds": 1.82,
+        "seconds": 1.75,
         "verified": true
       }
     },
@@ -128,7 +131,8 @@
         "k_requested": 25,
         "k_sampled": 25,
         "sample_seed": 0,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "sample_seed_derived": 4702403888651442071,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR --seed).sample over row positions, drawn before the fetch. Editing any row re-draws the sample, so an editor cannot know which rows are checked.",
         "n_returned_by_server": 25,
         "n_mismatched": 0,
         "mismatches": [],
@@ -162,7 +166,8 @@
         "k_requested": 25,
         "k_sampled": 25,
         "sample_seed": 0,
-        "sample_rule": "random.Random(seed).sample over row positions, drawn before the fetch",
+        "sample_seed_derived": 2934569536204413073,
+        "sample_rule": "random.Random(seed derived from sha256(evals file) XOR --seed).sample over row positions, drawn before the fetch. Editing any row re-draws the sample, so an editor cannot know which rows are checked.",
         "n_returned_by_server": 25,
         "n_mismatched": 0,
         "mismatches": [],
@@ -170,7 +175,7 @@
         "run_ids_not_returned": [],
         "undetected_probability_if_1pct_tampered": 0.777821,
         "undetected_probability_if_10pct_tampered": 0.07179,
-        "seconds": 1.79,
+        "seconds": 1.78,
         "verified": true
       }
     }

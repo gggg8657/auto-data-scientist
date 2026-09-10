@@ -92,6 +92,41 @@ def test_superseded_baselines_are_kept_as_evidence_not_overwritten():
           "reason and readings")
 
 
+def test_the_run_records_and_the_attempt_ledger_are_tracked_too():
+    """A deletion has to leave a diff, or the ledger buys nothing.
+
+    `agy`, asked what could still be faked without editing a number and
+    without failing a test, found this (its #3) and it is the sharpest of the
+    seven: `runs/bench/` and `runs/attempts.jsonl` were **untracked**, and
+    `reconcile_ledger` only checks that the ledger lines and the files on disk
+    agree with each other. So deleting an unfavourable seed's record *and* its
+    three ledger lines together leaves `reconciled: True`, every test green,
+    and **no git diff at all**. Direction: flattering -- it filters bad seeds
+    and crashes out of the sample.
+
+    The ledger's whole purpose was to make deletion cost two coordinated
+    edits instead of one. That only works if the ledger itself is in the
+    history, where a removed line is a visible `-` in a diff. Being
+    append-only "by convention" is a claim about a tracked file; on an
+    untracked one it is not a claim about anything.
+    """
+    if not BENCH.exists() or not any(BENCH.glob("task_*.json")):
+        print("  no benchmark runs yet; skipped")
+        return
+    untracked = []
+    for path in sorted(BENCH.glob("task_*.json")) + [REPO / "runs/attempts.jsonl"]:
+        if not path.exists():
+            continue
+        rel = str(path.relative_to(REPO))
+        if _git("ls-files", "--error-unmatch", rel).returncode != 0:
+            untracked.append(rel)
+    assert not untracked, (
+        f"{len(untracked)} run/ledger artifact(s) are not tracked by git, so "
+        f"removing one leaves no diff: {untracked[:6]}")
+    print(f"  {len(list(BENCH.glob('task_*.json')))} run records and the "
+          "attempt ledger are all tracked")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

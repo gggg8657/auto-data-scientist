@@ -29,6 +29,21 @@ REPORT = REPO / "scripts/report.py"
 REQUIRED = ("id", "date", "clause", "registered_rule", "amended_rule",
             "direction", "results_already_seen_when_amended", "why")
 
+# Every function that can change what the verdict is, not just the three that
+# compute the test. `agy`, asked what could still be faked, found (its #4) that
+# the fingerprint covered `exact_sign_test_above`, `escalation_state` and
+# `verdict` only -- so `load_bench` could silently skip `.FAILED.json` files,
+# `reconcile_ledger` could return a hard-coded reconciled:True, and the
+# `ours`/`primary_pass` computation could change, all with the fingerprint
+# still matching. Direction: flattering. `main()` is not a function whose body
+# can be isolated this way, so `ours` and `primary_pass` are pinned by
+# `tests/test_report.py` behaviourally instead, and the readers they depend on
+# are fingerprinted here.
+GATE_FUNCTIONS = ("def exact_sign_test_above", "def escalation_state",
+                  "def verdict", "def load_bench", "def reconcile_ledger",
+                  "def tolerance_readings", "def joint_seed_event",
+                  "def clean_seed_subset")
+
 
 def test_the_amendment_file_exists_and_is_wellformed():
     assert AMEND.exists(), (
@@ -89,8 +104,7 @@ def test_the_gate_code_is_fingerprinted_so_an_undeclared_change_costs_something(
     """
     src = REPORT.read_text()
     body = []
-    for name in ("def exact_sign_test_above", "def escalation_state",
-                 "def verdict"):
+    for name in GATE_FUNCTIONS:
         i = src.index(name)
         # to the next top-level def, which is where the function ends
         j = src.find("\ndef ", i + 1)
@@ -146,6 +160,52 @@ def test_the_clean_seed_subset_comes_from_the_amendment_not_from_the_code():
     assert R["clean_seed_subset"](AMEND.parent / "nope.json") == set()
     print(f"  clean subset {sorted(got)} read from the amendment, disjoint "
           f"from the inspected seeds {sorted(seen)}")
+
+
+def test_the_concrete_knobs_of_the_gate_cannot_move_silently():
+    """"direction: stricter" is a string, so pin the numbers it describes.
+
+    `agy`, asked what could still be faked (its #5), is right that
+    `test_no_amendment_makes_a_clause_easier` checks a JSON field and cannot
+    verify mathematical strictness: loosen alpha to 0.10, update the
+    fingerprint, write "stricter", and every test passes. A test cannot prove
+    strictness in general. What it can do is pin the specific knobs a
+    loosening would have to turn, so that turning one is a visible diff in a
+    test file rather than a one-character edit in a script.
+
+    These are the knobs, and the direction each would move the clause:
+    """
+    import runpy
+    R = runpy.run_path(str(REPORT))
+
+    # alpha: raising it makes rejection easier -> flattering
+    assert R["ALPHA"] == 0.05, (
+        f"alpha is {R['ALPHA']}, not the 0.05 every p-value in RESULTS.md is "
+        "reported against")
+
+    # the full registered seed set is required -> removing this admits
+    # optional stopping, which is flattering
+    protocol = {"seeds_screen": [0, 1, 2], "seeds_verdict": list(range(8))}
+    for n in (5, 6, 7):
+        e = R["escalation_state"]([0.90] * n, 0.80, protocol)
+        assert e["exact_test"]["reject_h0"] and not e["called"], (n, e)
+
+    # ties are non-wins in the denominator -> dropping them is
+    # anti-conservative, hence flattering
+    t = R["exact_sign_test_above"]([1.0, 0.5, 0.5, 0.5], 0.5)
+    assert t["n"] == 4 and t["k"] == 1, t
+
+    # the tolerance is one-sided at 0.95x and EPS cannot widen it
+    assert R["tolerance_readings"](0.95, 1.0)["rel_one_sided"] is True
+    assert R["tolerance_readings"](0.95 - 1e-6, 1.0)["rel_one_sided"] is False
+    assert R["EPS"] <= 1e-9, R["EPS"]
+
+    # a strictly-clearing 8/8 is called, so the pins above have not made the
+    # gate unreachable in the other direction
+    e8 = R["escalation_state"]([0.90] * 8, 0.80, protocol)
+    assert e8["called"] is True and e8["exact_test"]["p"] == 1 / 256
+    print("  alpha=0.05, 8 seeds required, ties conservative, tolerance "
+          "one-sided at 0.95x, EPS<=1e-9 -- all pinned")
 
 
 if __name__ == "__main__":
