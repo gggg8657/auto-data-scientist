@@ -11,3 +11,4 @@ logs/
 .omlcache/
 # interim report written while a benchmark is in flight; RESULTS.md is the record
 runs/interim_report.md
+.pytest_cache/
