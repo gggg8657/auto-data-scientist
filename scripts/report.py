@@ -1421,6 +1421,65 @@ def main() -> int:
              "manually interrupted cell as a failed run, and a clause may not "
              "rest on one."), "",
         ]
+    # ------------------------------------------------------------------
+    # Did the untouched `clean` re-run reproduce the confirmatory set?
+    # Written by scripts/clean_reproduction.py.  codex found this file was
+    # produced and never consumed, while its own docstring said report.py read
+    # it -- a claim with nothing behind it, which is the thing this repository
+    # exists to catch.  Absent file => the section says so; it never reads as
+    # a pass.
+    crp = read_json(REPO / "runs/clean_reproduction.json")
+    doc += ["## Did the untouched re-run reproduce the confirmatory set?", ""]
+    if not crp:
+        doc += ["`runs/clean_reproduction.json` is absent, so this is "
+                f"{NM}. Run `scripts/clean_reproduction.py`.", ""]
+    else:
+        hdr_c = ["task", "seed", "reproduced", "record digest",
+                 "ads digest", "registry digest",
+                 "pooled acc (bench)", "pooled acc (clean)",
+                 "seconds bench -> clean"]
+        rows_c = []
+        for c in crp["cells"]:
+            sb, sc_ = c.get("seconds_total_bench"), c.get("seconds_total_clean")
+            rows_c.append([
+                str(c["task_id"]), str(c["seed"]),
+                "**yes**" if c["identical"] else "no",
+                "match" if c.get("digest_equal") else "differ",
+                "match" if c.get("ads_sha256_equal") else "differ",
+                "match" if c.get("registry_sha256_equal") else "differ",
+                f"{c['accuracy_pooled_bench']:.6f}" if sb is not None else NM,
+                f"{c['accuracy_pooled_clean']:.6f}" if sc_ is not None else NM,
+                (f"{sb:.1f} -> {sc_:.1f} ({c['seconds_ratio_clean_over_bench']:.3f}x)"
+                 if sb and sc_ else NM)])
+        doc += [
+            "`clean` re-runs the identical registered measurement into its own "
+            "directory so it cannot overwrite the set it is compared against. "
+            "A cell counts as reproduced only when **all three** hold: the "
+            "canonical-record digest matches (every fold accuracy, model "
+            "family, tournament and preprocessing profile -- not merely the "
+            "pooled score), the `ads/` digest matches and is non-empty, and "
+            "the registry digest matches and is non-empty. Wall-clock and the "
+            "per-decision timestamps are outside the digest; nothing else is.",
+            "",
+            table(rows_c, hdr_c) if rows_c else "_no cells compared yet._", "",
+            f"**{crp['n_identical']} of {crp['n_cells_compared']} compared "
+            f"cells reproduced identically**, covering "
+            f"{crp['n_cells_compared']}/{crp['n_cells_bench']} of the "
+            f"confirmatory set. `all_cells_reproduced` = "
+            f"**{crp['all_cells_reproduced']}**.", "",
+            ("A partial set settles nothing: until every confirmatory cell has "
+             "an untouched counterpart, this cannot bear on clause 3 under "
+             "either reading."
+             if not crp["all_cells_reproduced"] else
+             "Every confirmatory cell has an untouched counterpart that "
+             "reproduced it exactly."), "",
+            "Not measured, because the table invites the opposite reading: a "
+            "seconds ratio near 1.0 means the two cells met a **similar** "
+            "contention regime. It is not evidence that accuracy is invariant "
+            "to thread count or machine load. No run in this repository has "
+            f"measured that, and no record can tell you -- `env` carries "
+            f"`cpu_count` but no thread regime at all. {NM}.", "",
+        ]
     doc += [
         "## The gate: the pre-registered exact test, per task", "",
         "A task is **called** only when the one-sided exact sign test of "

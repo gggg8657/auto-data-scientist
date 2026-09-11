@@ -8,8 +8,15 @@ measurement into `runs/clean/` without touching it, so that both readings can be
 reported side by side.
 
 This script does NOT run any model.  It compares the records already on disk and
-writes `runs/clean_reproduction.json`, which `report.py` reads.  Nothing here is
-hand-typed into a document.
+writes `runs/clean_reproduction.json`, which `report.py` renders into a section
+of the report.  Nothing here is hand-typed into a document.
+
+`identical` is the conjunction of three things, not one: the canonical-record
+digest matches, the `ads/` digest matches and is non-empty, and the registry
+digest matches and is non-empty.  The digest alone is not enough, because `env`
+sits outside it by design -- so two records could digest equal while having been
+produced by different versions of the package.  codex named that on 2026-09-11:
+provenance was being reported beside the verdict instead of gating it.
 
 What counts as a reproduction.  The weak test is "the pooled accuracy agrees".
 The strong test is that the agent made the *same decisions* -- the same model
@@ -112,9 +119,22 @@ def main(bench_dir: Path | None = None, clean_dir: Path | None = None,
         db, nb = digest(rb)
         dc, nc = digest(rc)
         acc_same = rb.get("accuracy_pooled") == rc.get("accuracy_pooled")
+        # `env` is deliberately outside the digest (it carries the wall-clock
+        # environment), so a digest match alone does NOT establish that the two
+        # records were produced by the same code against the same registry.
+        # codex, asked the constructive question on 2026-09-11, named this:
+        # provenance was being *reported* beside the verdict instead of
+        # *gating* it. Empty or absent digests fail the check rather than
+        # comparing equal to each other.
+        eb = (rb.get("env") or {}).get("ads_sha256")
+        ec = (rc.get("env") or {}).get("ads_sha256")
+        ads_ok = bool(eb) and eb == ec
+        reg_ok = bool(rb.get("registry_sha256")) and \
+            rb.get("registry_sha256") == rc.get("registry_sha256")
         row = {
             "task_id": cell[0], "seed": cell[1],
-            "identical": db == dc,
+            "identical": (db == dc) and ads_ok and reg_ok,
+            "digest_equal": db == dc,
             "accuracy_pooled_bench": rb.get("accuracy_pooled"),
             "accuracy_pooled_clean": rc.get("accuracy_pooled"),
             "accuracy_pooled_equal": acc_same,
@@ -128,11 +148,8 @@ def main(bench_dir: Path | None = None, clean_dir: Path | None = None,
             "timestamps_stripped_clean": nc,
             "seconds_total_bench": rb.get("seconds_total"),
             "seconds_total_clean": rc.get("seconds_total"),
-            "ads_sha256_equal":
-                (rb.get("env") or {}).get("ads_sha256")
-                == (rc.get("env") or {}).get("ads_sha256"),
-            "registry_sha256_equal":
-                rb.get("registry_sha256") == rc.get("registry_sha256"),
+            "ads_sha256_equal": ads_ok,
+            "registry_sha256_equal": reg_ok,
         }
         st_b, st_c = row["seconds_total_bench"], row["seconds_total_clean"]
         row["seconds_ratio_clean_over_bench"] = (

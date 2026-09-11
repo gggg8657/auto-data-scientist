@@ -145,6 +145,92 @@ def test_partial_clean_set_is_never_complete(tmp_path):
     assert got["all_cells_reproduced"] is False
 
 
+def test_provenance_must_gate_identity_not_merely_be_reported(tmp_path):
+    """`env` is outside the digest, so a digest match alone is not enough.
+
+    codex, asked the constructive question on 2026-09-11, found that
+    `ads_sha256_equal` was computed and reported next to the verdict while the
+    verdict itself was `digest_bench == digest_clean`. Two records produced by
+    different versions of `ads/` could therefore be called a reproduction.
+    """
+    bench, clean = tmp_path / "bench", tmp_path / "clean"
+    bench.mkdir(); clean.mkdir()
+    rb = _rec()
+    rc = _rec()
+    rc["env"] = {"ads_sha256": "DIFFERENT", "ads_dirty_vs_head": False}
+    (bench / "task_31_seed0.json").write_text(json.dumps(rb))
+    (clean / "task_31_seed0.json").write_text(json.dumps(rc))
+    M["main"](bench_dir=bench, clean_dir=clean, out_path=tmp_path / "out.json")
+    got = json.loads((tmp_path / "out.json").read_text())
+    cell = got["cells"][0]
+    assert cell["digest_equal"] is True, "the records themselves do match"
+    assert cell["ads_sha256_equal"] is False
+    assert cell["identical"] is False, "a digest match alone must not pass"
+    assert got["all_cells_reproduced"] is False
+
+
+def test_absent_provenance_does_not_compare_equal_to_absent(tmp_path):
+    """Two records that both lack a digest must not reproduce each other."""
+    bench, clean = tmp_path / "bench", tmp_path / "clean"
+    bench.mkdir(); clean.mkdir()
+    for d in (bench, clean):
+        r = _rec()
+        r["env"] = {}            # no ads_sha256 at all
+        r["registry_sha256"] = ""
+        (d / "task_31_seed0.json").write_text(json.dumps(r))
+    M["main"](bench_dir=bench, clean_dir=clean, out_path=tmp_path / "out.json")
+    got = json.loads((tmp_path / "out.json").read_text())
+    cell = got["cells"][0]
+    assert cell["digest_equal"] is True
+    assert cell["identical"] is False, "absence must not launder into a match"
+    assert got["all_cells_reproduced"] is False
+
+
+def test_a_differing_registry_breaks_identity(tmp_path):
+    """A reproduction against a different registry is not a reproduction."""
+    bench, clean = tmp_path / "bench", tmp_path / "clean"
+    bench.mkdir(); clean.mkdir()
+    rb, rc = _rec(), _rec()
+    rc["registry_sha256"] = "other"
+    (bench / "task_31_seed0.json").write_text(json.dumps(rb))
+    (clean / "task_31_seed0.json").write_text(json.dumps(rc))
+    M["main"](bench_dir=bench, clean_dir=clean, out_path=tmp_path / "out.json")
+    got = json.loads((tmp_path / "out.json").read_text())
+    assert got["cells"][0]["identical"] is False
+    assert got["n_identical"] == 0
+
+
+def test_report_actually_consumes_the_json_it_claims_to():
+    """The docstring said `report.py` reads this file. It did not.
+
+    codex found it on 2026-09-11: the script was producing a JSON that nothing
+    consumed, while claiming in prose that the report rendered it. That is a
+    claim with nothing behind it, which is the failure mode this repository was
+    built to catch -- and it had gone one commit without being noticed.
+    """
+    import inspect
+    sys.path.insert(0, str(REPO / "scripts"))
+    import report  # noqa: E402
+    src = inspect.getsource(report.main)
+    assert "runs/clean_reproduction.json" in src, (
+        "report.py does not read clean_reproduction.json, so the script's "
+        "docstring claim that it does is false")
+    assert "all_cells_reproduced" in src, (
+        "the report must print the conjunction gate, not only the cell count")
+
+
+def test_report_section_reads_not_measured_when_the_json_is_absent():
+    """Absence must render as [not measured], never as a silent pass."""
+    import inspect
+    sys.path.insert(0, str(REPO / "scripts"))
+    import report  # noqa: E402
+    src = inspect.getsource(report.main)
+    i = src.index("runs/clean_reproduction.json")
+    window = src[i:i + 700]
+    assert "if not crp" in window, "no absent-file branch guards the section"
+    assert "NM" in window, "the absent branch must emit [not measured]"
+
+
 if __name__ == "__main__":
     # CI runs each test file with plain `python`, not pytest, so the `tmp_path`
     # fixture does not exist here -- supply a temporary directory to the tests

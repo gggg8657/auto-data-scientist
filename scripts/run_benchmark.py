@@ -211,6 +211,55 @@ def agent_source_digest() -> dict:
             "ads_dirty_detail": dirty.strip() or None}
 
 
+def thread_regime() -> dict:
+    """What parallelism this process was actually given.
+
+    Added 2026-09-11 turn 12, because a record could not answer the question it
+    was being asked.  `runs/clean` reproduced `runs/bench` exactly on three
+    cells, and the natural follow-up -- did the operator's thread change at turn
+    8 move any result? -- turned out to be unanswerable from the artifacts:
+    every record carried `cpu_count: 192` and nothing else, so no record in this
+    repository could say what parallelism produced it.  `ADS_N_JOBS` is not the
+    answer either; it reaches only joblib, while `HistGradientBoostingClassifier`
+    is OpenMP-only and takes no `n_jobs` at all.
+
+    This does not make the historical records answerable -- they stay
+    `[not measured]`.  It stops the next one from having the same hole.
+
+    `affinity_count` and `loadavg_1min` are the machine's state at the moment
+    the run started; they are recorded because this repository has already seen
+    one fold go from 25-40s to 1341s on external CPU contention, and a run that
+    cannot report the load it met cannot be compared with one that can.
+    """
+    names = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+             "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "ADS_N_JOBS")
+    # Absent is recorded as None, never coerced to a default that was not set.
+    env_vars = {n: os.environ.get(n) for n in names}
+    try:
+        affinity = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        affinity = None
+    try:
+        load1 = os.getloadavg()[0]
+    except OSError:
+        load1 = None
+    pools = None
+    try:
+        import threadpoolctl
+        pools = [{k: v for k, v in p.items()
+                  if k in ("user_api", "internal_api", "num_threads", "prefix")}
+                 for p in threadpoolctl.threadpool_info()]
+    except Exception:
+        pools = None      # not installed here; absent, not zero
+    return {
+        "thread_env": env_vars,
+        "thread_env_all_unset": all(v is None for v in env_vars.values()),
+        "affinity_count": affinity,
+        "threadpools": pools,
+        "loadavg_1min_at_start": load1,
+    }
+
+
 def environment() -> dict:
     import numpy, pandas, sklearn, openml
     return {
@@ -221,6 +270,7 @@ def environment() -> dict:
         "sklearn": sklearn.__version__,
         "openml": openml.__version__,
         "cpu_count": os.cpu_count(),
+        **thread_regime(),
         "git_commit": subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True,
             text=True).stdout.strip() or "uncommitted",

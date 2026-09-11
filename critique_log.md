@@ -2580,3 +2580,71 @@ written before running: the targeted cell reproduces identically, on the same
 grounds as the 3/3 above. Reported either way. Not launched this turn — a second
 runner would contend with my own measurement, which is the mistake that produced
 the 543 load average at turn 9.
+
+### The adversary, asked the constructive question, and it took my own plan apart
+
+Asked `codex` the addendum's rung-4 question — *how would you make clause 3
+legitimately PASS?* — rather than "what is wrong with this". Three things came
+back and all three were checked before being acted on.
+
+**1. "Yes, switching from 40-cell reproduction to one-cell reproduction now is a
+post-observation scope change."** Quoting it in full because it is aimed exactly
+at the paragraph I had written twenty minutes earlier:
+
+> Using it to loosen the binding KPI would be self-serving; calling it
+> "registered before the replay" does not erase the already-known failure,
+> slowdown, or three successful comparisons.
+
+It is right and I was wrong. I proposed the targeted single-cell audit **after**
+measuring that the 40-cell set cannot finish, and then labelled it "registered
+now before it is run" — which is true about the replay and irrelevant about the
+scope. The registration that matters is the one that fixes the *denominator*,
+and that one was already fixed at amendment 9. Narrowing the measurement after
+seeing the wide one fail is the move this log exists to catch, and the wording
+made it look pre-registered when only half of it was.
+
+**2. "Equality cannot undo an event."** The sharper half. Reproducing the touched
+cell — even exactly — cannot make the strict reading True, because the strict
+reading is about *what happened*, not about *what the numbers are*. An operator
+did kill and restart that cell. `report.py:829` makes any intervention
+disqualifying and no later measurement retracts the event. So the targeted audit
+can never be a route to a strict clause-3 PASS; at most it supports a
+**separately named** claim ("operator-touched cells reproduce exactly"), which is
+an amended clause and must be reported as one, not as the KPI. I had been
+treating the audit as a route to the clause. It is not one.
+
+Consequence: the targeted audit is **demoted from "the cheaper route to clause 3"
+to "a disclosure about the one blemish"**, it does not change clause 3's status
+under either reading, and it stays unlaunched while the clean run holds the lock.
+The strict clause is settled only by an uninterrupted 40-cell set, which needs
+the CPU back.
+
+**3. A false claim I committed an hour ago.** `scripts/clean_reproduction.py`'s
+docstring said the JSON "which `report.py` reads". `grep -n clean_reproduction
+scripts/report.py` returned **nothing**: the file was produced and consumed by
+nobody, while a docstring asserted otherwise. That is a claim with no run behind
+it, in the repository whose entire subject is claims with no run behind them,
+and it survived a commit. Fixed by making it true — `report.py` now renders the
+section, absent file renders `[not measured]` and never a pass — with two tests
+that read `report.main`'s source and go red if the consumption is removed again.
+
+**4. A fail-open gate in the script I wrote this turn.** `env` is deliberately
+outside the canonical digest, so `identical` was `digest_bench == digest_clean`
+while `ads_sha256_equal` was computed and *printed next to the verdict without
+gating it*. Two records produced by different versions of `ads/` could therefore
+be called a reproduction. `identical` is now the conjunction of three: record
+digest, `ads/` digest, registry digest, each required to be non-empty so that
+absence cannot compare equal to absence. Re-ran: **still 3 of 3** — the gate was
+open and the door happened to be shut, the same sentence as turn 11b, which is
+twice now that provenance was reported instead of enforced.
+
+Three new tests pin it: a digest match with a differing `ads_sha256` must not
+pass, two records both missing their digests must not pass, and a differing
+registry must not pass. 13 tests in the file, 18 files, CI floor raised 17 → 18.
+
+**Where I think codex is incomplete.** It suggests reproducing the touched cell
+"under the original cap" to answer whether the thread change moved the result.
+That configuration cannot be reconstructed from any artifact in this repository —
+no record carries a thread regime at all, which is the instrumentation gap noted
+above — so the causal question is not merely unresolved, it is *unanswerable from
+the existing records*, and it stays `[not measured]` rather than pending.
