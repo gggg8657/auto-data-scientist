@@ -2440,3 +2440,143 @@ clean seeds on that task, and the exact sign test at n=7 has a floor of
 1/128 = 0.0078 < 0.05, so the task can still be called without it. If that
 holds, the disclosure is a disclosure rather than a hole. Registered here
 before it is run.
+
+## 2026-09-11, turn 12 — the clean re-run reproduces exactly, and the reason it will not finish is in another repository
+
+### What finished, and the number
+
+`runs/clean/` holds 3 of the 40 confirmatory cells. `scripts/clean_reproduction.py`
+(new, no model fitting — it only compares records already on disk) writes
+`runs/clean_reproduction.json`:
+
+| cell | identical | pooled accuracy | seconds bench → clean |
+|---|---|---|---|
+| task 31, seed 0 | **True** | 0.754 | 295.4 → 295.2 (0.999×) |
+| task 3913, seed 0 | **True** | 0.8333333333333334 | 133.6 → 132.3 (0.990×) |
+| task 10101, seed 0 | **True** | 0.7713903743315508 | 120.5 → 135.8 (1.127×) |
+
+3 of 3 identical; coverage 0.075 of the confirmatory set; `all_cells_reproduced`
+**False**, because coverage is 3/40 and a partial set settles nothing.
+
+"Identical" here is the strong reading, and it is the one worth having. The weak
+test is that pooled accuracy agrees. The strong test digests the **whole record**
+— every fold's accuracy, the selected model family, the tournament, the
+preprocessing profile, every logged decision — with only genuinely volatile
+fields removed. All three cells pass the strong test. So the agent did not
+merely land on the same score twice; it made the same decisions twice.
+
+### I got this wrong on the first pass, in the flattering direction and then the unflattering one
+
+My first reading of these three cells was "bit-for-bit identical", typed after
+comparing `accuracy_pooled`, `accuracy_folds` and `families_chosen`. That was a
+claim about three fields dressed as a claim about the record. When I then wrote
+the digest, **all three cells came back non-identical** — which would have been a
+headline ("the pipeline is not deterministic") had I not diffed it: 60 differing
+leaves per cell, and **60 of 60 were the wall-clock stamp `t` on each logged
+decision**, 0 substantive. Two runs of one cell cannot agree on wall-clock.
+
+Both errors are the same error with opposite signs: a comparison is only as good
+as its field list, and I had not written the field list down. It is now in
+`VOLATILE_RECORD` / `VOLATILE_FOLD` / `VOLATILE_NESTED` with `t` the only key
+stripped below fold level, and `strip_timestamps` **counts what it removed**
+(60/60 per cell, recorded per row) so that a silent broadening of the strip rule
+changes a number in the JSON instead of quietly making everything reproduce.
+
+`tests/test_clean_reproduction.py` (8 tests) pins both edges: the timestamp must
+be ignored, and a changed accuracy, family or preprocessing profile must break
+the digest. The dangerous direction is stripping too much, because that makes
+every cell reproduce and the instrument reads PASS while measuring nothing.
+
+### A fail-open gate I wrote this turn, found by its own test
+
+`clean_set_complete` means "every confirmatory cell has a counterpart that was
+compared". It reads **True on a complete set containing a cell that failed to
+reproduce** — which is precisely the fail-open shape codex found five of at turn
+11b. Gating clause 3 on it would let a mismatch through. Added
+`all_cells_reproduced = (len(bench) > 0 and compared == len(bench) and identical
+== len(bench))`, with a test that constructs the exact bad case (coverage
+complete, one family changed) and asserts the gate is False. Absence and
+partiality both read False; neither is coerced to a pass.
+
+### What is NOT measured, stated because the artifact invites the opposite reading
+
+The seconds ratios above are 0.999, 0.990 and 1.127. That says the three clean
+cells met a contention regime **similar** to their bench counterparts. It is
+**not** evidence that accuracy is invariant to thread count or machine load, and
+I nearly wrote that it was. No run in this repository has measured thread-regime
+invariance. `[not measured]`, and the caveat is in the JSON next to the ratios
+rather than in a footnote.
+
+This matters because it is the premise a restart would need. If accuracy were
+known to be thread-invariant I could kill the clean run, cap its threads and
+restart, and the numbers would still be the registered ones. I do not know that,
+and the run's `env` block records `cpu_count: 192` but **no thread regime at
+all** — no `OMP_NUM_THREADS`, no threadpool limit — so no record in this
+repository can tell you what contention produced it. That is an instrumentation
+gap in `ads/profile.py`. I am not fixing it this turn: the digest and the dirty
+check are scoped to `ads/*.py`, so editing that package while the clean run is
+writing would change `ads_sha256` mid-set and split the very set I am trying to
+produce. Queued for after the run.
+
+### Why the clean run will not finish, and it is not my configuration
+
+Task 3 (kr-vs-kp) fold times this run: folds 0–6 between 25.4s and 39.9s, fold 7
+**73.49s**, fold 8 **1341.11s**, fold 9 still running 35 minutes in. A ~40×
+sustained blowup, not a transient.
+
+The obvious explanation is mine to own — my runner holds **327 threads** and no
+`OMP_NUM_THREADS` exists anywhere in this repo, and this repo already measured
+(`801404f`) that capping threads bought ~6×. So I expected to find that I was
+starving myself. Measured instead, 2026-09-11 04:55 UTC:
+
+- load average **403.59** on **192** cores;
+- **five** `pde-neural-operator/scripts/train.py --device cuda:0` processes, each
+  **162 threads**, at 2280% / 2287% / 2323% / 2345% / 2398% CPU — **~116 cores**;
+- GPU 0 at **19%**, GPU 1 at **0%**;
+- my own runner: 2566% CPU, and sampled over 20s of `/proc/.../stat`, **26.6
+  cores** — inside my 48-core lease.
+
+That is track α's repository, and it is the *exact* pathology my brief describes
+from 2026-09-11 04:34 UTC: GPU-leased jobs doing their work on the CPU while the
+leased GPU reads near zero. It is not my repository, not my tmux session and not
+my GPU, so under the boundaries I do not touch it. The binding constraint on my
+clean run is ~116 cores of someone else's CPU load, and **capping my own threads
+cannot recover a 40× that I am not causing** — I am at 26.6 of 48.
+
+What would distinguish this from the obvious alternative (my own thread
+oversubscription): if the cause were mine, fold times would have been bad from
+fold 0. They were 25–40s for seven consecutive folds and broke at fold 7–8,
+which coincides with track α launching `e4-anchor` (04:00), `e4-h25` (04:20),
+`rollout` (04:34) and `e4-threadcost` (04:40). The clean run's own first three
+cells completed at 0.99–1.13× of bench wall-clock, before that burst.
+
+### The decision, and why it is not "leave it running out of inertia"
+
+**I am not killing the clean run.** Not because restarting is expensive, but
+because killing it mid-cell is *the defect it exists to cure*: `task_3_seed0`
+has no record yet, so a restart makes it a cell started twice, which is exactly
+the `cells_started_more_than_once` condition that reads clause 3 strict False on
+`runs/bench`. A clean set produced by killing a cell is not a clean set. The one
+intervention available to me would recreate the blemish I am trying to measure
+away.
+
+The honest consequence: at ~20 min/fold on task 3, the full 40-cell clean set
+does not finish this weekend, and **clause 3 strict stays NOT MET as measured**.
+It does not become UNREACHABLE — the ladder is not exhausted, and rung 3 here is
+blocked by another track's CPU use rather than by anything about this agent.
+
+### The cheaper route I should have taken, registered now before it is run
+
+Reproducing all 40 cells to answer a question about **one** cell is the wrong
+experiment. `runs/bench` has exactly one operator-touched cell, `(10101, seed
+6)`. The pointed measurement is whether *that cell* reproduces untouched: if a
+clean re-run of it returns the identical record, the operator's touch changed
+nothing and the strict-reading failure is cosmetic; if it does not, the clause-2
+verdict is standing on a contaminated number and that is a genuine hole.
+
+The current run reaches it late — it is seed-major (all five tasks at seed 0,
+then seed 1), so seed 6 is the seventh sweep, behind the task-3 wall. Prediction,
+written before running: the targeted cell reproduces identically, on the same
+grounds as the 3/3 above. Reported either way. Not launched this turn — a second
+runner would contend with my own measurement, which is the mistake that produced
+the 543 load average at turn 9.
