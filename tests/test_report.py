@@ -5,7 +5,20 @@ dropped a whole split from the table."""
 import json
 import sys
 import tempfile
+import hashlib
 from pathlib import Path
+
+# The verdict gate now binds each run's `registry_sha256` to the digest of the
+# live runs/baselines.json (codex 2026-09-11 attack #2: runs agreeing with each
+# OTHER is not the same as agreeing with the file whose numbers RESULTS.md
+# prints, so lowering a baseline after seeing results left every provenance
+# check satisfied). A fixture standing in for a real run must carry the real
+# digest, and `n_correct`/`n_predictions` must reproduce `accuracy_pooled`,
+# because the gate recomputes it instead of trusting the field (attack #1).
+_LIVE_REGISTRY_SHA = hashlib.sha256(
+    (Path(__file__).resolve().parents[1] / "runs/baselines.json").read_bytes()
+).hexdigest()
+
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
@@ -65,9 +78,11 @@ def _base(n=5):
 
 
 def _run(tid, acc, seed=0, **kw):
-    r = {"task_id": tid, "accuracy_pooled": acc, "random_state": seed,
+    r = {"task_id": tid, "random_state": seed,
+         "n_predictions": 10000, "n_correct": round(acc * 10000),
+         "accuracy_pooled": round(acc * 10000) / 10000,
          "n_interventions": 0, "families_chosen": ["hgb"], "complete": True,
-         "off_registry": False, "registry_sha256": "same",
+         "off_registry": False, "registry_sha256": _LIVE_REGISTRY_SHA,
          "env": {"ads_sha256": "same", "ads_dirty_vs_head": False},
          "_file": f"task_{tid}_seed{seed}.json"}
     r.update(kw)
@@ -432,3 +447,154 @@ if __name__ == "__main__":
         print(f"{f.__name__} ...")
         f()
     print(f"\n{len(fns)} tests passed")
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-11 turn 11: two leakage records, one gate.
+# ---------------------------------------------------------------------------
+
+def test_merge_is_a_noop_on_a_single_record():
+    from scripts.report import merge_leakage_records
+    r = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [3]}
+    assert merge_leakage_records([r, None]) is r
+    assert merge_leakage_records([None, None]) is None
+
+
+def test_merge_unions_clearances_across_records():
+    from scripts.report import merge_leakage_records
+    a = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [3, 31, 3913],
+         "task_ids": [3, 31, 3913], "tasks": []}
+    b = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [3917, 10101],
+         "task_ids": [3917, 10101],
+         "tasks": [{"task_id": 3917, "rank_can_resolve": True,
+                    "verdict_task_rank": "NO_LEAKAGE_DETECTED"},
+                   {"task_id": 10101, "rank_can_resolve": True,
+                    "verdict_task_rank": "NO_LEAKAGE_DETECTED"}]}
+    m = merge_leakage_records([a, b])
+    assert m["tasks_cleared"] == [3, 31, 3913, 3917, 10101]
+    assert m["tasks_resolved_by_rank_instrument"] == [3917, 10101]
+    assert m["verdict"] == "NO_LEAKAGE_DETECTED"
+
+
+def test_a_leak_in_either_record_wins_and_unclears_its_task():
+    """The merge must not let a clean record launder a condemned one.  This is
+    the same asymmetry `cleared_tasks` enforces one level down, and the reason
+    it is tested at both levels is that either alone would be enough to lose
+    it."""
+    from scripts.report import merge_leakage_records
+    a = {"verdict": "NO_LEAKAGE_DETECTED", "tasks_cleared": [3, 31],
+         "task_ids": [3, 31], "tasks": []}
+    b = {"verdict": "LEAKAGE", "tasks_cleared": [],
+         "task_ids": [3],
+         "tasks": [{"task_id": 3, "rank_can_resolve": True,
+                    "verdict_task_rank": "LEAKAGE"}]}
+    m = merge_leakage_records([a, b])
+    assert m["verdict"] == "LEAKAGE"
+    assert 3 not in m["tasks_cleared"], (
+        "a task condemned by the rank record stayed cleared because the "
+        "accuracy record was quiet")
+    assert m["tasks_cleared"] == [31]
+
+
+def test_rank_resolved_tasks_become_binding_not_decorative():
+    """Adding the rank instrument must make those tasks *required* to be
+    cleared, not merely mentioned.  If `tasks_resolved_by_rank_instrument` did
+    not feed `probeable`, a rank probe that fired would leave the gate at True
+    and the whole turn would be decorative."""
+    import inspect
+    from scripts import report
+    src = inspect.getsource(report.verdict)
+    assert "tasks_resolved_by_rank_instrument" in src
+    assert "probeable |= rank_resolved" in src
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-11 turn 11: regression guards for codex's five fail-open findings.
+# Each asserts the gate closes on ABSENT or INCONSISTENT evidence.  Without
+# these, updating the fixtures to carry the new fields would have fed the gate
+# rather than tested it.
+# ---------------------------------------------------------------------------
+
+def _eight(**kw):
+    """The registered five tasks at the full verdict seed set."""
+    return {100 + i: [_run(100 + i, 0.80, seed=sd, **kw) for sd in VERDICT_SEEDS]
+            for i in range(5)}
+
+
+def test_an_edited_accuracy_that_no_longer_recomputes_sinks_clause_3():
+    """codex attack #1.  `ours` averaged `accuracy_pooled` verbatim and nothing
+    recomputed it, so editing that one number in a finished run file moved the
+    mean and the sign test while the ledger still reconciled --- reconciliation
+    compares task/seed membership and event counts, not scores."""
+    base = _base()
+    bench = _eight()
+    bench[103][3]["accuracy_pooled"] = 0.99     # counts left untouched
+    v = _verdict(_rows(base), base, bench, None, LEDGER_OK)
+    assert v["clauses"]["3_end_to_end_no_intervention"] is False
+    assert v["runs_whose_accuracy_does_not_recompute"] == [
+        "task_103_seed3.json"], v["runs_whose_accuracy_does_not_recompute"]
+
+
+def test_a_run_with_no_n_correct_cannot_testify_to_its_own_accuracy():
+    base = _base()
+    bench = _eight()
+    del bench[102][2]["n_correct"]
+    v = _verdict(_rows(base), base, bench, None, LEDGER_OK)
+    assert v["clauses"]["3_end_to_end_no_intervention"] is False
+    assert "task_102_seed2.json" in v["runs_whose_accuracy_does_not_recompute"]
+
+
+def test_a_registry_digest_that_does_not_match_the_live_baselines_sinks_clause_3():
+    """codex attack #2, the sharpest one.  `len(registry_sha) <= 1` asked only
+    that the runs agree with EACH OTHER about which registry they used, never
+    that it is the registry whose numbers the report prints.  So lowering a
+    baseline after seeing the accuracies moved every threshold with all
+    provenance checks still green."""
+    base = _base()
+    v = _verdict(_rows(base), base, _eight(registry_sha256="a" * 64), None,
+                 LEDGER_OK)
+    assert v["registry_digest_matches_live_baselines_file"] is False
+    assert v["clauses"]["3_end_to_end_no_intervention"] is False
+    # and the honest case still passes, so this is not simply always-red
+    ok = _verdict(_rows(base), base, _eight(), None, LEDGER_OK)
+    assert ok["registry_digest_matches_live_baselines_file"] is True
+
+
+def test_an_absent_dirty_tree_flag_is_a_hole_not_a_clean_tree():
+    """codex attack #5: the dirty check flagged a run only when the field was
+    TRUTHY, so deleting the field made a dirty tree read as clean."""
+    base = _base()
+    bench = _eight()
+    del bench[100][0]["env"]["ads_dirty_vs_head"]
+    v = _verdict(_rows(base), base, bench, None, LEDGER_OK)
+    assert v["clauses"]["3_end_to_end_no_intervention"] is False
+    assert "task_100_seed0.json" in v["runs_missing_the_dirty_tree_flag"]
+
+
+def test_a_registered_task_no_leakage_instrument_reached_sinks_the_gate():
+    """codex attack #4: `probeable` came only from whatever keys the power
+    record carried, so a power file with no coverage entries made
+    `probeable_unprobed` trivially empty and a clean probe cleared the gate
+    having measured nothing at all."""
+    base = _base()
+    v = _verdict(_rows(base), base, _eight(), None, LEDGER_OK,
+                 leakage={"verdict": "NO_LEAKAGE_DETECTED",
+                          "task_ids": [100], "tasks_cleared": [100],
+                          "env": {"ads_sha256": AGENT_SHA}, "tasks": []},
+                 power={"min_folds_for_detection": {"100": 1},
+                        "tasks_unpowered_pooled": []})
+    assert v["leakage_registered_tasks_unaccounted_for"] == [101, 102, 103, 104]
+    assert v["leakage_probe_clean"] is None, (
+        "four registered tasks were reached by no instrument and the gate "
+        "still cleared")
+
+
+def test_an_operator_touched_cell_sinks_clause_3_but_not_the_agent_reading():
+    """codex attack #3.  Both readings are reported; the strict one binds."""
+    base = _base()
+    led = dict(LEDGER_OK, operator_touched_cells=[(10101, 6)])
+    v = _verdict(_rows(base), base, _eight(), None, led)
+    assert v["clause3_conventional_agent_chose_everything"] is True
+    assert v["clause3_strict_no_operator_touched_any_cell"] is False
+    assert v["clauses"]["3_end_to_end_no_intervention"] is False
+    assert v["operator_touched_cells"] == [[10101, 6]]

@@ -13,6 +13,7 @@ are met" string that survived the numbers moving underneath it.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -479,6 +480,15 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
         # [task, seed, n_started] -- two runners touched this cell
         "cells_started_more_than_once": started_more_than_once,
         "n_killed_events": sum(n_killed.values()),
+        # Which *cells* an operator actually touched, not just how many events
+        # there were. codex, 2026-09-11 attack #3: RESULTS.md printed
+        # `n_interventions_total = 0` three lines above a ledger recording one
+        # kill and one twice-started cell. `n_interventions` counts calls to
+        # `DecisionLog.intervene()`, and nothing in `ads/` or `scripts/` ever
+        # calls it, so zero meant "nothing was logged", not "nothing happened".
+        "operator_touched_cells": sorted(
+            {(int(t), int(sd)) for t, sd, _ in started_more_than_once}
+            | {(int(k[0]), int(k[1])) for k in n_killed}),
         "completed_but_missing_from_disk": [list(k) for k in missing_from_disk],
         "on_disk_but_not_in_ledger": [list(k) for k in unledgered],
         "failed_attempts_with_records": len(failed_files & failed_ev),
@@ -489,6 +499,56 @@ def reconcile_ledger(ledger_path: Path, bench: dict,
         "reconciled": not (starts_without_terminal or missing_from_disk
                            or unledgered),
     }
+
+
+def merge_leakage_records(records: list[dict | None]) -> dict | None:
+    """Combine several leakage-probe records into the one the gate reads.
+
+    Two records exist because the rank instrument was added on 2026-09-11 to
+    reach the two tasks the accuracy instrument is blind on, and re-probing
+    the three already-clean tasks would have cost hours to reproduce a result
+    that is already on disk.  The merge is deliberately asymmetric, for the
+    same reason `cleared_tasks` is:
+
+      * **LEAKAGE anywhere wins.**  Any record declaring a leak makes the
+        merged verdict LEAKAGE.
+      * **Clearances union, they do not vote.**  A task cleared by either
+        record is cleared; a task cleared by neither is simply absent, which
+        is a hole and not a clearance.
+      * **The digest is the oldest one present**, so a stale record cannot be
+        hidden behind a fresh one -- the gate's staleness check must see the
+        weakest link, not the strongest.
+    """
+    recs = [r for r in records if r]
+    if not recs:
+        return None
+    if len(recs) == 1:
+        return recs[0]
+    merged = dict(recs[0])
+    merged["verdict"] = ("LEAKAGE"
+                         if any(r.get("verdict") == "LEAKAGE" for r in recs)
+                         else "NO_LEAKAGE_DETECTED")
+    cleared: set[int] = set()
+    for r in recs:
+        cleared |= set(r.get("tasks_cleared") or [])
+    # A task any record condemns is removed from the union even if another
+    # record cleared it -- firing is not symmetric with clearing.
+    for r in recs:
+        for t in (r.get("tasks") or []):
+            if (t.get("verdict_task") == "LEAKAGE"
+                    or t.get("verdict_task_rank") == "LEAKAGE"):
+                cleared.discard(int(t["task_id"]))
+    merged["tasks_cleared"] = sorted(cleared)
+    merged["task_ids"] = sorted({int(t) for r in recs
+                                 for t in (r.get("task_ids") or [])})
+    merged["tasks"] = [t for r in recs for t in (r.get("tasks") or [])]
+    merged["_merged_from"] = len(recs)
+    # Tasks the *rank* instrument resolved, which the accuracy-only power file
+    # does not know about; the gate adds these to its probeable set.
+    merged["tasks_resolved_by_rank_instrument"] = sorted(
+        int(t["task_id"]) for r in recs for t in (r.get("tasks") or [])
+        if t.get("rank_can_resolve"))
+    return merged
 
 
 def verdict(rows: list[dict], base: dict, bench: dict,
@@ -562,11 +622,30 @@ def verdict(rows: list[dict], base: dict, bench: dict,
     min_folds = {int(k): v for k, v
                  in (power.get("min_folds_for_detection") or {}).items()}
     probeable = set(min_folds)
-    unprobeable = sorted(power.get("tasks_unpowered_pooled") or [])
+    # The power file is an *accuracy*-instrument measurement, so it cannot know
+    # which tasks the rank instrument reaches.  Adding those here is what makes
+    # the new probe binding rather than decorative: once a task is probeable it
+    # must also be *cleared*, or `probeable_unprobed` sends the gate to None.
+    rank_resolved = set((leakage or {}).get("tasks_resolved_by_rank_instrument")
+                        or [])
+    probeable |= rank_resolved
+    unprobeable = sorted(set(power.get("tasks_unpowered_pooled") or [])
+                         - rank_resolved)
     cleared = set((leakage or {}).get("tasks_cleared") or [])
     probeable_unprobed = sorted(probeable - cleared)
+    # codex, 2026-09-11 attack #4: `probeable` was derived solely from whatever
+    # keys the power record happened to carry, and nothing required it to
+    # account for all five REGISTERED tasks. A power file with no coverage
+    # entries yields an empty probeable set, `probeable_unprobed` is then
+    # trivially empty, and a matching-digest clean probe clears the gate having
+    # measured nothing. Missing evidence disappearing from the requirement is
+    # the same fail-open shape as attacks #1, #2 and #5 -- fourth instance this
+    # weekend of absence being coerced into a value.
+    registered_tasks = {int(t) for t in (base.get("selected_task_ids") or [])}
+    leakage_unaccounted = sorted(
+        registered_tasks - set(cleared) - set(unprobeable))
     if (leakage is None or not leakage.get("verdict") or leakage_stale
-            or not power or probeable_unprobed):
+            or not power or probeable_unprobed or leakage_unaccounted):
         leakage_ok = None
     elif leakage["verdict"] == "NO_LEAKAGE_DETECTED":
         leakage_ok = True
@@ -680,17 +759,83 @@ def verdict(rows: list[dict], base: dict, bench: dict,
     seeds_unregistered = {k: v for k, v in seeds_unregistered.items() if v}
     registry_sha = {r.get("registry_sha256") for runs in bench.values()
                     for r in runs}
+    # codex, 2026-09-11, attack #2, and it is the sharpest one this repository
+    # has taken: `len(registry_sha) <= 1` asks only that the runs agree with
+    # EACH OTHER about which registry they used. It never asked whether that
+    # registry is the one whose numbers RESULTS.md prints. So lowering a
+    # baseline in runs/baselines.json after seeing the accuracies left every
+    # provenance check satisfied and moved the thresholds -- the exact route
+    # the brief names as the way this KPI gets faked. The digests do currently
+    # agree (6731b733...), so no number here is affected; the gate was open and
+    # the door happened to be shut.
+    live_registry_sha = hashlib.sha256(
+        (REPO / "runs/baselines.json").read_bytes()).hexdigest()
+    registry_matches_live = bool(registry_sha) and registry_sha == {
+        live_registry_sha}
     # Two runs produced by different versions of `ads/`, or by a dirty tree,
     # are not one measurement of one agent (codex, attack #5).
     # NOT discarded: a run with no digest is counted as its own distinct
     # digest, so "all runs agree" cannot be satisfied by runs that said nothing.
     agent_sha = {(r.get("env") or {}).get("ads_sha256") or f"[absent:{r['_file']}]"
                  for runs in bench.values() for r in runs}
+    # codex attack #5: this flagged a run only when the field was TRUTHY, so
+    # deleting the field made a dirty tree read as clean. Absent is a hole.
     dirty_runs = [r["_file"] for runs in bench.values() for r in runs
                   if (r.get("env") or {}).get("ads_dirty_vs_head")]
+    runs_missing_dirty_flag = sorted(
+        r["_file"] for runs in bench.values() for r in runs
+        if (r.get("env") or {}).get("ads_dirty_vs_head") is None)
     # An absent ledger is now a hole, not a pass: the ledger is the only record
     # of an attempt that was started and never produced a file, so without it
     # "no failed attempts" is an unfalsifiable claim.
+    # codex attack #1: `ours` averaged each record's `accuracy_pooled` field
+    # verbatim, and nothing recomputed it. Editing that one number in a
+    # finished run file moved the mean and the sign test while the ledger still
+    # reconciled, because reconciliation compares task/seed membership and
+    # event counts, not scores. Every record carries `n_correct` and
+    # `n_predictions`, and `per_fold` carries the fold weights, so the score is
+    # checkable against the record's own evidence at zero cost. All 40 current
+    # records satisfy both identities; again the gate was open, not the data
+    # wrong.
+    def _accuracy_recomputes(r: dict) -> bool:
+        a, nc, n = (r.get("accuracy_pooled"), r.get("n_correct"),
+                    r.get("n_predictions"))
+        if a is None or not nc or not n:
+            return False
+        if abs(a - nc / n) > 1e-9:
+            return False
+        pf = r.get("per_fold") or []
+        if pf:
+            tn = sum(f.get("n_test") or 0 for f in pf)
+            if tn != n:
+                return False
+            wm = sum((f.get("accuracy") or 0) * (f.get("n_test") or 0)
+                     for f in pf) / tn
+            if abs(a - wm) > 1e-6:
+                return False
+        return True
+
+    runs_whose_accuracy_does_not_recompute = sorted(
+        r["_file"] for runs in bench.values() for r in runs
+        if not _accuracy_recomputes(r))
+    # ---------------------------------------- clause 3 under both readings
+    # Rung 1 of the ladder: report the strict reading AND the conventional one,
+    # each with its protocol, rather than silently picking whichever passes.
+    #
+    #   conventional -- "무개입" means the AGENT picks the preprocessing, the
+    #     model and the validation with no human choosing any of them. Killing
+    #     a compute job and restarting it with more threads changes no
+    #     modelling decision, so it does not bear on this reading.
+    #   strict -- the brief's own words: "count any manual intervention as a
+    #     failure of that run rather than editing it out." An operator killing
+    #     and restarting a cell IS a manual intervention in that cell, whatever
+    #     it did or did not change.
+    #
+    # The strict reading is binding. It costs a clause that would otherwise
+    # read True, which is why it is not optional.
+    operator_cells = [list(c) for c in
+                      ((ledger or {}).get("operator_touched_cells") or [])]
+    clause3_strict = bool(measured) and not operator_cells
     ledger_ok = bool(ledger and ledger.get("ledger_present")
                      and ledger.get("reconciled"))
     clause3 = (bool(measured) and interventions == 0 and not off_registry
@@ -698,9 +843,13 @@ def verdict(rows: list[dict], base: dict, bench: dict,
                and not seeds_missing
                and not seeds_duplicated and not seeds_unregistered
                and not runs_missing_fields and not runs_missing_agent_digest
-               and len(registry_sha) <= 1
+               and len(registry_sha) <= 1 and registry_matches_live
                and len(agent_sha) <= 1 and not dirty_runs
+               and not runs_missing_dirty_flag
+               and not runs_whose_accuracy_does_not_recompute
                and ledger_ok)
+    clause3_conventional = clause3
+    clause3 = bool(clause3) and clause3_strict
     clauses = {
         "1_five_public_datasets": clause1,
         "2_within_5pct_of_human_baseline": clause2 if measured else None,
@@ -725,6 +874,17 @@ def verdict(rows: list[dict], base: dict, bench: dict,
             "leakage_unprobeable_tasks": unprobeable,
             "leakage_tasks_cleared": sorted(cleared),
             "leakage_probeable_but_unprobed": probeable_unprobed,
+            "leakage_registered_tasks_unaccounted_for": leakage_unaccounted,
+            "leakage_tasks_resolved_by_rank_instrument": sorted(rank_resolved),
+            "leakage_records_merged": (leakage or {}).get("_merged_from", 1),
+            "clause3_conventional_agent_chose_everything": clause3_conventional,
+            "clause3_strict_no_operator_touched_any_cell": clause3_strict,
+            "operator_touched_cells": operator_cells,
+            "runs_whose_accuracy_does_not_recompute":
+                runs_whose_accuracy_does_not_recompute,
+            "runs_missing_the_dirty_tree_flag": runs_missing_dirty_flag,
+            "registry_digest_matches_live_baselines_file": registry_matches_live,
+            "live_baselines_sha256": live_registry_sha,
             "escalation_pending_tasks": escalation_pending,
             "near_line_not_called_tasks": not_called,
             "n_interventions_total": interventions,
@@ -957,7 +1117,10 @@ def main() -> int:
 
     ledger = reconcile_ledger(Path(args.bench).parent / "attempts.jsonl",
                               bench, failed)
-    leakage = read_json(REPO / "runs/leakage_probe.json")
+    leakage = merge_leakage_records([
+        read_json(REPO / "runs/leakage_probe.json"),
+        read_json(REPO / "runs/leakage_probe_rank.json"),
+    ])
     power = read_json(REPO / "runs/leakage_power.json")
     v = verdict(rows, base, bench, failed, ledger, partial, leakage, power)
 

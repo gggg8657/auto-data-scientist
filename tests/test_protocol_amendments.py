@@ -42,7 +42,11 @@ REQUIRED = ("id", "date", "clause", "registered_rule", "amended_rule",
 GATE_FUNCTIONS = ("def exact_sign_test_above", "def escalation_state",
                   "def verdict", "def load_bench", "def reconcile_ledger",
                   "def tolerance_readings", "def joint_seed_event",
-                  "def clean_seed_subset")
+                  "def clean_seed_subset",
+                  # added 2026-09-11 turn 11: this decides which leakage
+                  # clearances reach `verdict`, so an undeclared edit to it is
+                  # an undeclared edit to the gate.
+                  "def merge_leakage_records")
 
 
 def test_the_amendment_file_exists_and_is_wellformed():

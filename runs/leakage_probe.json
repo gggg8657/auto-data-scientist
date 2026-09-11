@@ -1,0 +1,1249 @@
+{
+  "generated": "2026-09-11T01:23:08+0000",
+  "purpose": "empirical test of open item #8, in-process label leakage",
+  "instrument": "permute y_train before fit; score against true y_test",
+  "pre_registered_rule": {
+    "reference": "majority-class rate of the true test labels",
+    "noise_band": "2.0 * sqrt(p_maj*(1-p_maj)/n_test)",
+    "no_leakage_iff": "max permuted accuracy <= majority rate + band",
+    "consequence_if_leakage": "every accuracy in this repository is withdrawn",
+    "fixed_in": "critique_log.md, 2026-09-10 turn 9, before this script ran"
+  },
+  "task_ids": [
+    3,
+    31,
+    3913
+  ],
+  "k_permutations": 10,
+  "random_state": 0,
+  "ads_n_jobs": "8",
+  "agent_imports_no_io_module": true,
+  "env": {
+    "ads_sha256": "14ac971659faff242877908195d42c5bc0530ed1b5a855daeef31cd3b298b2ac",
+    "ads_files": [
+      "__init__.py",
+      "agent.py",
+      "decisions.py",
+      "evaluate.py",
+      "openml_io.py",
+      "profile.py"
+    ],
+    "ads_dirty_vs_head": false,
+    "ads_dirty_detail": null,
+    "python": "3.11.15",
+    "platform": "Linux-6.8.0-58-generic-x86_64-with-glibc2.39",
+    "numpy": "2.3.5",
+    "pandas": "3.0.2",
+    "sklearn": "1.8.0",
+    "openml": "0.15.1",
+    "cpu_count": 192,
+    "git_commit": "f0df2f072cd8dba96ef697734819492aa6e0a727"
+  },
+  "power_file_sha256": "23134ff0f93b9721d7c573169fea6504065904b4272995ea7463fad96d619461",
+  "tasks": [
+    {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "n_folds_probed": 1,
+      "min_folds_required_by_power_file": 1,
+      "underpowered_by_fold_count": false,
+      "folds": [
+        {
+          "n_train": 2876,
+          "n_test": 320,
+          "auc_reading": {
+            "auc_intact": 0.9998825877656451,
+            "brier_intact": 0.004304166666666666,
+            "null_value": 0.5,
+            "threshold": 0.5647124642192052,
+            "noise_band_mannwhitney": 0.06471246421920518,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.4998825877656451,
+            "min_resolvable_leak_fraction": 0.12945532771696314,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.99375,
+          "family_intact": "extra",
+          "majority_rate": 0.521875,
+          "noise_band_2sigma": 0.05584817413924559,
+          "threshold": 0.5777231741392456,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 11.02,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 11.55,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 13.87,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 18.16,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 13.43,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 15.16,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 17.23,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 15.4,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 11.93,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.521875,
+              "family": "dummy",
+              "seconds": 38.45,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.24952162735680253
+            }
+          ],
+          "permuted_max": 0.521875,
+          "permuted_mean": 0.5218749999999999,
+          "permuted_min": 0.521875,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 0
+        }
+      ],
+      "pooled": {
+        "n_test_total": 320,
+        "accuracy_intact": 0.99375,
+        "majority_rate": 0.521875,
+        "noise_band_2sigma": 0.05584817413924559,
+        "threshold": 0.5777231741392456,
+        "permuted_accuracies": [
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875,
+          0.521875
+        ],
+        "permuted_max": 0.521875,
+        "permuted_mean": 0.5218749999999999
+      },
+      "verdict_task": "NO_LEAKAGE_DETECTED",
+      "n_folds_flagging_individually": 0
+    },
+    {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "n_folds_probed": 1,
+      "min_folds_required_by_power_file": 1,
+      "underpowered_by_fold_count": false,
+      "folds": [
+        {
+          "n_train": 900,
+          "n_test": 100,
+          "auc_reading": {
+            "auc_intact": 0.8269047619047618,
+            "brier_intact": 0.1484562222222222,
+            "null_value": 0.5,
+            "threshold": 0.626616531431508,
+            "noise_band_mannwhitney": 0.12661653143150797,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.3269047619047618,
+            "min_resolvable_leak_fraction": 0.38731932411677616,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.85,
+          "family_intact": "extra",
+          "majority_rate": 0.7,
+          "noise_band_2sigma": 0.09165151389911685,
+          "threshold": 0.7916515138991168,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 9.55,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 8.73,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 28.81,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 8.8,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 7.39,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 9.03,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 9.8,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 9.35,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 12.2,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.7,
+              "family": "dummy",
+              "seconds": 9.26,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.20999999999999994
+            }
+          ],
+          "permuted_max": 0.7,
+          "permuted_mean": 0.7,
+          "permuted_min": 0.7,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 0
+        }
+      ],
+      "pooled": {
+        "n_test_total": 100,
+        "accuracy_intact": 0.85,
+        "majority_rate": 0.7,
+        "noise_band_2sigma": 0.09165151389911681,
+        "threshold": 0.7916515138991168,
+        "permuted_accuracies": [
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7,
+          0.7
+        ],
+        "permuted_max": 0.7,
+        "permuted_mean": 0.7000000000000001
+      },
+      "verdict_task": "NO_LEAKAGE_DETECTED",
+      "n_folds_flagging_individually": 0
+    },
+    {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "n_folds_probed": 6,
+      "min_folds_required_by_power_file": 6,
+      "underpowered_by_fold_count": false,
+      "folds": [
+        {
+          "n_train": 469,
+          "n_test": 53,
+          "auc_reading": {
+            "auc_intact": 0.8593073593073594,
+            "brier_intact": 0.1236444195130769,
+            "null_value": 0.5,
+            "threshold": 0.6973855084879307,
+            "noise_band_mannwhitney": 0.19738550848793068,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5064935064935066,
+              0.5
+            ],
+            "permuted_auc_max": 0.5064935064935066,
+            "permuted_auc_mean": 0.5006493506493507,
+            "gap": 0.35930735930735935,
+            "min_resolvable_leak_fraction": 0.5493500296471323,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.7735849056603774,
+          "family_intact": "rf",
+          "majority_rate": 0.7924528301886793,
+          "noise_band_2sigma": 0.11141333618714389,
+          "threshold": 0.9038661663758232,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 9.64,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 7.36,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 6.55,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 6.32,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.93,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.52,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.84,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 6.14,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.7358490566037735,
+              "family": "extra",
+              "seconds": 11.05,
+              "position": 3.0000000000000058,
+              "auc": 0.5064935064935066,
+              "brier": 0.20317369773471047
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.36,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            }
+          ],
+          "permuted_max": 0.7924528301886793,
+          "permuted_mean": 0.7867924528301887,
+          "permuted_min": 0.7358490566037735,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 3.0000000000000058,
+          "permutation_p_value": 0.9090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 0
+        },
+        {
+          "n_train": 469,
+          "n_test": 53,
+          "auc_reading": {
+            "auc_intact": 0.9188311688311688,
+            "brier_intact": 0.09071869492992411,
+            "null_value": 0.5,
+            "threshold": 0.6973855084879307,
+            "noise_band_mannwhitney": 0.19738550848793068,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.4188311688311688,
+            "min_resolvable_leak_fraction": 0.471277028017695,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.8301886792452831,
+          "family_intact": "logreg",
+          "majority_rate": 0.7924528301886793,
+          "noise_band_2sigma": 0.11141333618714389,
+          "threshold": 0.9038661663758232,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.1,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 4.79,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 6.88,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.56,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.11,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.68,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 7.6,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 5.0,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 4.73,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.7924528301886793,
+              "family": "dummy",
+              "seconds": 6.16,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16447950078285747
+            }
+          ],
+          "permuted_max": 0.7924528301886793,
+          "permuted_mean": 0.7924528301886793,
+          "permuted_min": 0.7924528301886793,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 1
+        },
+        {
+          "n_train": 470,
+          "n_test": 52,
+          "auc_reading": {
+            "auc_intact": 0.8761904761904762,
+            "brier_intact": 0.11997003414687168,
+            "null_value": 0.5,
+            "threshold": 0.705093861593886,
+            "noise_band_mannwhitney": 0.20509386159388598,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.6523809523809524
+            ],
+            "permuted_auc_max": 0.6523809523809524,
+            "permuted_auc_mean": 0.5152380952380953,
+            "gap": 0.3761904761904762,
+            "min_resolvable_leak_fraction": 0.5451862143634943,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.8269230769230769,
+          "family_intact": "rf",
+          "majority_rate": 0.8076923076923077,
+          "noise_band_2sigma": 0.10930741539592403,
+          "threshold": 0.9169997230882317,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.77,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.14,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.27,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 4.65,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.75,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 7.18,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.25,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 4.9,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.76,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.8269230769230769,
+              "family": "logreg",
+              "seconds": 5.47,
+              "position": 1.0,
+              "auc": 0.6523809523809524,
+              "brier": 0.14196879110015181
+            }
+          ],
+          "permuted_max": 0.8269230769230769,
+          "permuted_mean": 0.8096153846153846,
+          "permuted_min": 0.8076923076923077,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 1.0,
+          "permutation_p_value": 0.18181818181818182,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 2
+        },
+        {
+          "n_train": 470,
+          "n_test": 52,
+          "auc_reading": {
+            "auc_intact": 0.625,
+            "brier_intact": 0.17461538461538462,
+            "null_value": 0.5,
+            "threshold": 0.705093861593886,
+            "noise_band_mannwhitney": 0.20509386159388598,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.125,
+            "min_resolvable_leak_fraction": 1.6407508927510879,
+            "detects_complete_leakage": false,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.7884615384615384,
+          "family_intact": "knn",
+          "majority_rate": 0.8076923076923077,
+          "noise_band_2sigma": 0.10930741539592403,
+          "threshold": 0.9169997230882317,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.53,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.54,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 7.0,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.17,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.39,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.56,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.84,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.16,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 5.48,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 7.44,
+              "position": -0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            }
+          ],
+          "permuted_max": 0.8076923076923077,
+          "permuted_mean": 0.8076923076923077,
+          "permuted_min": 0.8076923076923077,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": -0.0,
+          "permutation_p_value": 1.0,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 3
+        },
+        {
+          "n_train": 470,
+          "n_test": 52,
+          "auc_reading": {
+            "auc_intact": 0.8928571428571428,
+            "brier_intact": 0.07614291853399399,
+            "null_value": 0.5,
+            "threshold": 0.705093861593886,
+            "noise_band_mannwhitney": 0.20509386159388598,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.3928571428571428,
+            "min_resolvable_leak_fraction": 0.5220571022389826,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.9038461538461539,
+          "family_intact": "logreg",
+          "majority_rate": 0.8076923076923077,
+          "noise_band_2sigma": 0.10930741539592403,
+          "threshold": 0.9169997230882317,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 10.49,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.52,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.7,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.88,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.8,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 7.41,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 8.21,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 6.98,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 10.34,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.8076923076923077,
+              "family": "dummy",
+              "seconds": 7.65,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.15552355747466656
+            }
+          ],
+          "permuted_max": 0.8076923076923077,
+          "permuted_mean": 0.8076923076923077,
+          "permuted_min": 0.8076923076923077,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 4
+        },
+        {
+          "n_train": 470,
+          "n_test": 52,
+          "auc_reading": {
+            "auc_intact": 0.8802660753880266,
+            "brier_intact": 0.10388778851027781,
+            "null_value": 0.5,
+            "threshold": 0.6979197056988444,
+            "noise_band_mannwhitney": 0.19791970569884443,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5476718403547672,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5476718403547672,
+            "permuted_auc_mean": 0.5047671840354767,
+            "gap": 0.3802660753880266,
+            "min_resolvable_leak_fraction": 0.5204768937036667,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.8653846153846154,
+          "family_intact": "logreg",
+          "majority_rate": 0.7884615384615384,
+          "noise_band_2sigma": 0.11326956982499159,
+          "threshold": 0.90173110828653,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 7.22,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 8.46,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 7.38,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 8.71,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.7884615384615384,
+              "family": "logreg",
+              "seconds": 7.43,
+              "position": 0.0,
+              "auc": 0.5476718403547672,
+              "brier": 0.1642266581013555
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 5.71,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 6.78,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 8.0,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 7.55,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.7884615384615384,
+              "family": "dummy",
+              "seconds": 8.95,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.16684298499146846
+            }
+          ],
+          "permuted_max": 0.7884615384615384,
+          "permuted_mean": 0.7884615384615384,
+          "permuted_min": 0.7884615384615384,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 5
+        }
+      ],
+      "pooled": {
+        "n_test_total": 314,
+        "accuracy_intact": 0.8312101910828026,
+        "majority_rate": 0.7993630573248408,
+        "noise_band_2sigma": 0.04520043964460163,
+        "threshold": 0.8445634969694424,
+        "permuted_accuracies": [
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7993630573248408,
+          0.7898089171974523,
+          0.802547770700637
+        ],
+        "permuted_max": 0.802547770700637,
+        "permuted_mean": 0.7987261146496815
+      },
+      "verdict_task": "NO_LEAKAGE_DETECTED",
+      "n_folds_flagging_individually": 0
+    }
+  ],
+  "tasks_underpowered_by_fold_count": [],
+  "tasks_this_instrument_cannot_probe": [
+    3917,
+    10101
+  ],
+  "verdict": "NO_LEAKAGE_DETECTED",
+  "tasks_cleared": [
+    3,
+    31,
+    3913
+  ],
+  "scope": "This measures the fold(s) and task probed, nothing wider.  It prices the reachability of the labelled frame through the pandas views the agent is handed; it cannot prove the absence of a route that only opens on data this probe did not run."
+}

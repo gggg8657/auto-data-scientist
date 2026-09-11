@@ -1,0 +1,470 @@
+{
+  "generated": "2026-09-11T03:41:21+0000",
+  "purpose": "empirical test of open item #8, in-process label leakage",
+  "instrument": "permute y_train before fit; score against true y_test",
+  "pre_registered_rule": {
+    "reference": "majority-class rate of the true test labels",
+    "noise_band": "2.0 * sqrt(p_maj*(1-p_maj)/n_test)",
+    "no_leakage_iff": "max permuted accuracy <= majority rate + band",
+    "consequence_if_leakage": "every accuracy in this repository is withdrawn",
+    "fixed_in": "critique_log.md, 2026-09-10 turn 9, before this script ran"
+  },
+  "task_ids": [
+    3917,
+    10101
+  ],
+  "k_permutations": 10,
+  "random_state": 0,
+  "ads_n_jobs": "8",
+  "agent_imports_no_io_module": true,
+  "env": {
+    "ads_sha256": "14ac971659faff242877908195d42c5bc0530ed1b5a855daeef31cd3b298b2ac",
+    "ads_files": [
+      "__init__.py",
+      "agent.py",
+      "decisions.py",
+      "evaluate.py",
+      "openml_io.py",
+      "profile.py"
+    ],
+    "ads_dirty_vs_head": false,
+    "ads_dirty_detail": null,
+    "python": "3.11.15",
+    "platform": "Linux-6.8.0-58-generic-x86_64-with-glibc2.39",
+    "numpy": "2.3.5",
+    "pandas": "3.0.2",
+    "sklearn": "1.8.0",
+    "openml": "0.15.1",
+    "cpu_count": 192,
+    "git_commit": "f0df2f072cd8dba96ef697734819492aa6e0a727"
+  },
+  "power_file_sha256": "23134ff0f93b9721d7c573169fea6504065904b4272995ea7463fad96d619461",
+  "tasks": [
+    {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "n_folds_probed": 1,
+      "min_folds_required_by_power_file": null,
+      "underpowered_by_fold_count": true,
+      "folds": [
+        {
+          "n_train": 1898,
+          "n_test": 211,
+          "auc_reading": {
+            "auc_intact": 0.8489001396648045,
+            "brier_intact": 0.09333109335724278,
+            "null_value": 0.5,
+            "threshold": 0.6110723085567198,
+            "noise_band_mannwhitney": 0.11107230855671979,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.4786138268156424
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.49786138268156427,
+            "gap": 0.3489001396648045,
+            "min_resolvable_leak_fraction": 0.3183498540970182,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.8672985781990521,
+          "family_intact": "extra",
+          "majority_rate": 0.8483412322274881,
+          "noise_band_2sigma": 0.04938645091745775,
+          "threshold": 0.8977276831449459,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.52,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.53,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.52,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.23,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.4,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 16.01,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 14.67,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 14.76,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.8483412322274881,
+              "family": "dummy",
+              "seconds": 15.0,
+              "position": 0.0,
+              "auc": 0.5,
+              "brier": 0.12866889083351507
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.8483412322274881,
+              "family": "logreg",
+              "seconds": 15.68,
+              "position": 0.0,
+              "auc": 0.4786138268156424,
+              "brier": 0.13439915442442454
+            }
+          ],
+          "permuted_max": 0.8483412322274881,
+          "permuted_mean": 0.8483412322274881,
+          "permuted_min": 0.8483412322274881,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": 0.0,
+          "permutation_p_value": 0.09090909090909091,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 0
+        }
+      ],
+      "pooled": {
+        "n_test_total": 211,
+        "accuracy_intact": 0.8672985781990521,
+        "majority_rate": 0.8483412322274881,
+        "noise_band_2sigma": 0.049386450917457796,
+        "threshold": 0.8977276831449459,
+        "permuted_accuracies": [
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881,
+          0.8483412322274881
+        ],
+        "permuted_max": 0.8483412322274881,
+        "permuted_mean": 0.8483412322274881
+      },
+      "rank_reading": {
+        "statistic": "mean over folds of per-fold AUROC",
+        "null_value": 0.5,
+        "null_is_prior_free": true,
+        "se_pooled": 0.055536154278359895,
+        "auc_intact_pooled": 0.8489001396648045,
+        "permuted_auc_pooled": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.4786138268156424
+        ],
+        "permuted_auc_pooled_max": 0.5,
+        "permuted_auc_pooled_mean": 0.49786138268156427,
+        "sigmas_pre_registered": 2.0,
+        "sigmas_familywise_5pct": 2.5678753685925684,
+        "threshold_pre_registered": 0.6110723085567198,
+        "threshold_familywise_5pct": 0.6426099226377572,
+        "gap": 0.3489001396648045,
+        "min_resolvable_leak_fraction": 0.3183498540970182,
+        "detects_complete_leakage": true,
+        "verdict_pre_registered": "NO_LEAKAGE_DETECTED",
+        "verdict_familywise_5pct": "NO_LEAKAGE_DETECTED"
+      },
+      "verdict_task": "NO_LEAKAGE_DETECTED",
+      "verdict_task_rank": "NO_LEAKAGE_DETECTED",
+      "rank_can_resolve": true,
+      "n_folds_flagging_individually": 0
+    },
+    {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "n_folds_probed": 1,
+      "min_folds_required_by_power_file": null,
+      "underpowered_by_fold_count": true,
+      "folds": [
+        {
+          "n_train": 673,
+          "n_test": 75,
+          "auc_reading": {
+            "auc_intact": 0.7811890838206628,
+            "brier_intact": 0.15869465293677676,
+            "null_value": 0.5,
+            "threshold": 0.6571348402636772,
+            "noise_band_mannwhitney": 0.1571348402636772,
+            "permuted_aucs": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "permuted_auc_max": 0.5,
+            "permuted_auc_mean": 0.5,
+            "gap": 0.28118908382066277,
+            "min_resolvable_leak_fraction": 0.558822690157826,
+            "detects_complete_leakage": true,
+            "verdict_fold": "NO_LEAKAGE_DETECTED",
+            "enters_no_clause": true
+          },
+          "n_classes": 2,
+          "accuracy_intact": 0.76,
+          "family_intact": "logreg",
+          "majority_rate": 0.76,
+          "noise_band_2sigma": 0.09863062404750367,
+          "threshold": 0.8586306240475037,
+          "permuted": [
+            {
+              "permutation": 0,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 12.96,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 1,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.07,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 2,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.54,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 3,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.22,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 4,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.31,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 5,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.06,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 6,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.39,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 7,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.33,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 8,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.12,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            },
+            {
+              "permutation": 9,
+              "accuracy": 0.76,
+              "family": "dummy",
+              "seconds": 13.01,
+              "position": null,
+              "auc": 0.5,
+              "brier": 0.18240510102024818
+            }
+          ],
+          "permuted_max": 0.76,
+          "permuted_mean": 0.76,
+          "permuted_min": 0.76,
+          "n_permutations_exceeding_threshold": 0,
+          "max_position": null,
+          "permutation_p_value": 1.0,
+          "verdict_fold": "NO_LEAKAGE_DETECTED",
+          "repeat": 0,
+          "fold": 0
+        }
+      ],
+      "pooled": {
+        "n_test_total": 75,
+        "accuracy_intact": 0.76,
+        "majority_rate": 0.76,
+        "noise_band_2sigma": 0.09863062404750363,
+        "threshold": 0.8586306240475037,
+        "permuted_accuracies": [
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76,
+          0.76
+        ],
+        "permuted_max": 0.76,
+        "permuted_mean": 0.7599999999999999
+      },
+      "rank_reading": {
+        "statistic": "mean over folds of per-fold AUROC",
+        "null_value": 0.5,
+        "null_is_prior_free": true,
+        "se_pooled": 0.0785674201318386,
+        "auc_intact_pooled": 0.7811890838206628,
+        "permuted_auc_pooled": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "permuted_auc_pooled_max": 0.5,
+        "permuted_auc_pooled_mean": 0.5,
+        "sigmas_pre_registered": 2.0,
+        "sigmas_familywise_5pct": 2.5678753685925684,
+        "threshold_pre_registered": 0.6571348402636772,
+        "threshold_familywise_5pct": 0.7017513429304122,
+        "gap": 0.28118908382066277,
+        "min_resolvable_leak_fraction": 0.558822690157826,
+        "detects_complete_leakage": true,
+        "verdict_pre_registered": "NO_LEAKAGE_DETECTED",
+        "verdict_familywise_5pct": "NO_LEAKAGE_DETECTED"
+      },
+      "verdict_task": "NO_LEAKAGE_DETECTED",
+      "verdict_task_rank": "NO_LEAKAGE_DETECTED",
+      "rank_can_resolve": true,
+      "n_folds_flagging_individually": 0
+    }
+  ],
+  "tasks_underpowered_by_fold_count": [
+    3917,
+    10101
+  ],
+  "tasks_this_instrument_cannot_probe": [
+    3917,
+    10101
+  ],
+  "verdict": "NO_LEAKAGE_DETECTED",
+  "tasks_cleared": [
+    3917,
+    10101
+  ],
+  "tasks_cleared_by_rank_instrument_only": [
+    3917,
+    10101
+  ],
+  "rank_instrument": {
+    "why": "under label-independence E[AUROC] = 0.5 whatever the class prior is, while E[accuracy] is the majority rate. The accuracy instrument divides by `accuracy - majority rate`, which is the same quantity as the prior/stump margin, so it is blind exactly where the KPI is weakest (runs/leakage_power.json: phi_min 1.112 kc1, 4.051 blood-transfusion). The rank statistic has no such denominator.",
+    "registered_in": "critique_log.md, 2026-09-11 turn 11, with its prediction, before this script ran on 3917 or 10101",
+    "direction": "strictly stricter: 3917 and 10101 previously cleared verdict() by never being probed, so this instrument can only sink clause 2, never lift it",
+    "positive_control": "tests/test_no_leakage.py requires this rule to fire on a deliberate label-reading agent; a rule never shown to detect is not evidence of absence"
+  },
+  "scope": "This measures the fold(s) and task probed, nothing wider.  It prices the reachability of the labelled frame through the pandas views the agent is handed; it cannot prove the absence of a route that only opens on data this probe did not run."
+}

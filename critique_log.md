@@ -2253,3 +2253,79 @@ is the `ads-successor` chain and I did not know it was there until the test
 printed its pid. Now the first argv token must be a python interpreter, and
 shells that mention the script are reported separately as non-runners:
 in flight `[1493119]`, waiters `[1493117, 1623867]`. 9 tests pass.
+
+## 2026-09-11, turn 11 — the clause passed with two of five tasks never probed, and I have the instrument that reaches them
+
+**State at the top of this turn.** The 8-seed verdict run finished (`EXIT=0`,
+40/40 records, 5 tasks x seeds 0-7) and the leakage probe finished at 01:23.
+`scripts/report.py` derives `status: PASS`, all three clauses True. Nothing is
+running; no ads tmux session survives.
+
+**The PASS is real and I am not withdrawing it. Its weakest joint is this.**
+`runs/leakage_probe.json` carries `tasks_cleared = [3, 31, 3913]` and
+`tasks_this_instrument_cannot_probe = [3917, 10101]`. The gate in `verdict()`
+is scope-aware — it requires a clean probe on every task where detection is
+*possible* and names the rest — so `leakage_ok` is True with **kc1 and
+blood-transfusion never probed at all**. That is the honest reading of an
+accuracy-based instrument whose `phi_min` is 1.112 and 4.051 there. It is not
+the honest reading of the repository as a whole, because I already measured
+the instrument that reaches them and then marked it `enters_no_clause`.
+
+**The evidence that a better instrument exists, measured before this turn.**
+`runs/auc_power.json` (fold 0, one seed, a screen): under the rank reading
+`phi_min < 1` on **all five** tasks, and `tasks_rescued_by_the_rank_reading =
+[3913, 3917, 10101]`. The reason is structural, not empirical — under
+label-independence E[AUROC] = 0.5 **whatever the class prior is**, while
+E[accuracy] is the majority rate. The accuracy instrument's blindness on the
+imbalanced tasks is exactly turn 7's falsifiability floor read a third time:
+`gap = accuracy - majority_rate` is the same quantity as the prior/stump
+margin. A rank statistic does not have that denominator.
+
+**HYPOTHESIS, registered before the probe runs.** The rank (Mann-Whitney)
+instrument has dynamic range on kc1 (3917) and blood-transfusion (10101) where
+the accuracy instrument has none, so probing those two tasks under the rank
+rule converts two named blind spots into two decisions.
+
+**PREDICTION, registered before the probe runs.** `NO_LEAKAGE_DETECTED` on
+both under the rank rule — permuted AUROC max within `0.5 + z*se_MW`. The
+basis is turn 10's structural measurement: on pandas 3.0.2 (Copy-on-Write
+mandatory) the views `ads/evaluate.py` hands the agent share no memory with
+the labels and cannot reach the parent in 4 gc hops, and `X, y` were never one
+labelled frame to begin with. If the probe contradicts this prediction, the
+prediction is what was wrong, and `consequence_if_leakage` stands: **every
+accuracy in this repository is withdrawn**, clause 2 goes to False.
+
+**Why this amendment may be written now, with the PASS already on screen.**
+It is strictly stricter and the asymmetry is total. Those two tasks currently
+clear the gate *by never being measured*. A probe on them can therefore only
+sink clause 2 or leave it where it is; there is no configuration of its output
+that turns a failing clause into a passing one. This is the one direction in
+which changing a gate after seeing a result is not choosing the result.
+
+**Two things the rule needs before it may decide anything, both of which the
+accuracy rule needed and one of which it initially lacked.**
+
+1. *Family-wise calibration.* The decision is a **max over k=10 permutations**,
+   so a nominal 2-sigma per-comparison line is not a 5% rule. Turn 10 measured
+   this for the accuracy rule — family-wise 15.3%-21.4%, not 5% — and the
+   saving grace there was the direction: inflation makes LEAKAGE *easier* to
+   declare and a LEAKAGE verdict sinks the clause, so the miscalibrated rule
+   erred against the KPI. Same direction here, but I will not rely on a
+   favourable accident twice. The Mann-Whitney SE is exact and prior-free, so
+   the family-wise rate is analytic and needs no new runs.
+2. *A positive control.* codex's point from turn 10 is the one that settles
+   whether an instrument is an instrument: "an invariant result could simply
+   mean the intervention never reached the alleged channel." The accuracy rule
+   fires 3/3 on a deliberate label-reading agent. The rank rule has **never
+   been shown to fire on anything**, and a NO_LEAKAGE_DETECTED from a rule
+   that cannot detect is not evidence. It must fire on the same control before
+   its clean verdict counts.
+
+**What would distinguish my explanation from the obvious alternative.** The
+obvious alternative to "the rank reading rescues these tasks" is "these tasks
+are small and the probe is just noisy there". The two are distinguished by
+`se_MW = sqrt((n1+n2+1)/(12*n1*n2))`, which depends only on class counts and
+not on the agent's skill: if the rescue were a noise artefact, `phi_min` under
+the rank reading would track test-set size, and it does not — it tracks the
+prior/skill gap, which is the quantity the accuracy reading divides by and the
+rank reading does not.

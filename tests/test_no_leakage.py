@@ -380,3 +380,81 @@ if __name__ == "__main__":
             fn() if c is None else fn(c)
             ran += 1
     print(f"\n{ran} tests passed")
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-11 turn 11: the rank instrument is allowed to clear a task the
+# accuracy instrument cannot resolve, so its calibration and its clearing rule
+# need the same treatment the accuracy rule got.
+# ---------------------------------------------------------------------------
+
+def test_familywise_sigmas_exceeds_the_pre_registered_line():
+    """The decision is a max over k permutations, so 2 sigma is not a 5% rule.
+
+    Turn 10 measured that for the accuracy instrument (family-wise 15.3-21.4%,
+    not 5%).  What made it survivable was the *direction*: an inflated
+    false-alarm rate makes LEAKAGE easier to declare and LEAKAGE sinks clause
+    2.  This test pins that direction rather than trusting it again --- if the
+    pre-registered line ever stops being the stricter of the two, the primary
+    reading is no longer the conservative one and this goes red.
+    """
+    from scripts.leakage_probe import familywise_sigmas, NOISE_SIGMAS
+    z = familywise_sigmas(10)
+    assert z == pytest.approx(2.5685, abs=1e-3), z
+    assert z > NOISE_SIGMAS, (
+        "the pre-registered 2-sigma line must stay the STRICTER of the two, "
+        f"i.e. err toward declaring LEAKAGE; got familywise={z} <= "
+        f"pre-registered={NOISE_SIGMAS}")
+
+
+def test_familywise_sigmas_is_monotone_in_k_and_reduces_to_one_sided_at_k1():
+    from scripts.leakage_probe import familywise_sigmas
+    assert familywise_sigmas(1) == pytest.approx(1.6449, abs=1e-3)
+    zs = [familywise_sigmas(k) for k in (1, 2, 5, 10, 50)]
+    assert zs == sorted(zs) and len(set(zs)) == len(zs), zs
+
+
+def test_an_unresolvable_task_is_absent_from_cleared_not_present_in_it():
+    """The whole defect this turn attacks, as a unit test.
+
+    Before turn 11, 3917 and 10101 cleared `verdict()` by *never being
+    probed*.  The rule must treat "no instrument can resolve this" as a hole,
+    not as a clearance --- absence of evidence in the flattering direction is
+    the failure mode this repository has hit four times.
+    """
+    from scripts.leakage_probe import cleared_tasks
+    unresolvable = {"task_id": 10101, "verdict_task": "NO_LEAKAGE_DETECTED",
+                    "underpowered_by_fold_count": True,
+                    "verdict_task_rank": "NO_LEAKAGE_DETECTED",
+                    "rank_can_resolve": False}
+    assert cleared_tasks([unresolvable]) == [], (
+        "a task neither instrument can resolve was reported as cleared")
+
+
+def test_the_rank_instrument_can_clear_what_the_accuracy_one_cannot():
+    from scripts.leakage_probe import cleared_tasks
+    rank_only = {"task_id": 3917, "verdict_task": "NO_LEAKAGE_DETECTED",
+                 "underpowered_by_fold_count": True,
+                 "verdict_task_rank": "NO_LEAKAGE_DETECTED",
+                 "rank_can_resolve": True}
+    assert cleared_tasks([rank_only]) == [3917]
+
+
+def test_either_instrument_firing_denies_the_clearance():
+    """Two instruments are two chances to declare LEAKAGE and none to declare
+    cleanliness that was not measured."""
+    from scripts.leakage_probe import cleared_tasks
+    acc_clean_rank_fires = {
+        "task_id": 3, "verdict_task": "NO_LEAKAGE_DETECTED",
+        "underpowered_by_fold_count": False,
+        "verdict_task_rank": "LEAKAGE", "rank_can_resolve": True}
+    assert cleared_tasks([acc_clean_rank_fires]) == [], (
+        "a task whose rank instrument fired was cleared on the accuracy "
+        "instrument alone")
+    rank_clean_acc_fires = {
+        "task_id": 3, "verdict_task": "LEAKAGE",
+        "underpowered_by_fold_count": False,
+        "verdict_task_rank": "NO_LEAKAGE_DETECTED", "rank_can_resolve": True}
+    assert cleared_tasks([rank_clean_acc_fires]) == [], (
+        "a task whose accuracy instrument fired was cleared because the rank "
+        "instrument happened to be quiet")

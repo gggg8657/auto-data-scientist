@@ -231,7 +231,8 @@ def environment() -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baselines", default=str(RUNS / "baselines.json"))
-    ap.add_argument("--role", choices=("confirmatory", "dev", "successor"),
+    ap.add_argument("--role",
+                    choices=("confirmatory", "dev", "successor", "clean"),
                     default="confirmatory",
                     help="confirmatory = the five registered tasks (ranks 1-5) "
                          "-> runs/bench; dev = ranks 6-15, where the agent may "
@@ -267,7 +268,8 @@ def main() -> int:
     dev_tasks = [t["task_id"] for t in
                  sorted(base["tasks"], key=lambda t: t["rank_by_n_runs"])
                  if not t["selected"]][:10]          # ranks 6..15
-    default = registry if args.role == "confirmatory" else dev_tasks
+    default = (registry if args.role in ("confirmatory", "clean")
+               else dev_tasks)
     task_ids = args.tasks if args.tasks else default
     off_registry = bool(args.tasks) and sorted(task_ids) != sorted(default)
 
@@ -291,8 +293,18 @@ def main() -> int:
     # existing files that one-fold record would have stood in for the real run.
     # report.py now excludes partial records from any average, but the cheaper
     # protection is not to mix the two roles in one directory.
+    # `clean`, added 2026-09-11 turn 11. The confirmatory set at runs/bench is
+    # complete and its numbers stand, but its ledger records one operator kill
+    # and one twice-started cell -- (10101, seed 6) -- so under the brief's own
+    # rule ("count any manual intervention as a failure of that run rather than
+    # editing it out") clause 3 reads False on it. This role produces the same
+    # registered measurement with no operator touching any cell. It writes to
+    # its OWN directory precisely so that it cannot overwrite the set it is
+    # meant to be compared against: the old records and the old ledger stay
+    # exactly where they are, and both sets are reported.
     out_dir = (BENCH if args.role == "confirmatory"
-               else RUNS / ("successor" if args.role == "successor" else "dev"))
+               else RUNS / {"successor": "successor",
+                            "clean": "clean"}.get(args.role, "dev"))
     out_dir.mkdir(parents=True, exist_ok=True)
     # Refuse to share an output directory with another runner. See
     # acquire_output_lock: this repository has a ledger recording two

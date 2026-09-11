@@ -23,7 +23,20 @@ because that is where the accounting lives.
 """
 import runpy
 import statistics
+import hashlib
 from pathlib import Path
+
+# The verdict gate now binds each run's `registry_sha256` to the digest of the
+# live runs/baselines.json (codex 2026-09-11 attack #2: runs agreeing with each
+# OTHER is not the same as agreeing with the file whose numbers RESULTS.md
+# prints, so lowering a baseline after seeing results left every provenance
+# check satisfied). A fixture standing in for a real run must carry the real
+# digest, and `n_correct`/`n_predictions` must reproduce `accuracy_pooled`,
+# because the gate recomputes it instead of trusting the field (attack #1).
+_LIVE_REGISTRY_SHA = hashlib.sha256(
+    (Path(__file__).resolve().parents[1] / "runs/baselines.json").read_bytes()
+).hexdigest()
+
 
 REPO = Path(__file__).resolve().parents[1]
 R = runpy.run_path(str(REPO / "scripts/report.py"))
@@ -50,9 +63,11 @@ LEDGER_OK = {"ledger_present": True, "reconciled": True}
 
 
 def _run(tid, seed, acc, fname=None):
-    return {"task_id": tid, "random_state": seed, "accuracy_pooled": acc,
+    return {"task_id": tid, "random_state": seed,
+            "n_predictions": 10000, "n_correct": round(acc * 10000),
+            "accuracy_pooled": round(acc * 10000) / 10000,
             "complete": True, "off_registry": False, "n_interventions": 0,
-            "registry_sha256": "same", "families_chosen": ["hgb"],
+            "registry_sha256": _LIVE_REGISTRY_SHA, "families_chosen": ["hgb"],
             "env": {"ads_sha256": "same", "ads_dirty_vs_head": False},
             "_file": fname or f"task_{tid}_seed{seed}.json"}
 

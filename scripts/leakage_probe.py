@@ -99,6 +99,24 @@ def mannwhitney_auc_threshold(y_true, n_sigmas: float = None) -> float | None:
     return 0.5 + (NOISE_SIGMAS if n_sigmas is None else n_sigmas) * se
 
 
+def familywise_sigmas(k: int, alpha: float = 0.05) -> float:
+    """Sigmas for a **max-over-k** rule to have family-wise false-alarm `alpha`.
+
+    The decision is `max over k permutations > 0.5 + z*se`, not a single
+    comparison, so a nominal 2-sigma line is not a 5% rule.  Turn 10 measured
+    that for the accuracy instrument (family-wise 15.3%-21.4%, not 5%).  For
+    the rank instrument the null is exact and prior-free -- E[AUROC] = 0.5 with
+    `se = sqrt((n1+n2+1)/(12*n1*n2))` -- so this is analytic and needs no runs.
+
+    Treats the k permutations as independent.  They share X_train and X_test
+    and are positively correlated, which *lowers* the true family-wise rate, so
+    this z is an upper bound on what 5% requires and the rule built from it is
+    conservative in the same direction as the pre-registered one.
+    """
+    from scipy.stats import norm
+    return float(norm.ppf((1.0 - alpha) ** (1.0 / k)))
+
+
 def _auc(y_true, scores) -> float | None:
     """AUROC of `scores` against binary `y_true`; None if undefined."""
     import numpy as np
@@ -133,6 +151,37 @@ def flags_leakage(permuted_accs, p_maj: float, n_test: int) -> bool:
     """One-sided: leakage can only *raise* the permuted accuracy.  A permuted
     arm below the majority rate is an overfitting classifier, not evidence."""
     return any(a > detection_threshold(p_maj, n_test) for a in permuted_accs)
+
+
+def cleared_tasks(results: list[dict]) -> list[int]:
+    """Which probed tasks are *cleared*, under either instrument.  Pure, so the
+    rule can be tested without fitting anything -- the same treatment
+    `detection_threshold` and `flags_leakage` got.
+
+    A task is cleared only when an instrument that can resolve a complete leak
+    **there** actually ran and came back clean.  "Not shown contaminated" is
+    not cleanliness: a task no instrument can resolve is absent from this list
+    rather than present in it.
+    """
+    out = []
+    for t in results:
+        # Firing is not symmetric with clearing.  Any instrument that fires
+        # denies the clearance outright; only an instrument that can *resolve*
+        # the task can grant one.  My first version of this rule OR-ed the two
+        # clearances, which cleared a task whose accuracy instrument had
+        # declared LEAKAGE as long as the rank one was quiet --- found by
+        # `test_either_instrument_firing_denies_the_clearance` before this rule
+        # ever ran.
+        if (t.get("verdict_task") == "LEAKAGE"
+                or t.get("verdict_task_rank") == "LEAKAGE"):
+            continue
+        acc_resolves = (t.get("verdict_task") == "NO_LEAKAGE_DETECTED"
+                        and not t.get("underpowered_by_fold_count"))
+        rank_resolves = (t.get("verdict_task_rank") == "NO_LEAKAGE_DETECTED"
+                         and bool(t.get("rank_can_resolve")))
+        if acc_resolves or rank_resolves:
+            out.append(int(t["task_id"]))
+    return sorted(out)
 
 
 def _fit_predict(X_tr, y_tr, X_te, random_state: int, make_agent=None):
@@ -359,6 +408,65 @@ def main() -> int:
             sum(d["permuted"][j]["accuracy"] * d["n_test"] for d in folds) / n_pool
             for j in range(args.k)]
         pooled_leak = max(perm_pool) > p_pool + band_pool
+
+        # ------------------------------------------------ the rank reading
+        # Pooled exactly as the accuracy reading is pooled: per permutation,
+        # combine across folds first, then take the max over permutations.
+        # Averaging the per-fold AUROCs (rather than concatenating scores) is
+        # deliberate -- concatenation would make the statistic sensitive to
+        # calibration drift between folds, which is not leakage.  Under the
+        # null each fold's AUROC has mean 0.5, so the mean over F folds has
+        # mean 0.5 and se = sqrt(sum(se_f^2))/F.
+        rank = None
+        fold_ses, fold_auc_intact = [], []
+        for d in folds:
+            rr = d.get("auc_reading")
+            if rr is None:
+                fold_ses = []
+                break
+            fold_ses.append((rr["threshold"] - 0.5) / NOISE_SIGMAS)
+            fold_auc_intact.append(rr["auc_intact"])
+        if fold_ses:
+            F = len(folds)
+            se_pool = math.sqrt(sum(se * se for se in fold_ses)) / F
+            auc_intact_pool = sum(fold_auc_intact) / F
+            perm_auc_pool = []
+            for j in range(args.k):
+                vals = [d["auc_reading"]["permuted_aucs"][j] for d in folds]
+                perm_auc_pool.append(sum(vals) / F)
+            z_fw = familywise_sigmas(args.k)
+            thr_pre = 0.5 + NOISE_SIGMAS * se_pool
+            thr_fw = 0.5 + z_fw * se_pool
+            gap = auc_intact_pool - 0.5
+            rank = {
+                "statistic": "mean over folds of per-fold AUROC",
+                "null_value": 0.5,
+                "null_is_prior_free": True,
+                "se_pooled": se_pool,
+                "auc_intact_pooled": auc_intact_pool,
+                "permuted_auc_pooled": perm_auc_pool,
+                "permuted_auc_pooled_max": max(perm_auc_pool),
+                "permuted_auc_pooled_mean": sum(perm_auc_pool) / len(perm_auc_pool),
+                "sigmas_pre_registered": NOISE_SIGMAS,
+                "sigmas_familywise_5pct": z_fw,
+                "threshold_pre_registered": thr_pre,
+                "threshold_familywise_5pct": thr_fw,
+                "gap": gap,
+                # The quantity that decides whether this instrument can see a
+                # complete leak here at all.  <1 means it can.
+                "min_resolvable_leak_fraction": (
+                    None if gap <= 0 else (thr_pre - 0.5) / gap),
+                "detects_complete_leakage": bool(gap > thr_pre - 0.5),
+                # Primary is the stricter of the two, same call turn 10 made
+                # for the accuracy rule: the pre-registered line errs toward
+                # declaring LEAKAGE, and LEAKAGE sinks the clause.
+                "verdict_pre_registered": (
+                    "LEAKAGE" if max(perm_auc_pool) > thr_pre
+                    else "NO_LEAKAGE_DETECTED"),
+                "verdict_familywise_5pct": (
+                    "LEAKAGE" if max(perm_auc_pool) > thr_fw
+                    else "NO_LEAKAGE_DETECTED"),
+            }
         results.append({
             "task_id": int(tid),
             "dataset_name": task.get_dataset().name,
@@ -377,7 +485,14 @@ def main() -> int:
                 "permuted_max": max(perm_pool),
                 "permuted_mean": sum(perm_pool) / len(perm_pool),
             },
+            "rank_reading": rank,
             "verdict_task": "LEAKAGE" if pooled_leak else "NO_LEAKAGE_DETECTED",
+            # A task the accuracy instrument cannot resolve is decided by the
+            # rank instrument when the rank instrument can resolve it.  This is
+            # strictly stricter: those tasks previously cleared the gate by
+            # never being measured, so this can only sink clause 2.
+            "verdict_task_rank": (rank or {}).get("verdict_pre_registered"),
+            "rank_can_resolve": bool((rank or {}).get("detects_complete_leakage")),
             "n_folds_flagging_individually": sum(
                 d["verdict_fold"] == "LEAKAGE" for d in folds),
         })
@@ -386,7 +501,11 @@ def main() -> int:
               f"{p_pool + band_pool:.4f} | "
               f"{results[-1]['verdict_task']}", flush=True)
 
-    leak = [t for t in results if t["verdict_task"] == "LEAKAGE"]
+    # Either instrument firing is a leak.  Two instruments means two chances
+    # to declare LEAKAGE and none to declare cleanliness that was not measured.
+    leak = [t for t in results
+            if t["verdict_task"] == "LEAKAGE"
+            or t.get("verdict_task_rank") == "LEAKAGE"]
     underpowered = [t["task_id"] for t in results
                     if t["underpowered_by_fold_count"]]
     record = {
@@ -413,9 +532,38 @@ def main() -> int:
         "tasks_this_instrument_cannot_probe": sorted(
             power.get("tasks_unpowered_pooled") or []),
         "verdict": "LEAKAGE" if leak else "NO_LEAKAGE_DETECTED",
-        "tasks_cleared": sorted(t["task_id"] for t in results
-                                if t["verdict_task"] == "NO_LEAKAGE_DETECTED"
-                                and not t["underpowered_by_fold_count"]),
+        # A task is cleared when an instrument that can *resolve a complete
+        # leak there* ran on it and came back clean.  The accuracy instrument
+        # qualifies when the power file admits the task (its fold requirement
+        # is `underpowered_by_fold_count`); the rank instrument qualifies when
+        # its own pooled gap exceeds its own band (`rank_can_resolve`), which
+        # is measured on this very run rather than assumed.
+        "tasks_cleared": cleared_tasks(results),
+        "tasks_cleared_by_rank_instrument_only": sorted(
+            t["task_id"] for t in results
+            if t["underpowered_by_fold_count"]
+            and t.get("verdict_task_rank") == "NO_LEAKAGE_DETECTED"
+            and t.get("rank_can_resolve")),
+        "rank_instrument": {
+            "why": ("under label-independence E[AUROC] = 0.5 whatever the "
+                    "class prior is, while E[accuracy] is the majority rate. "
+                    "The accuracy instrument divides by `accuracy - majority "
+                    "rate`, which is the same quantity as the prior/stump "
+                    "margin, so it is blind exactly where the KPI is weakest "
+                    "(runs/leakage_power.json: phi_min 1.112 kc1, 4.051 "
+                    "blood-transfusion). The rank statistic has no such "
+                    "denominator."),
+            "registered_in": ("critique_log.md, 2026-09-11 turn 11, with its "
+                              "prediction, before this script ran on 3917 or "
+                              "10101"),
+            "direction": ("strictly stricter: 3917 and 10101 previously "
+                          "cleared verdict() by never being probed, so this "
+                          "instrument can only sink clause 2, never lift it"),
+            "positive_control": ("tests/test_no_leakage.py requires this rule "
+                                 "to fire on a deliberate label-reading agent; "
+                                 "a rule never shown to detect is not evidence "
+                                 "of absence"),
+        },
         "scope": (
             "This measures the fold(s) and task probed, nothing wider.  It "
             "prices the reachability of the labelled frame through the pandas "
