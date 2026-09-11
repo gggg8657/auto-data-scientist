@@ -39,10 +39,70 @@ One unattended run clearing all five: **8 of 8 complete seeds** (8 of 8 against 
 **Before this turn:** the pipeline and the pre-registered target existed and
 there was **no accuracy number at all** — clauses 2 and 3 read
 `[not measured]`, which was the honest state and was reported as such.
-**Now:** the first accuracy numbers exist, the project's own gate withdrew the
-first `PASS` it computed, and a cheap check nobody had run showed that **most
-of the KPI's own thresholds cannot distinguish competence from triviality.**
-Read the next section before the numbers.
+**Now:** clauses 1 and 2 are met on the full 8-seed set, and **clause 3 is
+not** — for a reason that is my fault rather than the agent's, and that is
+being fixed by a run in flight. A cheap check nobody had run also showed that
+**most of the KPI's own thresholds cannot distinguish competence from
+triviality.** Read the next two sections before the numbers.
+
+## What changed most recently (2026-09-11)
+
+Two things, one of which cost the PASS.
+
+**1. Two of the five tasks had been cleared of label leakage by never being
+measured.** The leakage probe's sensitivity is `band / gap`, where `gap =
+accuracy − majority rate` — and that is the *same quantity* as the margin over
+a trivial baseline. So the probe was blind exactly where the KPI is weakest. On
+blood-transfusion the measured gap is **exactly 0.0000**: an agent handed the
+true test labels and an agent predicting the commonest class are the same
+number to that instrument.
+
+Fixed by adding a second instrument whose null does not depend on the class
+prior — under label-independence E[AUROC] = 0.5 whatever the prior is. Both
+tasks came back **NO_LEAKAGE_DETECTED**, under the pre-registered 2σ line and
+under the family-wise 5% line. Clause 2 is now backed by **five tasks probed,
+not three**. The hypothesis, the prediction and the protocol amendment were all
+written *before* the probe ran; it was admissible to add a gate with a PASS
+already on screen only because it was strictly one-directional — those tasks
+cleared by being unmeasured, so measuring them could only sink the clause.
+
+**2. `codex`, asked for the strongest reason the PASS was not real, found five
+gates that failed open. All five were real.** The sharpest: run records were
+required to agree with *each other* about which baseline registry they used,
+but never to agree with `runs/baselines.json` — **the file whose numbers the
+report prints**. Lowering a baseline after seeing the accuracies would have
+left every provenance check green. (The digests do agree; the door was open and
+happened to be shut.) Also: `accuracy_pooled` was averaged verbatim and never
+recomputed from the record's own `n_correct`/`n_predictions`; leakage coverage
+never had to account for all five registered tasks; an absent dirty-tree flag
+read as a clean tree.
+
+**And the one that cost clause 3:** `RESULTS.md` printed
+`n_interventions_total = 0` **three lines above** a ledger recording one
+operator kill and one twice-started cell. Nothing in the codebase ever calls
+`intervene()`, so that zero meant *"nothing was logged"*, not *"nothing
+happened"*. Clause 3 now has two readings and the strict one binds:
+
+| reading | protocol | value |
+|---|---|---|
+| conventional | the agent picked preprocessing, model and validation with no human choosing any of them | **True** |
+| strict (binding) | no operator killed, restarted or otherwise touched any cell | **False** |
+
+`PASS` → `NOT MET as measured`, on identical runs, no accuracy changed.
+
+**The offending cell is `(10101, seed 6)`, and the operator was me** — I killed
+the run and restarted it with more threads when folds went from 12–14 s to
+495–560 s. That is a defect in my setup, not a finding that the agent needs a
+human, so it is being attacked rather than declared: a `clean` role reproduces
+the identical registered measurement into `runs/clean/` without touching
+`runs/bench/`, and both sets will be reported.
+
+**Before that run lands, the question it raises is already answered.** Dropping
+the touched cell leaves seven untouched seeds on blood-transfusion, and the
+task is still called (7/7, *p* = 0.0078; dropping a seed genuinely costs power,
+since *p* floors at 1/2ⁿ). **No per-task verdict depends on an
+operator-touched cell** — so the clause-3 failure is a disclosure about how the
+measurement was produced, not a hole in the measurement itself.
 
 ---
 
@@ -372,6 +432,31 @@ weights), *(b)* reclaim `~/.ollama` (278G, no track in my brief uses it),
 **Recommendation: (b) then (c).** Not done unattended: hard to reverse, and not
 mine.
 
+**6. Which reading of "무개입" is the one being claimed?** This decides whether
+the project reads `PASS` or `NOT MET`, and it is a definitional call, not a
+measurement.
+
+- *(a)* **Strict — no operator touched any cell.** *Currently binding, and what
+  the brief's own words require* ("count any manual intervention as a failure
+  of that run rather than editing it out"). Under it the project is `NOT MET`
+  until `ads-clean` finishes, then `PASS` if it finishes untouched.
+- *(b)* **Conventional — the agent chose preprocessing, model and validation
+  with no human choosing any of them.** Already `True`, and it is what the
+  phrase means in most of the AutoML literature: killing a compute job and
+  restarting it with more threads changes no modelling decision.
+- Both are computed and reported side by side
+  (`clause3_conventional_agent_chose_everything`,
+  `clause3_strict_no_operator_touched_any_cell`), so this is a choice about
+  which to headline, not about what to measure. **My recommendation: keep (a)
+  binding and let `ads-clean` settle it.** A clause that can be met by a run
+  nobody interrupted should be met that way rather than by argument, and the
+  clean run costs only wall-clock on an idle box. If it finishes untouched the
+  question is moot; if it gets interrupted again, that is evidence about the
+  setup worth having.
+- Note what does *not* turn on this: **no per-task clause-2 verdict depends on
+  the touched cell** (blood-transfusion is still called 7/7, *p* = 0.0078
+  without it), so the accuracies stand either way.
+
 **5. Should the agent be isolated from the evaluator's memory?**
 `ads/evaluate.py` holds the full labelled frame in the process that calls the
 agent. Nothing in `ads/` touches it and the code is short enough to review, but
@@ -382,69 +467,44 @@ than trusted.
 
 ---
 
-## Still running, and how to check it — plus why nothing is pushed
+## Still running, and how to check it
 
-**Nothing has been pushed and that is deliberate.** `RESULTS.md` in git was
-last written before any accuracy existed, so it reads `[not measured]` while 31
-real run records sit tracked in `runs/bench/`. It cannot be regenerated while a
-benchmark is alive — `report.py` deliberately redirects to
-`runs/interim_report.md` so a mid-run document, whose ledger cannot reconcile,
-is never committed as the verdict. So: **finish the run, regenerate, run the
-suite, then push.** CI would catch the stale document anyway
-(`ADS_REQUIRE_FRESH_RESULTS=1`).
+**`ads-clean` — a verdict set no operator has touched.** This is the only thing
+blocking clause 3. It reproduces the *identical* registered measurement (five
+tasks × seeds 0–7) into `runs/clean/`, writing to its own directory precisely
+so it cannot overwrite the set it will be compared against. `runs/bench/` and
+its ledger stay exactly where they are and **both sets get reported** — this is
+a second measurement, not a replacement. Launched at `ADS_N_JOBS=8` from the
+start, which is the setting that made fold times stable (74–82 s) last time, so
+there should be no reason to touch it. **If it needs to be killed, clause 3
+fails again and that is the correct outcome** — do not restart a cell and call
+the result untouched.
 
 ```bash
 cd ~/Documents/workspace/auto-data-scientist
-tmux ls | grep ads-                              # ads-verdict, ads-successor
-tail -3 logs/bench_verdict_capped.log            # primary; ends with EXIT=0
-tail -3 logs/bench_successor.log                 # successor; chained after it
-ls runs/bench/*.json      | wc -l                # 40 when the primary is done
-ls runs/successor/*.json  | wc -l                # 15 when the successor is done
-cat runs/interim_report.md                       # the live view meanwhile
+tmux ls | grep ads-                       # ads-clean
+tail -3 logs/bench_clean.log
+ls runs/clean/*.json | wc -l              # 40 when done
+cat runs/interim_report.md                # the live view meanwhile
+.venv/bin/python -m pytest tests/ -q      # 131 tests
 ```
 
-**`ads-verdict` — primary 8-seed confirmatory run.** Still alive after 4h30m.
-Do not hand-type its progress into this file; the commands above print it
-(`ls runs/bench/*.json | wc -l`, 40 when done, and the per-cell matrix with
-`for t in 31 3 3913 3917 10101; do ...`). As of the last commit two cells
-remained: tasks 3 and 3917 at seed 7. Restarted once with
-`ADS_N_JOBS=8` after fold times went 12–14 s → 495–560 s mid-task; existing
-records are skipped, so it resumed exactly where it stopped and no measurement
-was lost. Under the cap the same folds run 74–82 s. **Reported as confounded,
-not as a fix:** box load moved at the same time and four other python processes
-hold 1300–2850% CPU each.
+**Why `RESULTS.md` currently lags.** `report.py` refuses to regenerate it while
+a benchmark is alive and redirects to `runs/interim_report.md`, so a mid-run
+document — whose ledger cannot reconcile — is never committed as the verdict.
+That is working as intended and is why the newest section (*"Does clause 2 rest
+on the cell an operator touched?"*) is in the interim file rather than in
+`RESULTS.md`. When `ads-clean` finishes: **regenerate, run the suite, then
+push.** CI catches a stale document anyway (`ADS_REQUIRE_FRESH_RESULTS=1`).
 
-**`ads-successor` — the labelled second measurement.** A 3-seed screen (screen,
-not verdict) of the *unmodified* agent on the successor five — `kr-vs-kp`,
-`qsar-biodeg`, `wdbc`, `diabetes`, `phoneme` — whose baselines were frozen with
-the original five before any run existed. Writes to `runs/successor/`, a
-directory added this turn specifically so it cannot share space with debug
-runs. **Its selection criterion is known to be weak** (see the correction
-above): the untuned depth-3 tree clears 3 of those 5, so only `kr-vs-kp` and
-`qsar-biodeg` discriminate, and the report carries the stump's verdict per row
-so a reader can discount the other three.
+**Expect this to take roughly 4–5 hours** from 03:44. The slow tasks are
+`kr-vs-kp` and `kc1` (~5400 s and ~4000 s per seed); `credit-g`,
+`blood-transfusion` and `kc2` are minutes each.
 
-**When the primary finishes**, and the leakage gate added in turn 9 means the
-probe is now part of this sequence rather than optional — clause 2 reads
-`RUNNING` until it has run:
-
-```bash
-.venv/bin/python scripts/leakage_power.py        # what a leak would have to be
-.venv/bin/python scripts/leakage_calibration.py  # the rule's false-alarm rate
-.venv/bin/python scripts/leakage_probe.py        # THE GATE: tasks 3, 31, 3913
-.venv/bin/python scripts/auc_power.py            # the rank reading's power
-.venv/bin/python scripts/report.py               # RESULTS.md + this headline
-.venv/bin/python scripts/negative_control.py     # controls, if folds changed
-for f in tests/test_*.py; do python "$f"; done
-git add -A && git commit && git push origin main # only if green
-```
-
-`leakage_probe.py` takes its task list and fold count from
-`runs/leakage_power.json` rather than from a flag, and **refuses** the two tasks
-it cannot resolve rather than producing a reassuring record for them. It needs
-tasks 3 and 31 at one fold and 3913 at six, so budget roughly 8 fold-probes at
-11 fits each. `verdict()` will not clear clause 2 until every task in that map
-appears in the probe's `tasks_cleared`, with a matching `env.ads_sha256`.
+**What a clean finish does and does not buy.** It makes clause 3's strict
+reading reachable — nothing more. It does not touch the falsifiability finding
+two sections up, which is the more important result and is not fixable by
+re-running anything.
 
 ## Where the numbers come from
 
