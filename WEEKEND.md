@@ -447,15 +447,48 @@ measurement.
 - Both are computed and reported side by side
   (`clause3_conventional_agent_chose_everything`,
   `clause3_strict_no_operator_touched_any_cell`), so this is a choice about
-  which to headline, not about what to measure. **My recommendation: keep (a)
-  binding and let `ads-clean` settle it.** A clause that can be met by a run
-  nobody interrupted should be met that way rather than by argument, and the
-  clean run costs only wall-clock on an idle box. If it finishes untouched the
-  question is moot; if it gets interrupted again, that is evidence about the
-  setup worth having.
+  which to headline, not about what to measure. **Recommendation, amended
+  2026-09-11 04:55: keep (a) binding, but `ads-clean` will not settle it this
+  weekend.** The premise of the earlier recommendation — "the clean run costs
+  only wall-clock on an idle box" — is **withdrawn**: the box is not idle, and
+  the measurement is in *Still running* below. Another track is holding ~116 of
+  192 cores in CPU threads while its leased GPU reads 19%/0%, one task-3 fold
+  went 25–40 s → 1341 s, and the full 40-cell set does not finish from here.
+  The run is being left alone rather than killed, because killing a cell
+  mid-flight recreates the very defect the clean set exists to avoid.
+  So: **(a) stays binding and reads NOT MET**, with 3/40 cells reproduced
+  identically on the whole record. That is the honest state, and it is a fact
+  about this box's CPU contention, not about the agent.
 - Note what does *not* turn on this: **no per-task clause-2 verdict depends on
   the touched cell** (blood-transfusion is still called 7/7, *p* = 0.0078
   without it), so the accuracies stand either way.
+
+**7. Another track is holding ~116 of 192 cores on the CPU while its leased
+GPU idles, and it is the only thing blocking clause 3.**
+Measured 2026-09-11 04:55 UTC: load average **403.59** on 192 cores; five
+`pde-neural-operator/scripts/train.py --device cuda:0` processes at **162
+threads each**, 2280–2398% CPU; GPU 0 at **19%**, GPU 1 at **0%**. This
+repository's runner was at **26.6 cores**, inside its 48-core lease. Effect
+here: one `kr-vs-kp` fold went from 25–40 s to **1341 s**, and `ads-clean`
+stopped being able to finish. The same pathology is described in this track's
+own brief as measured on this host at 04:34 UTC, so it is a known, recurring
+condition rather than a one-off.
+I did not touch it: another track's repository, tmux session and GPU lease are
+out of bounds under my boundaries, and that rule is worth more than this clause.
+- *(a)* **Do nothing; accept clause 3 strict as NOT MET.** Costs the clause,
+  costs nothing else — the accuracies are unaffected (they are already measured
+  and reproduce identically on 3/3 re-run cells).
+- *(b)* **Have the owning track export `OMP_NUM_THREADS` and call
+  `torch.set_num_threads()`**, which its own brief already requires. If those
+  jobs are genuinely GPU-leased, 162 CPU threads each is a bug on their side
+  independent of my clause, and the near-zero GPU utilisation says the work is
+  not where it was meant to be. **My recommendation** — it is the fix their own
+  brief prescribes, and it would let `ads-clean` finish unattended.
+- *(c)* Give this track a short exclusive window on the box. Cleanest and most
+  disruptive; only worth it if clause 3 strict is wanted this weekend
+  specifically.
+- What does **not** work: capping my own threads. At 26.6 of 48 cores I am not
+  the cause, and a 40× slowdown I am not producing cannot be undone from here.
 
 **5. Should the agent be isolated from the evaluator's memory?**
 `ads/evaluate.py` holds the full labelled frame in the process that calls the
@@ -497,9 +530,41 @@ on the cell an operator touched?"*) is in the interim file rather than in
 `RESULTS.md`. When `ads-clean` finishes: **regenerate, run the suite, then
 push.** CI catches a stale document anyway (`ADS_REQUIRE_FRESH_RESULTS=1`).
 
-**Expect this to take roughly 4–5 hours** from 03:44. The slow tasks are
-`kr-vs-kp` and `kc1` (~5400 s and ~4000 s per seed); `credit-g`,
-`blood-transfusion` and `kc2` are minutes each.
+**That 4–5 hour estimate was wrong and is withdrawn (2026-09-11 04:55).**
+Measured: the first three cells finished on schedule (295 s, 132 s, 136 s —
+0.99–1.13× their `runs/bench` counterparts), then task 3 fold times went
+25–40 s for folds 0–6, **73.5 s at fold 7, 1341 s at fold 8**, fold 9 still
+running 35 minutes later. A sustained ~40×, not a transient.
+
+**The cause is not in this repository.** At 04:55 UTC: load average **403.59**
+on **192** cores, with **five** `pde-neural-operator/scripts/train.py
+--device cuda:0` processes at **162 threads each** and 2280–2398% CPU — about
+**116 cores** — while GPU 0 read **19%** and GPU 1 **0%**. My own runner was at
+**26.6 cores** sampled from `/proc`, inside its 48-core lease. That is another
+track's repository, tmux session and GPU lease, so it does not get touched, and
+capping my own threads cannot recover a 40× I am not causing.
+
+**So `ads-clean` will not finish this weekend, and clause 3 strict stays NOT
+MET.** It is not UNREACHABLE: the blocker is another track's CPU use, not
+anything about this agent.
+
+**Do not kill it to restart it faster.** Killing mid-cell makes `task_3_seed0` a
+cell started twice — exactly the `cells_started_more_than_once` condition that
+reads clause 3 strict False on `runs/bench` in the first place. A clean set
+produced by killing a cell is not a clean set.
+
+**What the 3 finished cells already bought.** `runs/clean_reproduction.json`
+(from `scripts/clean_reproduction.py`, no model fitting): **3 of 3 identical on
+the whole record** — every fold accuracy, model family, tournament and
+preprocessing profile, not just the pooled score. The agent did not merely land
+on the same number twice, it made the same decisions twice. Coverage is 3/40, so
+`all_cells_reproduced` is **False** and this settles nothing on its own.
+
+Careful about one reading the file invites: the seconds ratios near 1.0 mean
+those cells met a *similar* contention regime. They are **not** evidence that
+accuracy is invariant to thread count or load — `[not measured]`, and no record
+here can tell you, because `env` carries `cpu_count` but no thread regime at
+all.
 
 **What a clean finish does and does not buy.** It makes clause 3's strict
 reading reachable — nothing more. It does not touch the falsifiability finding
