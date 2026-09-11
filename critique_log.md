@@ -2329,3 +2329,114 @@ not on the agent's skill: if the rescue were a noise artefact, `phi_min` under
 the rank reading would track test-set size, and it does not — it tracks the
 prior/skill gap, which is the quantity the accuracy reading divides by and the
 rank reading does not.
+
+### Result: the prediction held, and the instrument had power rather than merely being quiet
+
+`runs/leakage_probe_rank.json`, fold 0, k=10, both tasks:
+
+| task | acc gap | acc band | rank gap | rank band | rank phi_min | permuted AUROC max | verdict |
+|---|---|---|---|---|---|---|---|
+| 3917 kc1 | 0.0190 | 0.0494 | 0.3489 | 0.1111 | 0.318 | 0.5000 | NO_LEAKAGE_DETECTED |
+| 10101 blood-transfusion | **0.0000** | 0.0986 | 0.2812 | 0.1571 | 0.559 | 0.5000 | NO_LEAKAGE_DETECTED |
+
+Clean under the pre-registered 2-sigma line and under the family-wise 5% line
+(`familywise_sigmas(10) = 2.5685`, so the pre-registered line remains the
+stricter and stays primary). Clause 2 is now backed by **five tasks probed,
+not three**.
+
+**The blood-transfusion row is the finding.** The accuracy instrument's gap
+there is exactly 0.0000 — the honest agent scores precisely the majority rate,
+so that instrument had *no dynamic range whatsoever*, not merely little. An
+agent handed the true test labels and an agent predicting the commonest class
+are the same number to it. This is the falsifiability floor for the third time,
+now in its sharpest form: the quantity the accuracy instrument divides by is
+the same quantity the KPI's margin is made of, so on this benchmark the tasks
+where the claim is hardest to falsify are exactly the tasks where a broken
+implementation is hardest to catch.
+
+**The caveat I have to state against my own result.** The permuted AUROC max is
+exactly 0.5000 on both tasks, and it is 0.5000 because the permuted-label agent
+selects `dummy` and emits a constant score, whose AUROC is 0.5 by construction.
+So the clean reading is *not* self-evidently informative — a rule that always
+returns 0.5 would return 0.5 here too. What makes it evidence is the positive
+control and nothing else: a leaking agent would not collapse to `dummy`, and
+`tests/test_no_leakage.py::test_the_rank_reading_fires_on_the_same_leak`
+requires this rule to fire on one that reads the held-out labels. codex's turn
+10 objection — "an invariant result could simply mean the intervention never
+reached the alleged channel" — is the whole reason this number counts, and
+without that control I would have been reporting a tautology as a clearance.
+
+## 2026-09-11, turn 11b — codex on the PASS: five fail-open gates, all real
+
+Asked for the strongest reason the PASS is not real, with file:line, and told
+not to praise anything. Five findings, **all five real, all five fixed**, each
+with a regression test that goes red on *absent* evidence rather than only on
+wrong values. The common shape — **absence coerced into a passing value** —
+is now the fourth distinct instance this weekend, after etch-operator-twin's
+partial checkpoints, this repo's joint-event table, and its `n_interventions`
+default.
+
+1. **Critical, and it is the sharpest thing anyone has said about this repo.**
+   `verdict()` required `len(registry_sha) <= 1` — that the runs agree with
+   *each other* about which registry they used. It never compared that digest
+   to `runs/baselines.json`, the file whose numbers RESULTS.md actually prints.
+   **Lowering a baseline after seeing the accuracies left every provenance
+   check green and moved every threshold.** That is precisely the route the
+   brief names as the way this KPI gets faked, and I had built five layers of
+   machinery around it without closing it. The digests do agree
+   (`6731b733...`), so no number here is affected — the gate was open and the
+   door happened to be shut. Now bound to the live file.
+2. **Critical.** `ours` averaged each record's `accuracy_pooled` verbatim;
+   nothing recomputed it. Editing that one number in a finished run file moves
+   the mean and the sign test while `reconcile_ledger` still reconciles,
+   because reconciliation compares task/seed membership and event counts, not
+   scores. Every record already carried `n_correct`, `n_predictions` and
+   `per_fold` weights, so the score was checkable for free and never checked.
+   All 40 records satisfy both identities to 1e-12; again the gate was open,
+   not the data wrong.
+3. **High, and it cost a clause.** RESULTS.md printed `n_interventions_total =
+   0` **three lines above** a ledger recording `n_killed_events: 1` and
+   `cells_started_more_than_once: [[10101, 6, 2]]`. `n_interventions` counts
+   calls to `DecisionLog.intervene()`, and nothing in `ads/` or `scripts/`
+   ever calls it, so the zero meant "nothing was logged", not "nothing
+   happened". I had been printing a contradiction in the flattering direction
+   for three turns and reading past it.
+4. **High.** The leakage gate's `probeable` set came only from whatever keys
+   the power record carried, and nothing required it to account for the five
+   *registered* tasks. An empty coverage map yields an empty probeable set, so
+   `probeable_unprobed` is trivially empty and a clean probe clears the gate
+   having measured nothing at all.
+5. **Medium.** `ads_dirty_vs_head` was flagged only when truthy, so deleting
+   the field made a dirty tree read as clean.
+
+**What #3 does to the claim, and why I am not routing around it.** The brief's
+rule is explicit: *count any manual intervention as a failure of that run
+rather than editing it out.* Amendment 9 makes clause 3 require that no cell
+was touched by an operator, derived from the ledger rather than from a counter
+nobody increments, and reports both readings:
+
+| reading | protocol | value |
+|---|---|---|
+| conventional | the agent picked preprocessing, model and validation with no human choosing any of them | **True** |
+| strict (binding) | no operator killed, restarted or otherwise touched any cell | **False** |
+
+**status PASS → NOT MET as measured, on identical runs, no accuracy changed.**
+I wrote that gate knowing it would fail, which is the allowed direction; what
+is forbidden is loosening one after seeing it fail.
+
+The offending cell is `(10101, seed 6)` and the intervention was mine — I
+killed the run at turn 8 and restarted it at `ADS_N_JOBS=8` after folds went
+12-14s to 495-560s. **That is a defect in my own setup, not a finding that the
+agent needs a human**, so it gets attacked (rung 3) rather than declared. A
+`clean` role now reproduces the identical registered measurement into
+`runs/clean/`, writing to its own directory precisely so it cannot overwrite
+the set it will be compared against; `runs/bench/` and its ledger stay exactly
+where they are and **both sets will be reported**. Running now in tmux
+`ads-clean`, 2/40 cells at the time of writing.
+
+**What I have not yet measured, and should.** Whether clause 2's verdict
+depends on the tainted cell at all. Dropping `(10101, seed 6)` leaves seven
+clean seeds on that task, and the exact sign test at n=7 has a floor of
+1/128 = 0.0078 < 0.05, so the task can still be called without it. If that
+holds, the disclosure is a disclosure rather than a hole. Registered here
+before it is run.

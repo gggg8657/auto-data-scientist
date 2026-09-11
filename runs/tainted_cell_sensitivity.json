@@ -1,0 +1,163 @@
+{
+  "purpose": "whether clause 2's per-task verdicts rest on any cell an operator touched",
+  "registered_in": "critique_log.md, 2026-09-11 turn 11b, before this script was run",
+  "no_new_runs": true,
+  "operator_touched_cells": [
+    [
+      10101,
+      6
+    ]
+  ],
+  "protocol": "the pre-registered one-sided exact sign test of H0: median <= 0.95 x median_run, alpha = 0.05, ties counted as non-wins; identical to the clause-2 gate, applied to a strictly smaller seed set",
+  "floor_note": "p has a floor of 1/2^n, so dropping a seed costs power: n=8 floors at 0.0039 and n=7 at 0.0078, both under alpha",
+  "tasks": [
+    {
+      "task_id": 3,
+      "dataset_name": "kr-vs-kp",
+      "threshold_primary": 0.9119524999999999,
+      "seeds_all": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "seeds_dropped": [],
+      "with_every_seed": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "without_touched_cells": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "verdict_depends_on_a_touched_cell": false
+    },
+    {
+      "task_id": 31,
+      "dataset_name": "credit-g",
+      "threshold_primary": 0.68875,
+      "seeds_all": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "seeds_dropped": [],
+      "with_every_seed": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "without_touched_cells": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "verdict_depends_on_a_touched_cell": false
+    },
+    {
+      "task_id": 3913,
+      "dataset_name": "kc2",
+      "threshold_primary": 0.786206896551724,
+      "seeds_all": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "seeds_dropped": [],
+      "with_every_seed": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "without_touched_cells": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "verdict_depends_on_a_touched_cell": false
+    },
+    {
+      "task_id": 3917,
+      "dataset_name": "kc1",
+      "threshold_primary": 0.8090086,
+      "seeds_all": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "seeds_dropped": [],
+      "with_every_seed": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "without_touched_cells": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "verdict_depends_on_a_touched_cell": false
+    },
+    {
+      "task_id": 10101,
+      "dataset_name": "blood-transfusion-service-center",
+      "threshold_primary": 0.7252005499999999,
+      "seeds_all": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "seeds_dropped": [
+        6
+      ],
+      "with_every_seed": {
+        "n": 8,
+        "k": 8,
+        "p": 0.00390625,
+        "called": true
+      },
+      "without_touched_cells": {
+        "n": 7,
+        "k": 7,
+        "p": 0.0078125,
+        "called": true
+      },
+      "verdict_depends_on_a_touched_cell": false
+    }
+  ],
+  "any_verdict_depends_on_a_touched_cell": false
+}

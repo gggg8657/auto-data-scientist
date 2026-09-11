@@ -1373,6 +1373,54 @@ def main() -> int:
             f"{ts.get('k', NM)}/{ts.get('n', NM)}",
             f"{ts['p']:.4f}" if ts else NM,
             "CALLED" if (es or {}).get("called") else "not called"])
+    # ------------------------------------------------------------------
+    # Does clause 2 rest on a cell an operator touched?  Registered in
+    # critique_log.md turn 11b before it was computed, and reported whichever
+    # way it came out.
+    tcs = read_json(REPO / "runs/tainted_cell_sensitivity.json")
+    if tcs:
+        hdr_t = ["task", "dataset", "operator-touched seeds dropped",
+                 "k/n (all seeds)", "p", "verdict",
+                 "k/n (without them)", "p", "verdict",
+                 "verdict depends on a touched cell?"]
+        rows_t = []
+        for t in tcs["tasks"]:
+            a, b = t["with_every_seed"], t["without_touched_cells"]
+            rows_t.append([
+                str(t["task_id"]), t["dataset_name"],
+                str(t["seeds_dropped"]) if t["seeds_dropped"] else "none",
+                f"{a['k']}/{a['n']}", f"{a['p']:.4f}",
+                "CALLED" if a["called"] else "not called",
+                f"{b['k']}/{b['n']}", f"{b['p']:.4f}",
+                "CALLED" if b["called"] else "not called",
+                "**YES**" if t["verdict_depends_on_a_touched_cell"] else "no"])
+        doc += [
+            "## Does clause 2 rest on the cell an operator touched?", "",
+            "Clause 3 fails under its strict reading because one cell — "
+            f"`{tcs['operator_touched_cells']}`, task 10101 seed 6 — was "
+            "killed and restarted by an operator (amendment 9). The question "
+            "that follows is whether the clause-2 verdict *depends* on that "
+            "record. If the task can still be called without it, the "
+            "intervention is a disclosure; if it cannot, clause 2 is standing "
+            "on a record the protocol says should have been counted as a "
+            "failed run.", "",
+            "No new runs: this is the same pre-registered exact sign test, at "
+            f"the same alpha = {ALPHA}, on a strictly smaller seed set. "
+            "Dropping a seed **costs** power — p floors at 1/2^n, so n=8 "
+            "floors at 0.0039 and n=7 at 0.0078 — which is why this is a real "
+            "test and not a formality.", "",
+            table(rows_t, hdr_t), "",
+            ("**No per-task verdict depends on an operator-touched cell.** "
+             "Blood-transfusion is still called on its seven untouched seeds "
+             "(7/7, p = 0.0078). So the clause-3 failure is a disclosure "
+             "about how the measurement was produced, not a hole in the "
+             "measurement itself."
+             if not tcs["any_verdict_depends_on_a_touched_cell"] else
+             "**At least one per-task verdict depends on a cell an operator "
+             "touched.** That verdict is withdrawn: the protocol counts a "
+             "manually interrupted cell as a failed run, and a clause may not "
+             "rest on one."), "",
+        ]
     doc += [
         "## The gate: the pre-registered exact test, per task", "",
         "A task is **called** only when the one-sided exact sign test of "
