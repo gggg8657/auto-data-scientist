@@ -441,14 +441,6 @@ def test_the_weekend_headline_is_suppressed_mid_run_but_the_power_block_is_not()
         "source is not the in-flight records")
 
 
-if __name__ == "__main__":
-    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
-    for f in fns:
-        print(f"{f.__name__} ...")
-        f()
-    print(f"\n{len(fns)} tests passed")
-
-
 # ---------------------------------------------------------------------------
 # 2026-09-11 turn 11: two leakage records, one gate.
 # ---------------------------------------------------------------------------
@@ -598,3 +590,11 @@ def test_an_operator_touched_cell_sinks_clause_3_but_not_the_agent_reading():
     assert v["clause3_strict_no_operator_touched_any_cell"] is False
     assert v["clauses"]["3_end_to_end_no_intervention"] is False
     assert v["operator_touched_cells"] == [[10101, 6]]
+
+
+if __name__ == "__main__":
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
+    for f in fns:
+        print(f"{f.__name__} ...")
+        f()
+    print(f"\n{len(fns)} tests passed")

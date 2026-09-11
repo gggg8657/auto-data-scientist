@@ -360,28 +360,6 @@ def test_the_decision_rule_is_one_sided_and_uses_the_majority_rate():
     assert detection_threshold(p_maj, 10 * n) - p_maj < (thr - p_maj) / 3
 
 
-if __name__ == "__main__":
-    # CI runs each test file as `python <file>`, so a file with no __main__
-    # block is a file CI reports green after running zero assertions. That
-    # exact shape of omission is already in this repo's history twice, and
-    # `test_every_test_file_is_actually_executable_by_ci` in
-    # tests/test_registry_is_committed.py now asserts every file has one.
-    # Parametrized cases are expanded by hand here rather than depending on
-    # pytest being installed on the runner.
-    ran = 0
-    for name, fn in sorted(globals().items()):
-        if not name.startswith("test_") or not callable(fn):
-            continue
-        marks = getattr(fn, "pytestmark", [])
-        params = [m.args[1] for m in marks if m.name == "parametrize"]
-        cases = params[0] if params else [None]
-        for c in cases:
-            print(f"{name}{'[' + str(c) + ']' if c is not None else ''} ...")
-            fn() if c is None else fn(c)
-            ran += 1
-    print(f"\n{ran} tests passed")
-
-
 # ---------------------------------------------------------------------------
 # 2026-09-11 turn 11: the rank instrument is allowed to clear a task the
 # accuracy instrument cannot resolve, so its calibration and its clearing rule
@@ -458,3 +436,25 @@ def test_either_instrument_firing_denies_the_clearance():
     assert cleared_tasks([rank_clean_acc_fires]) == [], (
         "a task whose accuracy instrument fired was cleared because the rank "
         "instrument happened to be quiet")
+
+
+if __name__ == "__main__":
+    # CI runs each test file as `python <file>`, so a file with no __main__
+    # block is a file CI reports green after running zero assertions. That
+    # exact shape of omission is already in this repo's history twice, and
+    # `test_every_test_file_is_actually_executable_by_ci` in
+    # tests/test_registry_is_committed.py now asserts every file has one.
+    # Parametrized cases are expanded by hand here rather than depending on
+    # pytest being installed on the runner.
+    ran = 0
+    for name, fn in sorted(globals().items()):
+        if not name.startswith("test_") or not callable(fn):
+            continue
+        marks = getattr(fn, "pytestmark", [])
+        params = [m.args[1] for m in marks if m.name == "parametrize"]
+        cases = params[0] if params else [None]
+        for c in cases:
+            print(f"{name}{'[' + str(c) + ']' if c is not None else ''} ...")
+            fn() if c is None else fn(c)
+            ran += 1
+    print(f"\n{ran} tests passed")

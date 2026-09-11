@@ -150,6 +150,26 @@ def test_every_test_file_is_actually_executable_by_ci():
         f"block, so `python <file>` runs nothing and CI passes on them: "
         f"{missing}")
 
+    # A test defined BELOW the `__main__` block does not exist yet when that
+    # block executes, so `python <file>` silently skips it while pytest runs it
+    # -- green locally, never executed in CI. Introduced on 2026-09-11 by
+    # appending six new tests to the end of tests/test_report.py, which put
+    # them after its `__main__` block at line 444. Fourth appearance of "CI is
+    # green on something CI did not run", so it gets a test too.
+    late = []
+    for f in files:
+        text = f.read_text()
+        if "__main__" not in text:
+            continue
+        tail = text[text.index('if __name__ == "__main__":'):]
+        for n, line in enumerate(tail.split("\n")):
+            if n and line.startswith("def test_"):
+                late.append(f"{f.name}:{line.split('(')[0][4:]}")
+    assert not late, (
+        f"{len(late)} test function(s) are defined after their file's "
+        f"`__main__` block, so `python <file>` never runs them and only "
+        f"pytest does: {late}")
+
     wf = sorted((REPO / ".github/workflows").glob("*.yml"))
     assert wf, "no CI workflow found"
     text = "\n".join(w.read_text() for w in wf)
