@@ -1434,6 +1434,8 @@ def main() -> int:
         doc += ["`runs/clean_reproduction.json` is absent, so this is "
                 f"{NM}. Run `scripts/clean_reproduction.py`.", ""]
     else:
+        li = crp.get("load_invariance") or {}
+        wf = li.get("worst_fold_contrast_among_identical")
         hdr_c = ["task", "seed", "reproduced", "record digest",
                  "ads digest", "registry digest",
                  "pooled acc (bench)", "pooled acc (clean)",
@@ -1473,12 +1475,35 @@ def main() -> int:
              if not crp["all_cells_reproduced"] else
              "Every confirmatory cell has an untouched counterpart that "
              "reproduced it exactly."), "",
-            "Not measured, because the table invites the opposite reading: a "
-            "seconds ratio near 1.0 means the two cells met a **similar** "
-            "contention regime. It is not evidence that accuracy is invariant "
-            "to thread count or machine load. No run in this repository has "
-            f"measured that, and no record can tell you -- `env` carries "
-            f"`cpu_count` but no thread regime at all. {NM}.", "",
+            (("**Measured, opportunistically:** "
+              f"{li['n_cells_supporting']} of {crp['n_cells_compared']} "
+              "compared cells reproduced *identically* while taking very "
+              "different wall-clock. Largest whole-cell ratio among reproduced "
+              f"cells: **{li['max_seconds_ratio_among_identical']:.2f}x** ("
+              + ", ".join(f"task {c['task_id']} seed {c['seed']} at "
+                          f"{c['ratio']:.2f}x"
+                          for c in li["identical_cells_with_ratio_over_2x"])
+              + "). Sharper at fold level: "
+              + (f"fold {wf['fold']} of that cell took "
+                 f"**{wf['seconds_clean']:.1f} s against {wf['seconds_bench']:.1f} s** "
+                 f"in the confirmatory run, a **{wf['ratio']:.1f}x** contrast on "
+                 "a single fold, with the fold accuracy and the selected family "
+                 "identical." if wf else "")
+              + " So the record is invariant to external machine **load**. "
+              "The contention was not arranged by us, so this is opportunistic "
+              "rather than designed, and n is small.")
+             if li and li.get("n_cells_supporting") else
+             ("A seconds ratio near 1.0 means only that the two cells met a "
+              "**similar** contention regime, which on its own is evidence of "
+              f"nothing. {NM} for load invariance.")), "",
+            "**Still not measured, and it is the one the intervention "
+            "actually raises:** invariance to a change in the thread "
+            "*configuration*. Every cell above ran at the same configured "
+            "setting, so none of them varies it — and no historical record "
+            "carries a thread regime at all (`env` had `cpu_count` and "
+            "nothing else until turn 12), so \"did changing `ADS_N_JOBS` at "
+            "turn 8 move a result?\" cannot be answered from these artifacts "
+            f"at all, rather than merely being unresolved. {NM}.", "",
         ]
     doc += [
         "## The gate: the pre-registered exact test, per task", "",

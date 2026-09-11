@@ -154,6 +154,17 @@ def main(bench_dir: Path | None = None, clean_dir: Path | None = None,
         st_b, st_c = row["seconds_total_bench"], row["seconds_total_clean"]
         row["seconds_ratio_clean_over_bench"] = (
             (st_c / st_b) if (st_b and st_c) else None)
+        # The per-fold contrast, because a cell total can hide a single fold
+        # that met the contention head-on. Derived here so no document has to
+        # hand-type the pair.
+        fb = [f.get("seconds") for f in (rb.get("per_fold") or [])]
+        fc = [f.get("seconds") for f in (rc.get("per_fold") or [])]
+        worst = None
+        if len(fb) == len(fc) and fb and all(fb) and all(fc):
+            i = max(range(len(fb)), key=lambda j: fc[j] / fb[j])
+            worst = {"fold": i, "seconds_bench": fb[i], "seconds_clean": fc[i],
+                     "ratio": fc[i] / fb[i]}
+        row["worst_fold_timing_contrast"] = worst
         compared.append(row)
         if not row["identical"]:
             (accuracy_only if acc_same else mismatches).append(row)
@@ -185,13 +196,47 @@ def main(bench_dir: Path | None = None, clean_dir: Path | None = None,
         "mismatched_cells": mismatches,
         "accuracy_equal_digest_differs_cells": accuracy_only,
         "caveats": [
-            "A seconds ratio near 1.0 says the two cells met a SIMILAR "
-            "contention regime. It is not evidence that accuracy is invariant "
-            "to thread count or machine load; no run in this repository has "
-            "measured that.",
+            "A seconds ratio near 1.0 says only that the two cells met a "
+            "SIMILAR contention regime, and on its own is not evidence of "
+            "invariance to anything.",
+            "What IS measured, by cells whose ratio is far from 1.0: the "
+            "record is invariant to external machine LOAD. See "
+            "load_invariance below.",
+            "What is NOT measured: invariance to a change in the thread "
+            "CONFIGURATION. Every cell here ran at the same configured "
+            "setting, and no record carries a thread regime, so the question "
+            "the turn-8 intervention actually raises -- did changing "
+            "ADS_N_JOBS move a result? -- cannot be answered from these "
+            "artifacts at all.",
             "Until clean_set_complete is true this is a partial reproduction "
             "and cannot settle clause 3 under either reading.",
         ],
+        # The natural experiment: cells that reproduced exactly while taking
+        # very different wall-clock. Contention was not arranged by us, so this
+        # is opportunistic rather than designed -- reported as what it is.
+        "load_invariance": {
+            "what": "cells that reproduced identically despite a large "
+                    "wall-clock ratio, i.e. under heavy external CPU "
+                    "contention with the thread configuration unchanged",
+            "max_seconds_ratio_among_identical": max(
+                [r["seconds_ratio_clean_over_bench"] for r in compared
+                 if r["identical"] and r["seconds_ratio_clean_over_bench"]],
+                default=None),
+            "identical_cells_with_ratio_over_2x": [
+                {"task_id": r["task_id"], "seed": r["seed"],
+                 "ratio": r["seconds_ratio_clean_over_bench"]}
+                for r in compared
+                if r["identical"] and (r["seconds_ratio_clean_over_bench"] or 0) > 2.0],
+            "n_cells_supporting": sum(
+                1 for r in compared
+                if r["identical"] and (r["seconds_ratio_clean_over_bench"] or 0) > 2.0),
+            "worst_fold_contrast_among_identical": max(
+                [r["worst_fold_timing_contrast"] for r in compared
+                 if r["identical"] and r["worst_fold_timing_contrast"]],
+                key=lambda w: w["ratio"], default=None),
+            "caveat": "Opportunistic, not designed, and n is small. It is "
+                      "evidence about load, not about thread configuration.",
+        },
     }
     out_path.write_text(json.dumps(result, indent=2) + "\n")
     print(f"compared {len(compared)} cells: {n_ident} identical, "
