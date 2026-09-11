@@ -2,15 +2,42 @@
   "generated_by": "scripts/clean_reproduction.py",
   "what": "cell-by-cell identity of the untouched `clean` re-run against the confirmatory set `runs/bench`",
   "n_cells_bench": 40,
-  "n_cells_clean": 3,
-  "n_cells_compared": 3,
-  "n_identical": 3,
+  "n_cells_clean": 4,
+  "n_cells_compared": 4,
+  "n_identical": 4,
   "n_accuracy_equal_digest_differs": 0,
   "n_mismatched": 0,
-  "clean_coverage_of_bench": 0.075,
+  "clean_coverage_of_bench": 0.1,
   "clean_set_complete": false,
   "all_cells_reproduced": false,
   "cells": [
+    {
+      "task_id": 3,
+      "seed": 0,
+      "identical": true,
+      "digest_equal": true,
+      "accuracy_pooled_bench": 0.9962453066332916,
+      "accuracy_pooled_clean": 0.9962453066332916,
+      "accuracy_pooled_equal": true,
+      "accuracy_folds_equal": true,
+      "families_equal": true,
+      "n_correct_equal": true,
+      "digest_bench": "da8f4ace6dad37b1819b9f26108ad12043ac5346e091d4573018d1c8b7e8c1b9",
+      "digest_clean": "da8f4ace6dad37b1819b9f26108ad12043ac5346e091d4573018d1c8b7e8c1b9",
+      "timestamps_stripped_bench": 60,
+      "timestamps_stripped_clean": 60,
+      "seconds_total_bench": 346.2,
+      "seconds_total_clean": 4481.1,
+      "ads_sha256_equal": true,
+      "registry_sha256_equal": true,
+      "seconds_ratio_clean_over_bench": 12.943674176776431,
+      "worst_fold_timing_contrast": {
+        "fold": 9,
+        "seconds_bench": 40.35,
+        "seconds_clean": 2858.51,
+        "ratio": 70.84287484510533
+      }
+    },
     {
       "task_id": 31,
       "seed": 0,
@@ -30,7 +57,13 @@
       "seconds_total_clean": 295.2,
       "ads_sha256_equal": true,
       "registry_sha256_equal": true,
-      "seconds_ratio_clean_over_bench": 0.9993229519295871
+      "seconds_ratio_clean_over_bench": 0.9993229519295871,
+      "worst_fold_timing_contrast": {
+        "fold": 8,
+        "seconds_bench": 28.42,
+        "seconds_clean": 36.35,
+        "ratio": 1.2790288529204785
+      }
     },
     {
       "task_id": 3913,
@@ -51,7 +84,13 @@
       "seconds_total_clean": 132.3,
       "ads_sha256_equal": true,
       "registry_sha256_equal": true,
-      "seconds_ratio_clean_over_bench": 0.9902694610778444
+      "seconds_ratio_clean_over_bench": 0.9902694610778444,
+      "worst_fold_timing_contrast": {
+        "fold": 4,
+        "seconds_bench": 8.75,
+        "seconds_clean": 11.37,
+        "ratio": 1.2994285714285714
+      }
     },
     {
       "task_id": 10101,
@@ -72,13 +111,40 @@
       "seconds_total_clean": 135.8,
       "ads_sha256_equal": true,
       "registry_sha256_equal": true,
-      "seconds_ratio_clean_over_bench": 1.1269709543568465
+      "seconds_ratio_clean_over_bench": 1.1269709543568465,
+      "worst_fold_timing_contrast": {
+        "fold": 5,
+        "seconds_bench": 11.06,
+        "seconds_clean": 17.01,
+        "ratio": 1.5379746835443038
+      }
     }
   ],
   "mismatched_cells": [],
   "accuracy_equal_digest_differs_cells": [],
   "caveats": [
-    "A seconds ratio near 1.0 says the two cells met a SIMILAR contention regime. It is not evidence that accuracy is invariant to thread count or machine load; no run in this repository has measured that.",
+    "A seconds ratio near 1.0 says only that the two cells met a SIMILAR contention regime, and on its own is not evidence of invariance to anything.",
+    "What IS measured, by cells whose ratio is far from 1.0: the record is invariant to external machine LOAD. See load_invariance below.",
+    "What is NOT measured: invariance to a change in the thread CONFIGURATION. Every cell here ran at the same configured setting, and no record carries a thread regime, so the question the turn-8 intervention actually raises -- did changing ADS_N_JOBS move a result? -- cannot be answered from these artifacts at all.",
     "Until clean_set_complete is true this is a partial reproduction and cannot settle clause 3 under either reading."
-  ]
+  ],
+  "load_invariance": {
+    "what": "cells that reproduced identically despite a large wall-clock ratio, i.e. under heavy external CPU contention with the thread configuration unchanged",
+    "max_seconds_ratio_among_identical": 12.943674176776431,
+    "identical_cells_with_ratio_over_2x": [
+      {
+        "task_id": 3,
+        "seed": 0,
+        "ratio": 12.943674176776431
+      }
+    ],
+    "n_cells_supporting": 1,
+    "worst_fold_contrast_among_identical": {
+      "fold": 9,
+      "seconds_bench": 40.35,
+      "seconds_clean": 2858.51,
+      "ratio": 70.84287484510533
+    },
+    "caveat": "Opportunistic, not designed, and n is small. It is evidence about load, not about thread configuration."
+  }
 }
