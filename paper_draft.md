@@ -177,6 +177,52 @@ logged decisions and **100% of predictions** unchanged. That closes the
 schema-fingerprint route. It does not rule out a rule keyed on feature
 *values*, and the test says so rather than implying a stronger guarantee.
 
+### 4.1 Reproduction does not retract an intervention
+
+One cell of our confirmatory set was killed and restarted by an operator. Under
+the conventional reading of autonomy — the agent chose the preprocessing, the
+model and the validation, and no human chose any of them — that cell is fine:
+restarting a compute job with different thread settings changes no modelling
+decision. Under the strict reading we adopted in advance — *count any manual
+intervention as a failure of that run rather than editing it out* — it is a
+failure, and the clause reads false. We report both readings, computed
+side by side, and treat the strict one as binding.
+
+The tempting repair is to re-run the touched cell untouched and show that the
+number is the same. We built the machinery for exactly that, and on the three
+cells completed so far the re-run reproduces the original **exactly**: not
+merely the pooled accuracy, but a digest over the whole record — every fold's
+accuracy, the selected model family, the tournament, the preprocessing profile,
+every logged decision — with only wall-clock fields excluded.
+
+That evidence is worth having and it does not repair the clause. An adversarial
+reviewer put it in one line: *equality cannot undo an event.* The strict clause
+quantifies over what happened during the measurement, not over what the
+measurement produced. A cell that was interrupted remains a cell that was
+interrupted however many times its numbers are reproduced afterwards, and a
+protocol that let a later re-run retract an earlier intervention would let any
+intervention be laundered by repetition. The reproduction supports a different,
+weaker and separately-named claim — *operator-touched cells reproduce exactly*,
+so the recorded result did not depend on the operator — and we report it as
+that, not as the clause.
+
+There is a second reason to distrust the repair, and it is about *us*. We
+proposed narrowing from a 40-cell re-run to a single-cell audit only after
+measuring that the 40-cell re-run could not finish in the time available.
+Registering the narrowed experiment before running it is not sufficient: the
+scope was chosen after observing that the wider scope would fail, which is the
+same selection effect as choosing a metric after seeing the result. We record
+the chronology rather than the registration.
+
+The general point is that autonomy clauses are claims about a *process*, and a
+process claim cannot be discharged by an outcome measurement. Most of the
+apparatus in this paper — the pre-registered thresholds, the frozen registry,
+the decision log — exists to make outcome claims checkable. This clause needs
+something different: an audit trail that is complete, append-only, and counts
+against us by default. Ours is a ledger in which absence of evidence is
+recorded as absence rather than coerced into a passing value, a distinction
+that cost us a clause the first four times we got it wrong.
+
 ## 5. The adversary, and the question to ask it
 
 We ran an independent CLI agent against the design **before any result

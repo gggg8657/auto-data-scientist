@@ -47,7 +47,24 @@ triviality.** Read the next two sections before the numbers.
 
 ## What changed most recently (2026-09-11)
 
-Two things, one of which cost the PASS.
+**0. Latest (turn 12): the untouched re-run reproduces the confirmatory set
+exactly, and the thing blocking clause 3 is another project's CPU use.**
+`runs/clean_reproduction.json` — **3 of 3** completed cells identical on a
+whole-record digest (every fold accuracy, model family, tournament and
+preprocessing profile, not just the pooled score), so the agent made the same
+*decisions* twice. Coverage is 3/40, so this settles clause 3 under neither
+reading. It will stay 3/40: another track is holding ~116 of 192 cores in CPU
+threads while its leased GPU reads 19%/0%, one `kr-vs-kp` fold went 25–40 s to
+**1341 s**, and I may not touch that project — nor kill my own run, since
+killing a cell mid-flight recreates the exact defect the clean set exists to
+avoid. Details and the options for you are in *Still running* and **decision 7**
+below. `codex`, asked how to make clause 3 pass, established that reproducing
+the touched cell can never do it (*"equality cannot undo an event"*), caught my
+proposed single-cell audit as a post-observation scope change, and found a
+docstring of mine claiming `report.py` read a JSON that nothing consumed. All
+three conceded and fixed. 19 test files, 160 tests.
+
+Then the two from turn 11, one of which cost the PASS.
 
 **1. Two of the five tasks had been cleared of label leakage by never being
 measured.** The leakage probe's sensitivity is `band / gap`, where `gap =
@@ -507,11 +524,16 @@ blocking clause 3. It reproduces the *identical* registered measurement (five
 tasks × seeds 0–7) into `runs/clean/`, writing to its own directory precisely
 so it cannot overwrite the set it will be compared against. `runs/bench/` and
 its ledger stay exactly where they are and **both sets get reported** — this is
-a second measurement, not a replacement. Launched at `ADS_N_JOBS=8` from the
-start, which is the setting that made fold times stable (74–82 s) last time, so
-there should be no reason to touch it. **If it needs to be killed, clause 3
+a second measurement, not a replacement. **If it needs to be killed, clause 3
 fails again and that is the correct outcome** — do not restart a cell and call
 the result untouched.
+
+It was launched at `ADS_N_JOBS=8`, on the expectation that this kept fold times
+stable at 74–82 s. **That expectation is falsified** — see the withdrawal below;
+`ADS_N_JOBS` reaches only joblib, `HistGradientBoostingClassifier` is OpenMP-only
+and takes no `n_jobs`, and no `OMP_NUM_THREADS` was ever set. The run's own
+records could not have told you that either, which is why `environment()` now
+records the thread regime (turn 12); the existing records stay `[not measured]`.
 
 ```bash
 cd ~/Documents/workspace/auto-data-scientist
@@ -519,7 +541,9 @@ tmux ls | grep ads-                       # ads-clean
 tail -3 logs/bench_clean.log
 ls runs/clean/*.json | wc -l              # 40 when done
 cat runs/interim_report.md                # the live view meanwhile
-.venv/bin/python -m pytest tests/ -q      # 131 tests
+.venv/bin/python -m pytest tests/ -q      # 19 files, 160 tests
+.venv/bin/python scripts/clean_reproduction.py   # regenerates the reproduction JSON
+cat runs/clean_reproduction.json | head -20      # 3/3 identical, coverage 3/40
 ```
 
 **Why `RESULTS.md` currently lags.** `report.py` refuses to regenerate it while
